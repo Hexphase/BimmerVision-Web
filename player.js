@@ -207,7 +207,9 @@ class BimmerVisionPlayer {
     if (!response.ok) throw new Error('Recording download unavailable: HTTP '+response.status);
     this.totalBytes=Number(response.headers.get('Content-Length')) || expectedBytes || 0;
     this.loadedByteOffset=0;
-    this._setState('loading','Downloading the complete recording…');
+    const readingLocal=window.BVSourceManager?.source?.kind==='usb';
+    const loadingText=readingLocal?'Reading the complete recording from your USB drive…':'Downloading the complete recording…';
+    this._setState('loading',loadingText);
     const reader=response.body.getReader();
     try {
       while (true) {
@@ -216,7 +218,7 @@ class BimmerVisionPlayer {
         if (done) break;
         this.loadedByteOffset+=value.byteLength;
         onChunk(value);
-        this._setState('loading','Downloading the complete recording…');
+        this._setState('loading',loadingText);
         await new Promise(resolve=>setTimeout(resolve,0));
       }
       if (this.totalBytes && this.loadedByteOffset !== this.totalBytes) throw new Error('The recording download was incomplete. Check the connection and retry.');

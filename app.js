@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     status.textContent = message || ({playing:'Playing',paused:'Paused',loading:'Preparing video…',buffering:'Buffering…',ended:'Drive complete',idle:'Choose a recording',error:'Playback unavailable'}[state] || state);
     status.dataset.state=state;
     document.getElementById('playbackProgress').hidden=state!=='buffering';
-    if (state === 'loading') { if(message)loadingModalStatus.textContent=message;document.getElementById('loadingProgress').textContent=total ? `${Math.min(100,Math.round(loaded/total*100))}% received` : loaded ? `${formatBytes(loaded)} received` : 'Waiting for recording data…'; }
+    if (state === 'loading') { if(message)loadingModalStatus.textContent=message;const verb=window.BVSourceManager.readOnly?'read':'received';document.getElementById('loadingProgress').textContent=total ? `${Math.min(100,Math.round(loaded/total*100))}% ${verb}` : loaded ? `${formatBytes(loaded)} ${verb}` : 'Waiting for recording data…'; }
     hudElements.playBtn.disabled=!player.streamComplete||state==='loading'||state==='error';
     if(state==='error' && !videoLoadingModal.style.display.includes('flex')) document.getElementById('playbackRetryBtn').hidden=false;
   };
