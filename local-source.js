@@ -1,0 +1,189 @@
+/* Browser-only, read-only recording source. No filesystem write APIs are used. */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.BVLocalSource = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+  const MAX_JSON = 1048576;
+  const LABEL = 'USB view only, mappings saved this browser';
+  const abort = () => new DOMException('USB reading cancelled', 'AbortError');
+  function check(signal) { if (signal && signal.aborted) throw abort(); }
+  function safeParts(path) {
+    if (typeof path !== 'string' || path.includes('\\') || path.includes('\0')) return null;
+    const parts = path.split('/');
+    return parts.length && parts.every(p => p && p !== '.' && p !== '..' && !p.endsWith('.partial') && p !== '.partials') ? parts : null;
+  }
+  function json(value, status = 200) { return new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json'}}); }
+  function validMapping(m) {
+    return m && m.schemaVersion === 1 && m.confirmed === true && ['frontRear', 'leftRight'].includes(m.phase0) && ['frontRear', 'leftRight'].includes(m.phase1) && m.phase0 !== m.phase1 && typeof m.flipHalves === 'boolean';
+  }
+  function crc32(bytes) {
+    let crc = -1;
+    for (let i = 0; i < bytes.length; i++) { crc ^= bytes[i]; for (let b = 0; b < 8; b++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0); }
+    return (crc ^ -1) >>> 0;
+  }
+  const magic = (bytes, value) => bytes.length >= value.length && [...value].every((c, i) => bytes[i] === c.charCodeAt(0));
+  async function scan(blob, manifest, cancelled, progress) {
+    let window = new Uint8Array(), windowAt = 0, pos = 16, records = 0, lastTime = -Infinity;
+    const route = [];
+    async function read(at, length) {
+      if (cancelled()) throw abort();
+      if (at < windowAt || at + length > windowAt + window.length) {
+        windowAt = at;
+        window = new Uint8Array(await blob.slice(at, Math.min(blob.size, at + MAX_JSON)).arrayBuffer());
+      }
+      return window.subarray(at - windowAt, at - windowAt + length);
+    }
+    let header = await read(0, 16), dv = new DataView(header.buffer, header.byteOffset, header.byteLength);
+    if (!magic(header, 'BVR1') || dv.getUint32(4, true) !== 1 || dv.getUint32(8, true) !== 16) throw Error('Invalid BVR1 archive');
+    while (pos + 24 <= blob.size && route.length < 14400) {
+      if (++records > 2000000) throw Error('Archive record limit exceeded');
+      const h = await read(pos, 24);
+      if (h.length !== 24 || !magic(h, 'BVRR')) throw Error('Invalid BVR record');
+      dv = new DataView(h.buffer, h.byteOffset, h.byteLength);
+      const kind = h[4], length = dv.getUint32(8, true), atUs = dv.getUint32(12, true) + dv.getUint32(16, true) * 4294967296, crc = dv.getUint32(20, true);
+      if (dv.getUint16(6, true) !== 24 || !length || length > 16777216 || pos + 24 + length > blob.size) throw Error('Invalid BVR record length');
+      if (kind === 2 && length <= 65536) {
+        const bytes = await read(pos + 24, length);
+        let obj = null;
+        try { if (crc32(bytes) === crc) obj = JSON.parse(new TextDecoder().decode(bytes)); } catch (_) {}
+        if (obj && obj.type === 'telemetry' && obj.fields) {
+          const f = obj.fields, lat = f.latitude, lon = f.longitude, t = (atUs - manifest.startMonotonicUs) / 1000000;
+          const valid = v => v && v.valid !== false && v.sourceValid !== false && typeof v.value === 'number' && Number.isFinite(v.value);
+          if (valid(lat) && valid(lon) && Math.abs(lat.value) <= 90 && Math.abs(lon.value) <= 180 && (lat.value !== 0 || lon.value !== 0) && Number.isFinite(t) && t >= 0 && t >= lastTime + .5) {
+            const point = {at: t, latitude: lat.value, longitude: lon.value};
+            if (valid(f.speed)) point.speedKph = f.speed.value;
+            route.push(point); lastTime = t;
+          }
+        }
+      }
+      pos += 24 + length;
+      // Yield regularly so disconnect and source switches can cancel promptly.
+      if (records % 512 === 0) { progress(pos, blob.size); await new Promise(resolve => setTimeout(resolve, 0)); }
+    }
+    const location = p => ({latitude: p.latitude, longitude: p.longitude});
+    return {route, endpoints: route.length ? {start: location(route[0]), end: location(route[route.length - 1])} : null, routeStatus: 'ready'};
+  }
+  function ranged(blob, range, method) {
+    const headers = {'Accept-Ranges': 'bytes', 'Content-Type': 'application/octet-stream'};
+    let start = 0, end = blob.size - 1, status = 200;
+    if (range) {
+      const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+      if (!m || (!m[1] && !m[2])) return new Response(null, {status: 416, headers: {...headers, 'Content-Range': `bytes */${blob.size}`}});
+      if (m[1]) { start = Number(m[1]); end = m[2] ? Number(m[2]) : end; }
+      else { const suffix = Number(m[2]); if (!Number.isSafeInteger(suffix)) return new Response(null, {status: 416, headers: {...headers, 'Content-Range': `bytes */${blob.size}`}}); start = Math.max(0, blob.size - suffix); }
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= blob.size || start > end || (!m[1] && Number(m[2]) === 0)) return new Response(null, {status: 416, headers: {...headers, 'Content-Range': `bytes */${blob.size}`}});
+      end = Math.min(end, blob.size - 1); status = 206;
+      headers['Content-Range'] = `bytes ${start}-${end}/${blob.size}`;
+    }
+    headers['Content-Length'] = String(Math.max(0, end - start + 1));
+    return new Response(method === 'HEAD' ? null : blob.slice(start, end + 1), {status, headers});
+  }
+  async function create(entries, name, options = {}) {
+    const {signal, onProgress = () => {}} = options;
+    check(signal);
+    const groups = new Map(), warnings = [], recordings = new Map();
+    for (const {path, file} of entries) {
+      const parts = safeParts(path);
+      if (!parts || parts.length < 2 || !UUID.test(parts[parts.length - 2])) continue;
+      const dir = parts.slice(0, -1).join('/'), filename = parts[parts.length - 1];
+      if (!['manifest.json', 'capture.bvr', 'mapping.json'].includes(filename)) continue;
+      if (!groups.has(dir)) groups.set(dir, {id: parts[parts.length - 2], files: new Map(), ambiguous: false});
+      const group = groups.get(dir);
+      if (group.files.has(filename)) group.ambiguous = true;
+      group.files.set(filename, file);
+    }
+    const ids = new Map();
+    for (const group of groups.values()) ids.set(group.id.toLowerCase(), (ids.get(group.id.toLowerCase()) || 0) + 1);
+    let count = 0;
+    for (const group of groups.values()) {
+      check(signal);
+      const mf = group.files.get('manifest.json'), capture = group.files.get('capture.bvr');
+      try {
+        if (ids.get(group.id.toLowerCase()) !== 1 || group.ambiguous) throw Error('Duplicate recording ID or ambiguous files');
+        if (!mf || !capture || mf.size > MAX_JSON || mf.size === 0) throw Error('Missing archive or invalid manifest size');
+        const manifest = JSON.parse(await mf.text());
+        if (!manifest || manifest.id !== group.id || !UUID.test(manifest.id) || manifest.complete !== true || manifest.schemaVersion !== 1 || manifest.format !== 'bvr1') throw Error('Invalid or incomplete recording manifest');
+        if (!Number.isSafeInteger(manifest.bytes) || manifest.bytes !== capture.size || capture.size < 16) throw Error('Archive size does not match manifest');
+        const header = new Uint8Array(await capture.slice(0, 16).arrayBuffer());
+        const dv = new DataView(header.buffer, header.byteOffset, header.byteLength);
+        if (!magic(header, 'BVR1') || dv.getUint32(4, true) !== 1 || dv.getUint32(8, true) !== 16) throw Error('Invalid archive header');
+        recordings.set(manifest.id.toLowerCase(), {manifest, capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
+      } catch (error) { warnings.push(`${group.id}: ${error.message}`); }
+      onProgress({phase: 'catalog', completed: ++count, total: groups.size});
+    }
+    let closed = false;
+    const source = {
+      kind: 'usb', name, readOnly: true, label: LABEL, warnings,
+      close() { closed = true; recordings.forEach(r => { if (r.overview.routeStatus === 'indexing') r.overview.routeStatus = 'cancelled'; }); },
+      async fetch(path, init = {}) {
+        check(signal); check(init.signal);
+        if (closed) throw abort();
+        const request = typeof Request !== 'undefined' && path instanceof Request ? path : null;
+        const method = String(init.method || (request && request.method) || 'GET').toUpperCase();
+        let url;
+        try { url = new URL(request ? request.url : path, 'https://usb.invalid'); } catch (_) { return json({error: 'Invalid path'}, 400); }
+        if (method === 'DELETE' || (method !== 'GET' && method !== 'HEAD' && !/\/mapping(?:\.json)?$/.test(url.pathname))) return json({error: 'USB view only. Connect to the car to lock or delete recordings. Original files are never changed.'}, 403);
+        if (url.pathname === '/api/v1/recordings' && method === 'GET') return json({recordings: [...recordings.values()].map(r => ({...r.manifest, ...r.overview})), warnings});
+        if (url.pathname === '/api/v1/capabilities') return json({nativePreview: false, readOnly: true, mappingStorage: 'browser'});
+        if (url.pathname === '/api/v1/version') return json({version: '0.2.8', repository: 'Hexphase/BimmerVision'});
+        if (url.pathname === '/api/v1/speed-limit') return json(null);
+        const match = /^\/api\/v1\/recordings\/([a-f0-9-]+)\/(manifest\.json|capture\.bvr|mapping(?:\.json)?)$/i.exec(url.pathname);
+        if (!match) return json({error: 'USB endpoint unavailable'}, 404);
+        const record = recordings.get(match[1].toLowerCase());
+        if (!record) return json({error: 'Recording unavailable'}, 404);
+        if (match[2] === 'manifest.json') return json(record.manifest);
+        if (match[2] === 'capture.bvr') return ranged(record.capture, new Headers(init.headers || (request && request.headers) || {}).get('Range'), method);
+        const key = 'bimmervision_mapping_' + record.manifest.id;
+        if (method === 'POST') {
+          let mapping;
+          try { mapping = JSON.parse(init.body === undefined && request ? await request.text() : init.body); } catch (_) { return json({error: 'Invalid mapping JSON'}, 400); }
+          if (!validMapping(mapping)) return json({error: 'Invalid confirmed camera mapping'}, 400);
+          const value = {schemaVersion: 1, confirmed: true, phase0: mapping.phase0, phase1: mapping.phase1, flipHalves: mapping.flipHalves};
+          try { globalThis.localStorage.setItem(key, JSON.stringify(value)); } catch (_) { return json({error: 'Enable browser storage to save this mapping. USB files were not changed.'}, 507); }
+          return json(value);
+        }
+        if (method !== 'GET') return json({error: 'USB view only'}, 403);
+        try { const value = JSON.parse(globalThis.localStorage.getItem(key)); if (validMapping(value)) return json(value); } catch (_) {}
+        if (record.mappingFile && record.mappingFile.size <= MAX_JSON) { try { const value = JSON.parse(await record.mappingFile.text()); if (validMapping(value)) return json(value); } catch (_) {} }
+        return json({error: 'No confirmed camera mapping'}, 404);
+      }
+    };
+    // Sequential background work avoids reading every video while listing the USB.
+    source.indexing = (async () => {
+      for (const [id, record] of recordings) {
+        if (closed || signal && signal.aborted) break;
+        await new Promise(resolve => setTimeout(resolve, 0));
+        try {
+          const result = await scan(record.capture, record.manifest, () => closed || signal && signal.aborted, (completed, total) => onProgress({phase: 'route', id, completed, total}));
+          if (!closed && !(signal && signal.aborted)) record.overview = result;
+        } catch (error) { record.overview.routeStatus = error.name === 'AbortError' ? 'cancelled' : 'unavailable'; }
+        onProgress({phase: 'route', id, completed: record.capture.size, total: record.capture.size, status: record.overview.routeStatus});
+      }
+    })();
+    return source;
+  }
+  async function fromFiles(files, options = {}) {
+    const entries = Array.from(files, file => ({path: file.webkitRelativePath || file.name, file}));
+    return create(entries, entries[0] && entries[0].path.split('/')[0] || 'USB recordings', options);
+  }
+  async function fromDirectoryHandle(handle, options = {}) {
+    const entries = [];
+    async function walk(dir, prefix, depth) {
+      check(options.signal);
+      if (depth > 8) return;
+      for await (const [name, child] of dir.entries()) {
+        check(options.signal);
+        if (!safeParts(name)) continue;
+        if (child.kind === 'directory') {
+          if (depth === 0 || name === 'BimmerVision' || name === 'Library' || UUID.test(name)) await walk(child, prefix + name + '/', depth + 1);
+        } else if (['manifest.json', 'capture.bvr', 'mapping.json'].includes(name)) entries.push({path: prefix + name, file: await child.getFile()});
+      }
+    }
+    await walk(handle, handle.name + '/', 0);
+    return create(entries, handle.name || 'USB recordings', options);
+  }
+  return {fromFiles, fromDirectoryHandle};
+});

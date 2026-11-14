@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BimmerVision">
+  <meta name="theme-color" content="#0b0b0c">
+  <title>BimmerVision · Your drives, anywhere</title>
+  <link rel="icon" type="image/x-icon" href="assets/bimmervision.ico">
+  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="mobile.css?v=50">
+  <link rel="stylesheet" href="hosted.css?v=1">
+</head>
+<body class="mobile-redesign" data-source-readonly="false">
+  <main id="sourceScreen" class="source-screen" aria-labelledby="sourceTitle">
+    <div class="source-wrap">
+      <header class="source-brand"><img src="assets/bimmervision-wordmark.png" alt="BimmerVision"><span>WEB PLAYER</span></header>
+      <div class="source-intro"><span class="source-eyebrow">YOUR RECORDINGS, IN FOCUS</span><h1 id="sourceTitle">Every drive.<br>Every angle.</h1><p>Open recordings from a USB drive or connect directly to your car. Your footage stays with you.</p></div>
+      <div class="source-grid">
+        <section class="source-card" aria-labelledby="usbSourceTitle"><span class="source-number">01 / ON YOUR COMPUTER</span><h2 id="usbSourceTitle">Open a USB drive</h2><p>Connect your recording drive and choose its <strong>BimmerVision</strong> folder.</p><button id="openUsbBtn" type="button" class="source-primary">Choose USB folder <span aria-hidden="true">↗</span></button><input id="usbFolderInput" type="file" webkitdirectory multiple hidden><p class="source-detail">View only. Your original recordings are never modified or uploaded. Camera assignments are saved in this browser.</p></section>
+        <section class="source-card" aria-labelledby="carSourceTitle"><span class="source-number">02 / CONNECTED TO YOUR CAR</span><h2 id="carSourceTitle">Connect to your car</h2><p>Open <strong>Connect Phone</strong> in iDrive and use the address and code shown there.</p>
+          <form id="carConnectForm"><label for="carAddress">Car IP address or QR link</label><input id="carAddress" name="carAddress" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="192.168.1.10 or paste a QR link" required><label for="carCode">8-digit pairing code</label><input id="carCode" name="carCode" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]{8}" maxlength="8" placeholder="Code shown in iDrive"><div class="source-actions"><button id="connectCarBtn" type="submit" class="source-primary">Connect</button><button id="scanQrBtn" type="button" class="source-secondary">Scan QR code</button></div></form>
+          <button id="uploadQrBtn" type="button" class="source-text-button">Use a QR code image instead</button><input id="qrFileInput" type="file" accept="image/*" hidden>
+          <p class="source-detail">Stay connected to BMW Wi-Fi / CarPlay and keep Connect Phone open. Current Chrome or Edge is recommended; allow local network access if your browser asks.</p>
+          <p id="carFallback" class="source-detail" hidden><a id="carFallbackLink" target="_blank" rel="noopener noreferrer">Open the car’s built-in player ↗</a></p>
+        </section>
+      </div>
+      <section id="qrCameraPanel" class="qr-camera-panel" hidden aria-label="QR code scanner"><video id="qrCameraVideo" autoplay playsinline muted></video><p>Point your camera at the QR code in iDrive.</p><button id="stopQrBtn" type="button" class="source-secondary">Stop camera</button></section>
+      <p id="sourceProgress" class="source-progress" role="status" aria-live="polite"></p><p id="sourceError" class="source-error" role="alert" hidden></p><button id="cancelSourceWork" type="button" class="source-secondary" hidden>Cancel</button><button id="returnToRecordingsBtn" type="button" class="source-secondary" hidden>Return to recordings</button>
+      <footer class="source-footer"><span>360° cameras. One complete story.</span><a href="https://github.com/Hexphase/BimmerVision-Web" target="_blank" rel="noopener noreferrer">About BimmerVision Web ↗</a></footer>
+    </div>
+  </main>
+  <div class="app-shell" hidden inert> 
+    <!-- Top Bar with Official Logo, Wordmark & Navigation Tabs -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand-cluster" title="BimmerVision">
+          <img class="brand-wordmark" src="assets/bimmervision-wordmark.png" alt="BimmerVision">
+        </div>
+      </div>
+
+      <!-- Navigation Tabs: 'Recordings' and 'Playback' -->
+      <nav class="nav-tabs" aria-label="Main navigation">
+        <button id="tabRecordings" class="nav-tab active">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+          </svg>
+          Recordings
+        </button>
+        <button id="tabPlayback" class="nav-tab disabled" disabled title="Select a drive first">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12zm-11-2l6-4.5-6-4.5v9z"/>
+          </svg>
+          Playback
+        </button>
+      </nav>
+
+      <div class="header-right">
+        <button id="changeSourceBtn" class="unit-toggle-pill" type="button">Change source</button>
+        <label class="advanced-toggle-label" title="Show or hide hardware video decoder telemetry">
+          <input type="checkbox" id="advancedDetailsToggle">
+          <span class="advanced-toggle-text">Diagnostics</span>
+        </label>
+        <button id="headerSettingsBtn" class="unit-toggle-pill" title="Settings & About" aria-label="Settings" style="display: flex; align-items: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+          </svg>
+          Settings
+        </button>
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span id="connStatus">Choose a source</span>
+        </div>
+      </div>
+    </header>
+
+    <aside id="releaseNotice" class="release-notice" role="status" hidden>
+      <span id="releaseNoticeText"></span>
+      <a id="releaseNoticeLink" href="https://github.com/Hexphase/BimmerVision/releases" target="_blank" rel="noopener noreferrer">View release ↗</a>
+      <button id="dismissReleaseNotice" type="button" aria-label="Dismiss update notice">×</button>
+    </aside>
+
+    <!-- TAB 1: RECORDINGS VIEW (Drives Library & Full Drive Overview with Route Map) -->
+    <!-- Debug Banner (hidden unless 'Diagnostics' is enabled) -->
+    <div id="debugOutput" class="debug-banner" style="display:none;"></div>
+    <section id="viewRecordings" class="tab-view active">
+      <div class="recordings-grid">
+        <!-- Left: Drives List -->
+        <aside class="drives-sidebar">
+          <div class="library-heading"><div><span class="library-eyebrow">DRIVE LIBRARY</span><h1>Your drives</h1><p id="librarySummary">Reading your recordings…</p></div><button id="libraryRefreshBtn" class="library-refresh" type="button" aria-label="Refresh recordings">↻</button></div>
+          <div class="library-list-caption"><span>RECENT DRIVES</span><span id="driveCount">Scanning…</span></div>
+          <div id="driveList" class="drive-cards-list">
+            <!-- Dynamically populated from DriveGrouper -->
+          </div>
+        </aside>
+
+        <!-- Right: Selected Drive Overview & OpenStreetMap -->
+        <main class="drive-overview-stage">
+          <button id="backToDrives" class="back-link" type="button">← All drives</button>
+          <div id="overviewPlaceholder" class="overview-placeholder"><span class="library-eyebrow">YOUR RECORDINGS, IN FOCUS</span><h2>Every drive.<br>Every angle.</h2><p>Choose a drive to review its recordings, route and details.</p></div>
+          <div class="overview-header-row">
+            <div>
+              <h2 id="overviewTitle" class="overview-title">Drive Overview</h2>
+              <p id="overviewSubtitle" class="overview-subtitle">Choose a drive to see its details.</p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button id="overviewLockBtn" class="overview-play-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px;" disabled title="Lock or unlock this entire drive">
+                <span id="overviewLockIcon" style="display: flex; align-items: center;">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="currentColor" fill-opacity="0.15"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </span>
+                <span id="overviewLockLabel">Lock Drive</span>
+              </button>
+              <button id="overviewDeleteBtn" class="overview-play-btn" style="background: rgba(238, 36, 64, 0.15); border: 1px solid rgba(238, 36, 64, 0.35); color: #EE2440; display: flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px;" disabled title="Delete this entire drive">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                <span>Delete Drive</span>
+              </button>
+              <button id="overviewPlayBtn" class="overview-play-btn" disabled>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <polygon points="6,4 19,12 6,20"></polygon>
+                </svg>
+                Play Drive
+              </button>
+            </div>
+          </div>
+
+          <!-- Start & End Endpoints Cards -->
+          <div class="endpoints-row">
+            <div class="endpoint-card">
+              <div class="endpoint-header">
+                <span class="endpoint-dot dot-start"></span>
+                <span class="endpoint-label">START</span>
+              </div>
+              <div id="endpointStartAddr" class="endpoint-address">—</div>
+              <div id="endpointStartTime" class="endpoint-time">—</div>
+            </div>
+
+            <div class="endpoint-card">
+              <div class="endpoint-header">
+                <span class="endpoint-dot dot-end"></span>
+                <span class="endpoint-label">END</span>
+              </div>
+              <div id="endpointEndAddr" class="endpoint-address">—</div>
+              <div id="endpointEndTime" class="endpoint-time">—</div>
+            </div>
+          </div>
+
+          <!-- Interactive Dark OpenStreetMap (Full Drive Overview) -->
+          <div class="overview-map-card">
+            <canvas id="overviewMapCanvas" width="800" height="280"></canvas>
+          </div>
+
+          <!-- 6 Drive Metrics Grid -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">Distance</span>
+              <span id="metricDistance" class="metric-val">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Duration</span>
+              <span id="metricDuration" class="metric-val">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Top Speed</span>
+              <span id="metricTopSpeed" class="metric-val">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Avg Speed</span>
+              <span id="metricAvgSpeed" class="metric-val">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Max Steering</span>
+              <span id="metricMaxSteering" class="metric-val">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Brake Events</span>
+              <span id="metricBrakeEvents" class="metric-val">—</span>
+            </div>
+          </div>
+
+          <!-- Segments / Recordings in this Drive -->
+          <div class="drive-segments-box">
+            <span class="segments-header">RECORDINGS IN THIS DRIVE</span>
+            <div id="driveSegmentsList" class="segments-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <!-- TAB 2: PLAYBACK VIEW (Player, Cockpit HUD, Sedan Camera Selector, Live Map) -->
+    <section id="viewPlayback" class="tab-view">
+      <div class="playback-heading"><button id="playbackBackBtn" class="back-link" type="button">← Your drives</button><div><h1 id="playbackTitle">Drive playback</h1><p><span id="playbackClipLabel"></span><span id="playbackStatus" role="status" aria-live="polite">Choose a recording</span></p></div><button id="playbackRetryBtn" class="back-link" type="button" hidden>Retry recording</button></div>
+      <div class="playback-grid">
+        <!-- Sidebar Panel: Corrected Sedan Camera Selector + Live Map -->
+        <aside class="playback-sidebar">
+          <!-- Interactive Top-Down Sedan Camera Selector -->
+          <section class="panel-card sedan-panel-card">
+            <div id="sedanSelectorContainer">
+              <!-- Dynamically populated by SedanCameraSelector -->
+            </div>
+          </section>
+
+          <div class="recording-actions" role="group" aria-label="Recording actions">
+            <button id="playbackLockBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Lock recording to prevent deletion">
+                  <span id="playbackLockIcon" style="display: flex; align-items: center;">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="currentColor" fill-opacity="0.15"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  </span>
+                  <span id="playbackLockLabel">Lock</span>
+                </button>
+            <button id="playbackDeleteBtn" class="export-btn" style="background: rgba(238, 36, 64, 0.15); border: 1px solid rgba(238, 36, 64, 0.35); color: #EE2440; display: flex; align-items: center; gap: 6px;" title="Delete this recording">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  <span>Delete</span>
+                </button>
+            <button id="openExportBtn" class="export-btn" title="Save a video to your device">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                  </svg>
+                  <span>Export</span>
+                </button>
+          </div>
+          <div class="camera-review-action"><button id="openCalibrateBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Confirm camera alignment (Front/Rear & Left/Right)">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="12" y1="3" x2="12" y2="17"></line>
+                    <polyline points="8 21 12 17 16 21"></polyline>
+                  </svg>
+                  <span>Cameras</span>
+                </button><span>Assignments saved per recording</span></div>
+
+          <!-- Live Playback Tracking Map -->
+          <section class="panel-card live-map-panel">
+            <div class="section-header">
+              <span class="section-title">GPS TRACKING</span>
+            </div>
+            <div class="live-map-box">
+              <canvas id="playbackMapCanvas" width="320" height="200"></canvas>
+            </div>
+          </section>
+        </aside>
+
+        <!-- Main Stage: Video Viewport & Cockpit HUD -->
+        <main class="playback-stage">
+          <!-- Video Player Stage (Bordered in Tesla Screen Style) -->
+          <div id="playerStage" class="player-stage">
+            <div class="canvas-viewport">
+              <canvas id="videoCanvas" width="1280" height="960"></canvas>
+            </div>
+
+            <!-- Cockpit Instrument Bar (Speed & Limit Left | Blinkers & Steering Center | Pedals Right) -->
+            <div class="cockpit-hud">
+              <!-- Left: Speedometer & Speed Limit Badge -->
+              <div class="hud-cluster hud-left">
+                <div id="speedToggle" class="hud-speed-group" title="Tap to switch MPH / KM/H">
+                  <span id="hudSpeedVal" class="hud-speed-val">0</span>
+                  <span id="hudSpeedUnit" class="hud-speed-unit">MPH</span>
+                </div>
+                <div class="hud-limit-sign" title="Speed Limit">
+                  <span class="hud-limit-label">SPEED</span>
+                  <span id="hudLimitVal" class="hud-limit-text">45</span>
+                </div>
+              </div>
+
+              <!-- Center: Turn Left Blinker, BMW M-Sport Steering Wheel, Turn Right Blinker -->
+              <div class="hud-cluster hud-center">
+                <!-- Turn Left Blinker -->
+                <svg id="blinkerLeft" class="blinker-icon" viewBox="0 0 24 24">
+                  <polygon points="14,4 6,12 14,20 14,14 20,14 20,10 14,10"></polygon>
+                </svg>
+
+                <!-- Rotating BMW M-Sport Steering Wheel -->
+                <div class="wheel-group" title="CAN-Bus Steering Wheel Angle">
+                  <div class="wheel-wrapper">
+                    <img id="wheelFace" class="wheel-img" src="assets/wheel-face.png" alt="Steering Wheel">
+                  </div>
+                </div>
+
+                <!-- Turn Right Blinker -->
+                <svg id="blinkerRight" class="blinker-icon" viewBox="0 0 24 24">
+                  <polygon points="10,4 18,12 10,20 10,14 4,14 4,10 10,10"></polygon>
+                </svg>
+              </div>
+
+              <!-- Right: Option 3 Pedal Indicators (Brake and Gas) -->
+              <div class="hud-cluster hud-right">
+                <div class="pedals-group">
+                  <!-- Brake Pedal (Wide Bevel Pad with Top Hanger Arm) -->
+                  <div id="brakePedalCard" class="pedal-card" title="Brake Pedal State">
+                    <div class="pedal-brake">
+                      <svg viewBox="0 0 48 48" width="38" height="38">
+                        <!-- Top Hanger Arm -->
+                        <rect class="brake-arm" x="21" y="3" width="6" height="12" fill="rgba(120, 130, 150, 0.6)"></rect>
+                        <!-- Wide Beveled Brake Pad -->
+                        <rect class="brake-pad" x="7" y="14" width="34" height="22" rx="3" ry="3" fill="rgba(35, 38, 48, 0.7)" stroke="rgba(160, 170, 195, 0.5)" stroke-width="2"></rect>
+                        <!-- Anti-slip horizontal traction ribs -->
+                        <line class="brake-rib" x1="13" y1="21" x2="35" y2="21" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
+                        <line class="brake-rib" x1="13" y1="28" x2="35" y2="28" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
+                      </svg>
+                    </div>
+                    <span class="pedal-label">BRAKE</span>
+                  </div>
+
+                  <!-- Accelerator Pedal (Upright Organ Pedal with Floor Hinge) -->
+                  <div id="gasPedalCard" class="pedal-card" title="Accelerator Pedal State">
+                    <div class="pedal-gas">
+                      <svg viewBox="0 0 48 48" width="38" height="38">
+                        <!-- Upright Organ Pedal Pad -->
+                        <rect class="gas-pad" x="14" y="4" width="20" height="36" rx="3" ry="3" fill="rgba(35, 38, 48, 0.7)" stroke="rgba(160, 170, 195, 0.5)" stroke-width="2"></rect>
+                        <!-- Floor Hinge Pivot Base -->
+                        <rect class="gas-hinge" x="10" y="40" width="28" height="5" rx="1.5" fill="rgba(120, 130, 150, 0.6)"></rect>
+                        <!-- Vertical anti-slip traction ribs -->
+                        <line class="gas-rib" x1="20" y1="10" x2="20" y2="34" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
+                        <line class="gas-rib" x1="28" y1="10" x2="28" y2="34" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
+                      </svg>
+                    </div>
+                    <span class="pedal-label">GAS</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transport Scrubber & Playback Controls -->
+            <div class="transport-panel">
+              <div id="driveTimeline" class="drive-timeline"></div>
+              <div id="playbackProgress" class="playback-buffering" hidden><span class="inline-spinner"></span>Preparing video…</div>
+              <div class="scrubber-bar-row" hidden>
+                <input id="scrubBar" aria-label="Seek within current clip" class="scrub-slider" type="range" min="0" max="4" step="0.01" value="0">
+                <span id="timecode" class="timecode-display">00:00 / 00:00</span>
+              </div>
+
+              <div class="transport-action-row">
+                <div class="playback-controls">
+                  <!-- Step Back 1s -->
+                  <button id="skipBackBtn" class="control-btn" title="Step backward (Left arrow)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <polygon points="11,18 2,12 11,6"></polygon>
+                      <polygon points="21,18 12,12 21,6"></polygon>
+                    </svg>
+                  </button>
+
+                  <!-- Play / Pause -->
+                  <button id="playPauseBtn" class="control-btn play-btn" title="Play / Pause (Spacebar)">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                      <polygon points="6,4 19,12 6,20"></polygon>
+                    </svg>
+                  </button>
+
+                  <!-- Step Forward 1s -->
+                  <button id="skipFwdBtn" class="control-btn" title="Step forward (Right arrow)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <polygon points="13,6 22,12 13,18"></polygon>
+                      <polygon points="3,6 12,12 3,18"></polygon>
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Lock Recording Button -->
+                
+
+                <!-- Delete Recording Button -->
+                
+
+                <!-- Calibrate / Camera Alignment Button -->
+                
+
+                <!-- Export MP4 Trigger Button -->
+                
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+  </div>
+
+  <!-- iOS & Desktop Export Sheet Modal -->
+  <div id="exportModal" class="modal-backdrop">
+    <div class="modal-sheet" style="max-width: 640px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Export Recording</h2>
+        <button id="closeExportBtn" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div id="customExportOptions">
+          <!-- Mid-Recording Image Live Preview -->
+          <div class="export-preview-card">
+            <div class="export-preview-topbar">
+              <div class="export-preview-label">
+                <span class="preview-dot"></span>
+                <span>Export Preview (Mid-Recording)</span>
+              </div>
+              <span id="exportPreviewTimestamp" class="export-preview-time">00:00.00</span>
+            </div>
+            <div class="export-preview-frame">
+              <canvas id="exportPreviewCanvas" width="1280" height="960"></canvas>
+            </div>
+          </div>
+
+          <div class="modal-row">
+            <span class="modal-label">Camera Angle</span>
+            <select id="exportCameraSelect" class="modal-select">
+              <option value="quad">Quad (4-Cam 2×2 Grid)</option>
+              <option value="front">Front Camera</option>
+              <option value="rear">Rear Camera</option>
+              <option value="left">Left Camera</option>
+              <option value="right">Right Camera</option>
+              <option value="source">Source (Raw Uncropped)</option>
+            </select>
+          </div>
+
+          <!-- Metadata Overlays Toggles (Blinker Bar) -->
+          <div class="export-section">
+            <div class="export-section-header">
+              <div>
+                <div class="modal-label">Blinker Bar Overlays</div>
+                <div class="modal-sublabel">Select metadata pieces to include in the exported video</div>
+              </div>
+              <div class="quick-toggle-group">
+                <button type="button" id="exportSelectAllOverlays" class="quick-toggle-btn">All</button>
+                <button type="button" id="exportClearAllOverlays" class="quick-toggle-btn">None</button>
+              </div>
+            </div>
+
+            <input id="exportHudToggle" type="checkbox" checked hidden>
+
+            <div class="metadata-toggle-grid">
+              <label class="meta-toggle-item" title="Include left and right turn blinkers">
+                <input id="exportToggleBlinkers" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Blinkers</span>
+              </label>
+
+              <label class="meta-toggle-item" title="Include vehicle speedometer">
+                <input id="exportToggleSpeed" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Current Speed</span>
+              </label>
+
+              <label class="meta-toggle-item" title="Include posted speed limit sign">
+                <input id="exportToggleSpeedLimit" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Speed Limit</span>
+              </label>
+
+              <label class="meta-toggle-item" title="Include steering wheel and steering angle degrees">
+                <input id="exportToggleSteering" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Steering Radius</span>
+              </label>
+
+              <label class="meta-toggle-item" title="Include brake pedal card">
+                <input id="exportToggleBrake" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Brake Pedal</span>
+              </label>
+
+              <label class="meta-toggle-item" title="Include accelerator pedal card">
+                <input id="exportToggleGas" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Gas Pedal</span>
+              </label>
+
+              <label class="meta-toggle-item" title="Include current video timecode watermark">
+                <input id="exportToggleTime" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Current Time</span>
+              </label>
+
+              <label class="meta-toggle-item" title="Include GPS route map alongside cameras">
+                <input id="exportToggleMap" type="checkbox" checked>
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Route Map</span>
+              </label>
+            </div>
+            <div class="export-brand-hint">
+              <span>BimmerVision branding is displayed whenever any cockpit metadata is enabled.</span>
+            </div>
+          </div>
+
+          <div class="modal-row">
+            <span class="modal-label">Export Duration</span>
+            <select id="exportDurationSelect" class="modal-select">
+              <option value="full">Full Clip (Entire Recording)</option>
+              <option value="30">Last 30 Seconds</option>
+              <option value="15">Last 15 Seconds</option>
+              <option value="10">Last 10 Seconds</option>
+            </select>
+          </div>
+
+          <div class="modal-row">
+            <span class="modal-label">Speed Unit</span>
+            <select id="exportUnitSelect" class="modal-select">
+              <option value="mph">MPH</option>
+              <option value="km/h">KM/H</option>
+            </select>
+          </div>
+
+          <div id="exportProgress" class="progress-box" style="display: none;">
+            <div class="progress-bar-track">
+              <div id="progressBarFill" class="progress-bar-fill"></div>
+            </div>
+            <span id="progressText" class="progress-text">Encoding frame 1 of 120...</span>
+          </div>
+        </div>
+
+        <button id="startExportAction" type="button" class="modal-primary-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+          </svg>
+          Save Video (Camera Roll / Download)
+        </button>
+
+        <a id="downloadExportLink" class="modal-primary-btn" style="display: none; text-align: center; text-decoration: none; margin-top: 10px; background: #22c55e;" download>
+          ⬇ Download MP4 Video
+        </a>
+
+        <div style="text-align: center; margin-top: 10px;">
+          <a id="nativeDownloadLink" href="#" style="display: none; font-size: 12px; color: rgba(160, 175, 205, 0.7); text-decoration: underline;" download>Download Raw 4-Cam Source Video (No Overlays)</a>
+        </div>
+        <p id="nativeExportNote" class="export-note" hidden style="margin-top: 8px; font-size: 11px; color: rgba(160, 175, 205, 0.6); text-align: center;">Direct 4-camera preview download without cockpit telemetry overlays.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Identity & Calibration Modal (Matches Mac/Windows Desktop Dialog) -->
+  <div id="identifyModal" class="modal-backdrop">
+    <div class="modal-sheet" style="max-width: 680px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <h2 class="modal-title">Camera Identity</h2>
+          <span id="identifyPromptBadge" class="identify-prompt-badge" style="display:none;">First Playback</span>
+        </div>
+        <button id="closeIdentifyBtn" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p id="identifyModalDesc" style="color: var(--tesla-muted); font-size: 13px; margin-bottom: 10px;">
+          Name the side-by-side camera pair for this source frame to ensure views and exports are correctly oriented:
+        </p>
+
+        <p id="identifySaveStatus" class="identify-save-status" role="status" aria-live="polite"></p>
+
+        <!-- Live Raw Side-by-Side Preview Canvas with Split Markers -->
+        <div class="identify-canvas-box">
+          <canvas id="identifyCanvas" width="1280" height="480"></canvas>
+          <div class="identify-canvas-labels">
+            <span id="identifyLeftLabel" class="identify-label-badge">LEFT HALF (640×480)</span>
+            <span id="identifyRightLabel" class="identify-label-badge">RIGHT HALF (640×480)</span>
+          </div>
+        </div>
+
+        <div id="identifyInfoPill" class="identify-info-pill">
+          Loading frame metadata...
+        </div>
+
+        <div class="identify-actions-grid">
+          <button id="assignFrontRearBtn" class="identify-action-btn">
+            Front / Rear Pair
+          </button>
+          <button id="assignLeftRightBtn" class="identify-action-btn">
+            Left / Right Pair
+          </button>
+          <button id="toggleFlipHalvesBtn" class="identify-action-btn">
+            Swap Left ↔ Right Halves
+          </button>
+          <button id="toggleInvertPhaseBtn" class="identify-action-btn">
+            Invert Phase Order (0 ↔ 1)
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button id="resetIdentifyBtn" class="identify-action-btn" style="flex: 1; background: transparent; border-color: rgba(255,255,255,0.1);">
+            Reset Default
+          </button>
+          <button id="doneIdentifyBtn" class="modal-primary-btn" style="flex: 2; margin-top: 0;">
+            Apply & Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings & System Info Modal -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-sheet settings-sheet" style="max-width: 480px; width: 92%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#3da8f2">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+          </svg>
+          <h3 class="modal-title">Settings & System Info</h3>
+        </div>
+        <button id="closeSettingsBtn" class="modal-close-btn" aria-label="Close Settings">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 18px 20px;">
+        <div class="settings-section" style="margin-bottom: 18px;">
+          <h4 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--tesla-muted); margin: 0 0 10px 0;">Speed & Distance Units</h4>
+          <div class="unit-segmented-control" style="display: flex; gap: 8px; background: rgba(255, 255, 255, 0.04); padding: 4px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <button id="unitBtnMph" type="button" class="unit-seg-btn active" style="flex: 1; padding: 8px 12px; font-size: 13px; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; background: var(--m-blue); color: #fff; transition: all 0.2s ease;">MPH (Miles)</button>
+            <button id="unitBtnKph" type="button" class="unit-seg-btn" style="flex: 1; padding: 8px 12px; font-size: 13px; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; background: transparent; color: var(--tesla-muted); transition: all 0.2s ease;">KM/H (Kilometers)</button>
+          </div>
+        </div>
+
+        <div class="settings-section" style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px;">
+          <h4 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--tesla-muted); margin: 0 0 10px 0;">Software Versions</h4>
+          <p class="source-detail">BimmerVision Web 0.1.0 · runs on your device</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; margin-bottom: 8px;">
+            <span style="font-weight: 500; font-size: 13px;">BimmerVision version</span>
+            <span style="background: rgba(61, 168, 242, 0.15); color: #3da8f2; padding: 3px 8px; border-radius: 6px; font-weight: 600; font-family: monospace; font-size: 13px;" id="installedCarVersion">—</span>
+          </div>
+          <p id="releaseCheckStatus" class="release-check-status" role="status">Update check pending.</p>
+          <button id="checkUpdatesBtn" type="button" class="back-link">Check for updates</button>
+        </div>
+
+        <div class="settings-section" style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px;">
+          <a id="bimmerVisionWebsite" href="https://BimmerVision.App" target="_blank" rel="noopener noreferrer" style="display: flex; justify-content: center; align-items: center; min-height: 44px; padding: 10px 16px; border: 1px solid rgba(61, 168, 242, 0.3); border-radius: 10px; background: rgba(61, 168, 242, 0.12); color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none;">BimmerVision.App ↗</a>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: flex-end;">
+        <button id="dismissSettingsBtn" class="modal-secondary-btn" type="button" style="padding: 8px 16px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Decoding / Loading Blocking Modal -->
+  <div id="videoLoadingModal" class="loading-modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="loadingModalTitle" aria-describedby="loadingModalStatus">
+    <div class="loading-modal-card">
+      <div class="loading-spinner-ring"></div>
+      <div class="loading-modal-content">
+        <h3 id="loadingModalTitle" class="loading-modal-title">Preparing your recording</h3>
+        <p id="loadingModalStatus" class="loading-modal-status" aria-live="polite">Decoding video stream and synchronizing telemetry…</p>
+        <p id="loadingProgress" class="loading-progress"></p>
+        <div class="loading-actions"><button id="loadingCancelBtn" type="button">Cancel</button><button id="loadingRetryBtn" type="button" hidden>Try again</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="source-manager.js?v=1"></script>
+  <script src="local-source.js?v=1"></script>
+  <script src="remote-source.js?v=1"></script>
+  <script src="vendor/jsQR.js?v=1"></script>
+  <script src="qr-scanner.js?v=1"></script>
+  <script src="source-controller.js?v=1"></script>
+  <script src="mp4-muxer.js?v=60"></script>
+  <script src="bvr-parser.js?v=60"></script>
+  <script src="rtp-h264.js?v=60"></script>
+  <script src="drive-grouper.js?v=60"></script>
+  <script src="dark-osm-map.js?v=60"></script>
+  <script src="sedan-selector.js?v=60"></script>
+  <script src="drive-timeline.js?v=60"></script>
+  <script src="speed-limit-client.js?v=60"></script>
+  <script src="player.js?v=60"></script>
+  <script src="exporter.js?v=60"></script>
+  <script src="camera-store.js?v=60"></script>
+  <script src="release-checker.js?v=60"></script>
+  <script src="catalog-refresh.js?v=60"></script>
+  <script src="app.js?v=60"></script>
+</body>
+</html>

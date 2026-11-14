@@ -1,0 +1,4 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+test('Pages project subpath resolves every bundled script, style and icon',()=>{const html=fs.readFileSync(path.join(root,'index.html'),'utf8');const refs=[...html.matchAll(/(?:src|href)="([^"#?]+)(?:\?[^"#]*)?"/g)].map(x=>x[1]).filter(x=>!/^https?:/.test(x));for(const ref of refs){assert.ok(!ref.startsWith('/'),'asset must be relative: '+ref);assert.ok(fs.statSync(path.join(root,ref)).isFile(),'missing '+ref);}});
+test('all recording API calls use selected source and maps use public credential-free tiles',()=>{const app=fs.readFileSync(path.join(root,'app.js'),'utf8');assert.doesNotMatch(app,/await fetch\([`'"]\/api\/v1/);const map=fs.readFileSync(path.join(root,'dark-osm-map.js'),'utf8');assert.match(map,/https:\/\/tile\.openstreetmap\.org/);assert.doesNotMatch(map,/\/api\/v1\/tiles/);});

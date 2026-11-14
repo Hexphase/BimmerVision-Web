@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+coverage/
+*.log
+
+# Personal recordings and local exports never belong in the site repository.
+*.bvr
+*.mp4
+*.m4v
+Library/
+recordings/
