@@ -678,7 +678,7 @@ class BimmerVisionPlayer {
   _drawQuadLabels(qCtx) {
     qCtx.save();
     qCtx.font = "bold 18px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    
+
     const drawBadge = (text, x, y) => {
       qCtx.fillStyle = "rgba(10, 12, 16, 0.75)";
       qCtx.beginPath();

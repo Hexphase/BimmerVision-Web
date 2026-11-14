@@ -338,7 +338,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         `;
         card.querySelector('.drive-play').addEventListener('click', () => { selectDrive(drive,card); playClipInDrive(drive.segments[0].clip,true); });
         card.querySelector('.btn-view-entire-drive').addEventListener('click', () => { selectDrive(drive,card); viewRecordings.classList.add('detail-open'); if(window.innerWidth<=760)document.querySelector('.drive-overview-stage').scrollIntoView({block:'start',behavior:'smooth'}); });
-        
+
         const lockDriveBtn = card.querySelector('.btn-lock-drive');
         if (lockDriveBtn) {
           lockDriveBtn.addEventListener('click', async (e) => {
@@ -410,7 +410,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           `;
           row.querySelector('.clip-row-info').addEventListener('click',()=>{selectDrive(drive,card);playClipInDrive(seg.clip,true);});
           row.querySelector('.clip-row-play').addEventListener('click',()=>{selectDrive(drive,card);playClipInDrive(seg.clip,true);});
-          
+
           const lockClipBtn = row.querySelector('.btn-lock-clip');
           lockClipBtn.addEventListener('click', async (e) => {
             e.stopPropagation();

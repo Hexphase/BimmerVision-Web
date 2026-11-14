@@ -408,7 +408,7 @@ class RtpH264Assembler {
       avcc[avccOffset + 2] = (len >>> 8) & 0xFF;
       avcc[avccOffset + 3] = len & 0xFF;
       avccOffset += 4;
-      
+
       // Do not mutate slice NAL header - keep valid uncorrupted slice syntax
       avcc.set(nal, avccOffset);
       avccOffset += len;
