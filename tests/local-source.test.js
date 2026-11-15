@@ -15,6 +15,7 @@ function fixture(root = 'USB/BimmerVision', changes = {}, bytes = archive()) {
 }
 const list = async s => (await (await s.fetch('/api/v1/recordings')).json()).recordings;
 const mapping = {schemaVersion:1,confirmed:true,phase0:'frontRear',phase1:'leftRight',flipHalves:false};
+test('USB raw ZIP remains read-only and exports original manifest bytes rather than browser mappings',async()=>{const files=fixture(),source=await sourceAPI.fromFiles(files);try{const response=await source.fetch(`/api/v1/recordings/${ID}/raw.zip`);assert.equal(response.status,200);assert.equal(response.headers.get('Content-Type'),'application/zip');const bytes=new Uint8Array(await response.arrayBuffer());assert.equal(new DataView(bytes.buffer).getUint32(0,true),0x04034b50);assert.equal(source.readOnly,true);assert.equal(files.length,2);}finally{source.close();await source.indexing;}});
 test('accepts supported USB roots and streams byte ranges without copying whole capture', async () => {
   for (const root of ['USB/BimmerVision','BimmerVision','Library']) {
     const files=fixture(root); files[1].arrayBuffer=()=>{throw Error('whole-file read forbidden');};

@@ -37,11 +37,16 @@ Pairing stays between your device and the car. The web host does not proxy recor
 - A fixed-scale timeline for scrubbing within and between recordings.
 - BMW M colors to distinguish neighboring clips.
 - Saved camera identification for each recording.
-- Recorded speed, steering, blinkers, brake and accelerator information.
-- Recorded GPS routes and explicit speed limits when available.
+- Recorded speed, steering, blinkers, brake, accelerator and timestamped horn information.
+- Recorded GPS routes and car-detected speed limits when available.
+- Recorded parking and wide camera views, with playback and exports following view changes.
+- Original BVR + metadata ZIP downloads from USB or a paired car (car app 0.2.15 or newer).
+- Recording notices when a car download may interrupt capture.
 - Customizable video exports, including date/time and driving overlays.
 - Full recording download before playback, with visible progress and cancellation.
 - Change between USB and car sources without leaving the app.
+
+Player behavior matches the recording webserver in BimmerVision 0.2.36. The hosted player retains local USB access and direct paired-car access.
 
 The device needs WebCodecs support for camera playback; current Chrome and Edge are recommended. Folder selection and camera-scanning support vary by browser. Maps and update checks use Internet services; unavailable location or speed-limit data stays blank.
 

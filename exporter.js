@@ -8,6 +8,45 @@ class ClipExporter {
     this.player = player;
   }
 
+  // Select source images at the export timestamp, isolated by recorded mode
+  // boundaries. No camera selection may crop or omit a takeover image.
+  _cameraFramesAt(time, bitmaps = this.player?.decodedFrames) {
+    const player=this.player,units=player?.accessUnits || [];
+    const cameraView=player?.parser?.getCameraViewAtTime?.(time,player?.manifest?.startMonotonicUs) || null;
+    const result={cameraView,rawFrame:null,fr:null,lr:null};
+    if(!units.length)return cameraView ? result : null;
+    let lo=0,hi=units.length-1,index=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1;if(units[mid].time<=time){index=mid;lo=mid+1;}else hi=mid-1;}
+    const p0Fr=player.cameraMapping?.phase0!=='leftRight';
+    const seen=new Set();
+    for(let i=index;i>=Math.max(0,index-12);i--){
+      const unit=units[i];if(cameraView && unit.atUs<cameraView.atUs)break;
+      const frame=unit.damaged?null:bitmaps?.get(unit.index);
+      if(cameraView?.single){
+        if(unit.damaged || frame){result.rawFrame=frame || null;break;}
+      }else{
+        const phase=unit.phase ?? i%2;
+        if(!seen.has(phase) && (unit.damaged || frame)){
+          seen.add(phase);result[(phase===0)===p0Fr?'fr':'lr']=frame || null;
+        }
+        if(seen.size===2)break;
+      }
+    }
+    return result;
+  }
+
+  _drawRecordedView(ctx, cameraView, frame) {
+    if(frame){
+      const scale=Math.min(1280/frame.width,960/frame.height),w=frame.width*scale,h=frame.height*scale;
+      ctx.drawImage(frame,(1280-w)/2,(960-h)/2,w,h);
+    }
+    const label=cameraView.label.toUpperCase();
+    ctx.save();ctx.font='bold 24px -apple-system, BlinkMacSystemFont, sans-serif';
+    const width=ctx.measureText(label).width+32;
+    ctx.fillStyle='rgba(10,12,16,0.78)';ctx.beginPath();ctx.roundRect(20,20,width,42,6);ctx.fill();
+    ctx.fillStyle='#fff';ctx.textAlign='left';ctx.fillText(label,36,49);ctx.restore();
+  }
+
   _operationContext(options) {
     return {epoch:this.player?._clipEpoch,signals:[options.signal,this.player?._activeStreamAbort?.signal].filter(Boolean),timeoutMs:this.completionTimeoutMs || 15000};
   }
@@ -78,10 +117,12 @@ class ClipExporter {
     }
     if(player?.loadError) throw player.loadError;
     if(!player?.manifest) throw new Error('Open a recording before exporting.');
+    await ClipExporter.wheelAssetsReady;
   }
 
   static assets = {
     wheel: null,
+    wheelHorn: null,
     wordmark: null,
     eye: null
   };
@@ -167,7 +208,6 @@ class ClipExporter {
     const bitmaps = new Map();
     const pending = new Set(),openFrames=new Set();let disposed=false;
     const mapping = { ...(player.cameraMapping || {}) };
-    const p0Fr = mapping.phase0 !== 'leftRight';
 
     const nativeVideo = (!units?.length && player._nativeVideo) ? player._nativeVideo : null;
     const wasPaused = nativeVideo ? nativeVideo.paused : true;
@@ -274,7 +314,9 @@ class ClipExporter {
         if (decoder) {
           const ahead = Math.min(units.length, targetIndex + 16);
           const began = performance.now();
-          while ((!units[p0]?.damaged && !bitmaps.has(p0)) || (!units[p1]?.damaged && !bitmaps.has(p1))) {
+          const cameraView=parser?.getCameraViewAtTime?.(time,manifest.startMonotonicUs);
+          const required=cameraView?.single ? (units[targetIndex].atUs>=cameraView.atUs ? [targetIndex] : []) : [p0,p1];
+          while (required.some(i=>!units[i]?.damaged && !bitmaps.has(units[i]?.index ?? i))) {
             if (decodeError) throw new Error('The source recording could not be decoded for export: ' + decodeError.message);
             while (submitted < ahead && decoder.decodeQueueSize < 8) {
               const au = units[submitted++];
@@ -292,29 +334,16 @@ class ClipExporter {
           }
         }
 
-        const b0 = units?.[p0]?.damaged ? null : bitmaps.get(p0) || player.decodedFrames?.get(p0);
-        const b1 = units?.[p1]?.damaged ? null : bitmaps.get(p1) || player.decodedFrames?.get(p1);
-        if(units?.[p0]?.damaged)player[p0Fr?'lastFrFrame':'lastLrFrame']=null;
-        if(units?.[p1]?.damaged)player[p0Fr?'lastLrFrame':'lastFrFrame']=null;
-        if (b0) {
-          if (p0Fr) player.lastFrFrame = b0;
-          else player.lastLrFrame = b0;
-        }
-        if (b1) {
-          if (p0Fr) player.lastLrFrame = b1;
-          else player.lastFrFrame = b1;
-        }
-        const fr = player.lastFrFrame;
-        const lr = player.lastLrFrame;
-        if (!fr && !lr && !units?.[p0]?.damaged && !units?.[p1]?.damaged) throw new Error('No camera image is available for export.');
+        const cameraFrames=this._cameraFramesAt(time,bitmaps);
 
         this.renderFrame(canvas, {
           view: view,
           overlays: overlays,
           speedUnit: speedUnit,
           time: time,
-          fr: fr,
-          lr: lr,
+          cameraFrames: cameraFrames,
+          fr: player.lastFrFrame,
+          lr: player.lastLrFrame,
           telemetry: parser ? parser.getTelemetryAtTime(time, manifest.startMonotonicUs) : null,
           mapping: mapping,
           manifest: manifest,
@@ -466,12 +495,18 @@ class ClipExporter {
     recorder.onerror=e=>{operation.error=e.error || new Error('The video recorder failed. Please retry.');};
 
     const nativeVideo = player._nativeVideo;
+    const originalTime=player.currentTime,wasPlaying=player.isPlaying;
+    if(!nativeVideo)player.pause?.();
     const mapping = { ...(player.cameraMapping || {}) };
     const p0FrNative = mapping.phase0 === 'frontRear';
     const frameDelayMs = 1000 / fps;
 
     let playedSmoothly = false;
     try {
+    if(!nativeVideo && player.seekAndWait){
+      await this._awaitCompletion(player.seekAndWait(start),operation,'preparing first export frame');
+      this.renderFrame(canvas,{view,overlays,speedUnit,time:start,manifest,mapping,map:player.liveMap});
+    }
     recorder.start(100);
     if (nativeVideo && typeof nativeVideo.play === 'function' && typeof requestAnimationFrame === 'function') {
       try {
@@ -565,6 +600,10 @@ class ClipExporter {
             }
           }
 
+          if(!nativeVideo && player.seekAndWait){
+            await this._awaitCompletion(player.seekAndWait(time),operation,'preparing export source frame');
+          }
+
           this.renderFrame(canvas, {
             view: view,
             overlays: overlays,
@@ -611,6 +650,7 @@ class ClipExporter {
       recorder.onstop=null;recorder.onerror=null;recorder.ondataavailable=null;
       for(const track of (stream.getTracks?.() || stream.getVideoTracks?.() || []))track.stop?.();
       if(nativeVideo){try{nativeVideo.pause();}catch(_){}}
+      else if(operation.epoch===player._clipEpoch){player._seekEpoch=(player._seekEpoch||0)+1;player.seek?.(originalTime);if(wasPlaying)player.play?.();}
     }
   }
 
@@ -619,7 +659,7 @@ class ClipExporter {
    * Shared by the export encoder loop and live modal preview.
    */
   renderFrame(targetCanvas, options = {}) {
-    const overlays = options.overlays != null ? options.overlays : (options.includeHud !== false ? {
+    const overlays = Object.prototype.hasOwnProperty.call(options, 'overlays') ? options.overlays : (options.includeHud !== false ? {
       blinkers: true,
       speed: true,
       speedLimit: true,
@@ -654,8 +694,10 @@ class ClipExporter {
     const w = targetCanvas.width || exportW;
     const h = targetCanvas.height || exportH;
     const view = options.view || 'quad';
-    const fr = options.fr;
-    const lr = options.lr;
+    const frames=options.cameraFrames ?? this._cameraFramesAt(options.time ?? this.player?.currentTime ?? 0);
+    const cameraView=frames?.cameraView;
+    const fr = frames ? frames.fr : options.fr;
+    const lr = frames ? frames.lr : options.lr;
     const mapping = options.mapping || (this.player ? this.player.cameraMapping : { phase0: 'frontRear', flipHalves: false });
     const x0 = mapping?.flipHalves ? 640 : 0;
     const x1 = mapping?.flipHalves ? 0 : 640;
@@ -664,7 +706,9 @@ class ClipExporter {
     ctx.fillStyle = '#0a0c10';
     ctx.fillRect(0, 0, w, h);
 
-    if (view === 'quad') {
+    if (cameraView?.single) {
+      this._drawRecordedView(ctx,cameraView,frames.rawFrame);
+    } else if (view === 'quad') {
       if (fr) {
         try {
           ctx.drawImage(fr, x0, 0, 640, 480, 0, 0, 640, 480);
@@ -940,9 +984,11 @@ class ClipExporter {
       ctx.translate(cx, cy);
       ctx.rotate(angleRad);
       ctx.scale(1.5, 1.5);
-      if (ClipExporter.assets.wheel && ClipExporter.assets.wheel.complete && ClipExporter.assets.wheel.naturalWidth) {
+      const hornWheel = ClipExporter.assets.wheelHorn;
+      const wheel = telem.hornPressed === true && hornWheel && hornWheel.complete && hornWheel.naturalWidth ? hornWheel : ClipExporter.assets.wheel;
+      if (wheel && wheel.complete && wheel.naturalWidth) {
         try {
-          ctx.drawImage(ClipExporter.assets.wheel, -24, -24, 48, 48);
+          ctx.drawImage(wheel, -24, -24, 48, 48);
         } catch (_) {}
       } else {
         // High-fidelity vector steering wheel
@@ -1376,7 +1422,35 @@ class ClipExporter {
 // Preload browser image assets if running in browser
 if (typeof Image !== 'undefined') {
   try {
-    const w = new Image(); w.src = 'assets/wheel-face.png'; ClipExporter.assets.wheel = w;
+    // Finish loading/decoding both wheels before the first encoded frame.
+    // A failed or stalled optional asset stays unavailable for this export path.
+    ClipExporter.wheelAssetsReady = Promise.all([
+      ['wheel', 'assets/wheel-face.png'], ['wheelHorn', 'assets/wheel-horn.png']
+    ].map(([key, src]) => new Promise(resolve => {
+      const img = new Image();
+      let settled = false;
+      const finish = ok => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        img.removeEventListener('load', loaded);
+        img.removeEventListener('error', failed);
+        if (!ok) ClipExporter.assets[key] = null;
+        resolve();
+      };
+      const failed = () => finish(false);
+      const loaded = () => {
+        if (!img.naturalWidth) return failed();
+        if (typeof img.decode === 'function') img.decode().then(() => finish(true), failed);
+        else finish(true);
+      };
+      const timer = setTimeout(failed, 5000);
+      img.addEventListener('load', loaded, {once:true});
+      img.addEventListener('error', failed, {once:true});
+      ClipExporter.assets[key] = img;
+      img.src = src;
+      if (img.complete) loaded();
+    })));
     const wm = new Image(); wm.src = 'assets/bimmervision-wordmark.png'; ClipExporter.assets.wordmark = wm;
     const eye = new Image(); eye.src = 'assets/bimmervision-eye.png'; ClipExporter.assets.eye = eye;
   } catch (_) {}

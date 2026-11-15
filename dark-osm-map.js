@@ -328,6 +328,32 @@ class DarkOsmMap {
     return Math.atan2(y, x);
   }
 
+  _loadTile(tileKey, zoom, x, y) {
+    if(this.pendingTiles.has(tileKey) || this.pendingTiles.size>=8) return;
+    this.pendingTiles.add(tileKey);
+    let attempt=0;
+    const load=(direct)=>{
+      const token=++attempt, image=new Image();
+      image.crossOrigin='anonymous';
+      let done=false,timer;
+      const finish=(ok)=>{
+        if(done || token!==attempt)return;
+        done=true;clearTimeout(timer);image.onload=null;image.onerror=null;
+        if(!ok)image.src='';
+        this.pendingTiles.delete(tileKey);
+        if(ok){this.failedTiles.delete(tileKey);this.tileCache.set(tileKey,image);while(this.tileCache.size>256)this.tileCache.delete(this.tileCache.keys().next().value);}
+        else {this.failedTiles.set(tileKey,Date.now());while(this.failedTiles.size>256)this.failedTiles.delete(this.failedTiles.keys().next().value);}
+        this.render();
+      };
+      image.onload=()=>finish(true);image.onerror=()=>finish(false);
+      timer=setTimeout(()=>finish(false),8000);
+      // External Image requests carry no recorder bearer headers. Anonymous CORS
+      // also keeps the map canvas usable by video export.
+      image.src=`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+    };
+    load(true);
+  }
+
   _drawTiles(ctx, w, h, zoom, centerWorld) {
     const tileSize = 256;
     const originX = w / 2 - centerWorld.x;
@@ -339,6 +365,7 @@ class DarkOsmMap {
     const endTileY = Math.floor((h - originY) / tileSize);
 
     const maxTile = 1 << zoom;
+    let visibleFailure=false;
 
     // Draw dark vector grid lines first (ensures crisp display on vehicle Wi-Fi)
     ctx.save();
@@ -376,28 +403,14 @@ class DarkOsmMap {
           ctx.drawImage(cachedImg, posX, posY, tileSize, tileSize);
           ctx.restore();
         } else {
+          if(this.failedTiles.has(tileKey))visibleFailure=true;
           if (!this.pendingTiles.has(tileKey) && Date.now()-(this.failedTiles.get(tileKey)||0)>30000) {
-            this.pendingTiles.add(tileKey);
-            const loadImg = new Image();
-            loadImg.crossOrigin = "anonymous";
-
-            loadImg.onload = () => {
-              this.failedTiles.delete(tileKey);
-              this.tileCache.set(tileKey, loadImg);
-              this.pendingTiles.delete(tileKey);
-              this.render();
-            };
-            loadImg.onerror = () => {
-              this.pendingTiles.delete(tileKey);
-              this.failedTiles.set(tileKey,Date.now());
-              this.render();
-            };
-            loadImg.src = `https://tile.openstreetmap.org/${zoom}/${normalizedTx}/${ty}.png`;
+            this._loadTile(tileKey,zoom,normalizedTx,ty);
           }
         }
       }
     }
-    if(this.failedTiles.size){ctx.fillStyle='#10141c';ctx.fillRect(6,6,166,22);ctx.fillStyle='#c6cdd8';ctx.font='10px system-ui';ctx.fillText('Street map unavailable',14,21);}
+    if(visibleFailure){ctx.fillStyle='#10141c';ctx.fillRect(6,6,230,22);ctx.fillStyle='#c6cdd8';ctx.font='10px system-ui';ctx.fillText('Street map unavailable • Internet needed',14,21);}
   }
 
   _drawRoute(ctx, w, h, zoom, centerWorld, vehicleFix) {

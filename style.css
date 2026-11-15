@@ -1240,6 +1240,7 @@ body {
 }
 
 .wheel-wrapper {
+  position: relative;
   width: 46px;
   height: 46px;
   display: flex;
@@ -1253,6 +1254,11 @@ body {
   object-fit: contain;
   transition: transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.7));
+}
+
+.wheel-horn {
+  position: absolute;
+  visibility: hidden;
 }
 
 .wheel-angle-label {
@@ -2683,3 +2689,12 @@ body {
     padding: 20px 24px;
   }
 }
+
+
+.hud-car-limit { display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0; }
+.hud-limit-source { font-size:9px; line-height:1.1; text-align:center; color:var(--tesla-muted); }
+
+.clip-row-raw { display:flex;align-items:center;justify-content:center;min-height:28px;padding:4px 7px;border:1px solid rgba(255,255,255,.16);border-radius:6px;color:var(--tesla-muted);font-size:10px;text-decoration:none;white-space:nowrap; }
+.raw-recording-download { margin-top:16px;padding-top:14px;border-top:1px solid var(--tesla-line);text-align:center; }
+.raw-recording-download a { color:var(--m-blue);font-size:13px; }
+.raw-recording-download p { color:var(--tesla-muted);font-size:11px;line-height:1.5;margin:8px 0 0; }

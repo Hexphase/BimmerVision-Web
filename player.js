@@ -184,6 +184,7 @@ class BimmerVisionPlayer {
     if (this._nativeMediaUrl) { URL.revokeObjectURL(this._nativeMediaUrl); this._nativeMediaUrl=null; }
     this.streamPromise=null; this.streamComplete=false;
     this.manifest = null; this.parser = null; this.nativeInfo = null;
+    this._updateRecordedView(null);
   }
 
   // Bound each network operation by inactivity, and release aborted readers on clip changes.
@@ -463,6 +464,7 @@ class BimmerVisionPlayer {
     }
   }
   step(direction) {this.pause();this.seek(this.currentTime+direction/30);}
+  requiresCameraMappingAt(time) {return !this.parser?.getCameraViewAtTime(time,this.manifest?.startMonotonicUs)?.single;}
   setViewMode(mode) {this.viewMode=mode;this.sedanSelector?.setLayout(mode);this._renderFrameAtTime(this.currentTime);}
   setSpeedUnit(unit) {this.speedUnit=unit;this._updateTelemetryHud();}
   setSedanSelector(selector) {this.sedanSelector=selector;}
@@ -484,9 +486,23 @@ class BimmerVisionPlayer {
     if(this._nativeVideo) return this._renderNativeFrame();
     if(!this.accessUnits.length) return false;
     const index=this._indexAt(time);
+    const view=this.parser?.getCameraViewAtTime(time,this.manifest?.startMonotonicUs) || null;
+    this._updateRecordedView(view);
+    if (view?.single) {
+      let frame=null;
+      for (let i=index;i>=Math.max(0,index-12);i--) {
+        const unit=this.accessUnits[i];
+        if (unit.atUs < view.atUs) break;
+        if (!this._frameUnavailable(unit.index) && this.decodedFrames.has(unit.index)) {frame=this.decodedFrames.get(unit.index);break;}
+      }
+      this._drawRecordedView(view,frame);
+      this.liveMap?.setTime(time);
+      return !!frame || this.accessUnits[index].atUs < view.atUs;
+    }
     let b0=null, b1=null, resolved0=false, resolved1=false;
     for (let i = index; i >= Math.max(0, index - 12); i--) {
       const u=this.accessUnits[i], phase=u.phase!==undefined?u.phase:i%2;
+      if (view && u.atUs < view.atUs) break;
       if(phase===0 && !resolved0 && (this._frameUnavailable(u.index) || this.decodedFrames.has(u.index))) {b0=this._frameUnavailable(u.index)?null:this.decodedFrames.get(u.index);resolved0=true;}
       if(phase===1 && !resolved1 && (this._frameUnavailable(u.index) || this.decodedFrames.has(u.index))) {b1=this._frameUnavailable(u.index)?null:this.decodedFrames.get(u.index);resolved1=true;}
       if(resolved0 && resolved1)break;
@@ -494,8 +510,31 @@ class BimmerVisionPlayer {
     const p0Fr=this.cameraMapping.phase0==='frontRear';
     if(resolved0)this[p0Fr?'lastFrFrame':'lastLrFrame']=b0;
     if(resolved1)this[p0Fr?'lastLrFrame':'lastFrFrame']=b1;
-    if(!resolved0 && !resolved1 && !this.lastFrFrame && !this.lastLrFrame)return false;
+    if(!resolved0 && !resolved1 && !this.lastFrFrame && !this.lastLrFrame) {
+      if (view && this.accessUnits[index].atUs < view.atUs) {this._drawRecordedView(view,null);return true;}
+      return false;
+    }
     this._drawToCanvas(this.lastFrFrame,this.lastLrFrame); this.liveMap?.setTime(time); return true;
+  }
+
+  _updateRecordedView(view) {
+    const key=view ? `${view.rawStateHex}/${view.label}/${view.atUs}` : 'legacy';
+    if (key===this._recordedViewKey) return;
+    this._recordedViewKey=key;
+    this.lastFrFrame=null; this.lastLrFrame=null;
+    if (this.sedanSelector?.container) this.sedanSelector.container.hidden=!!view?.single;
+    this.onCameraViewChange?.(view);
+  }
+
+  _drawRecordedView(view,frame) {
+    const ctx=this.ctx,cw=this.canvas.width,ch=this.canvas.height;
+    ctx.fillStyle='#0a0c10';ctx.fillRect(0,0,cw,ch);
+    if (frame) {
+      const width=frame.width || 1280,height=frame.height || 480;
+      const scale=Math.min(cw/width,ch/height),w=width*scale,h=height*scale;
+      ctx.drawImage(frame,(cw-w)/2,(ch-h)/2,w,h);
+    }
+    this._drawSingleBadge(ctx,view.label.toUpperCase(),cw,ch,Math.max(1,cw/(this.canvas.clientWidth || cw)));
   }
 
   _drawToCanvas(frBmp, lrBmp) {
@@ -601,16 +640,22 @@ class BimmerVisionPlayer {
       };
     }
     if (!this.accessUnits || this.accessUnits.length === 0) return null;
-    const targetIdx = (phase === 1) ? 1 : 0;
-    const au = (this.accessUnits.length > targetIdx) ? this.accessUnits[targetIdx] : (this.accessUnits[this.currentAuIndex] || this.accessUnits[0]);
-    const bitmap = this.decodedFrames.get(au.index) || (targetIdx === 0 ? this.lastFrFrame : this.lastLrFrame) || this.lastFrFrame || this.lastLrFrame;
+    const targetPhase=phase===1?1:0,index=this._indexAt(this.currentTime);
+    const view=this.parser?.getCameraViewAtTime(this.currentTime,this.manifest?.startMonotonicUs);
+    let au=null,bitmap=null;
+    for(let i=index;i>=Math.max(0,index-12);i--){
+      const candidate=this.accessUnits[i];
+      if(view && candidate.atUs<view.atUs) break;
+      if((candidate.phase ?? i%2)===targetPhase && !this._frameUnavailable(candidate.index) && this.decodedFrames.has(candidate.index)){au=candidate;bitmap=this.decodedFrames.get(candidate.index);break;}
+    }
+    if(!au)return null;
     return {
       bitmap: bitmap,
       auIndex: au.index,
       time: au.time,
       rtpTimestamp: au.rtpTimestamp,
       ssrc: au.ssrc,
-      isPhase0: targetIdx === 0
+      isPhase0: targetPhase === 0
     };
   }
 
@@ -641,10 +686,6 @@ class BimmerVisionPlayer {
       lr = this._nativePairs[p0Fr ? 1 : 0] || lr;
     }
 
-    if (telem && telem.speedLimit == null && this._speedLimitFor(telem)) {
-      telem.speedLimit = this.currentSpeedLimit.limit;
-      telem.speedLimitUnit = this.currentSpeedLimit.unit;
-    }
 
     return {
       fr: fr,
@@ -654,26 +695,26 @@ class BimmerVisionPlayer {
     };
   }
 
-  _drawSingleBadge(ctx, label, cw, ch) {
+  _drawSingleBadge(ctx, label, cw, ch, scale = 1) {
     ctx.save();
-    ctx.font = "bold 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.font = `bold ${14*scale}px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`;
     const textWidth = ctx.measureText(label).width;
-    const padX = 14;
+    const padX = 14*scale;
     const badgeW = textWidth + padX * 2;
-    const badgeH = 30;
-    const x = 16;
-    const y = 16;
+    const badgeH = 30*scale;
+    const x = 16*scale;
+    const y = 16*scale;
 
     ctx.fillStyle = "rgba(10, 12, 16, 0.78)";
     ctx.beginPath();
-    ctx.roundRect(x, y, badgeW, badgeH, 6);
+    ctx.roundRect(x, y, badgeW, badgeH, 6*scale);
     ctx.fill();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(label, x + padX, y + 20);
+    ctx.fillText(label, x + padX, y + 20*scale);
     ctx.restore();
   }
 
@@ -737,15 +778,8 @@ class BimmerVisionPlayer {
 
     // Speed limit badge
     if (this.hud.speedLimit) {
-      if (telem.latitude != null && telem.longitude != null && !telem.speedLimit) {
-        this._resolveSpeedLimit(telem.latitude, telem.longitude);
-      }
-      let limitVal = telem.speedLimit;
-      let limitUnit = telem.speedLimitUnit || "mph";
-      if (limitVal == null && this._speedLimitFor(telem)) {
-        limitVal = this.currentSpeedLimit.limit;
-        limitUnit = this.currentSpeedLimit.unit || "mph";
-      }
+      const limitVal = telem.speedLimit;
+      const limitUnit = telem.speedLimitUnit || "mph";
       if (limitVal != null) {
         let displayLimit = limitVal;
         if (this.speedUnit === "km/h" && limitUnit === "mph") {
@@ -787,6 +821,15 @@ class BimmerVisionPlayer {
     if (this.hud.wheelFace) {
       const angle = telem.steeringAngleDeg || 0;
       this.hud.wheelFace.style.transform = `rotate(${-angle}deg)`;
+      const hornWheel = this.hud.wheelHorn;
+      if (hornWheel) {
+        hornWheel.style.transform = `rotate(${-angle}deg)`;
+        const pressed = telem.hornPressed === true && hornWheel.complete && hornWheel.naturalWidth > 0;
+        // Both images stay mounted and decoded; switching visibility avoids a
+        // blank frame or a different transform interpolation on each press.
+        this.hud.wheelFace.style.visibility = pressed ? 'hidden' : 'visible';
+        hornWheel.style.visibility = pressed ? 'visible' : 'hidden';
+      }
       if (this.hud.wheelAngleVal) {
         this.hud.wheelAngleVal.textContent = `${Math.round(angle)}°`;
       }

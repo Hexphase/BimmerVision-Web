@@ -82,6 +82,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     brakePedal: document.getElementById("brakePedalCard"),
     gasPedal: document.getElementById("gasPedalCard"),
     wheelFace: document.getElementById("wheelFace"),
+    wheelHorn: document.getElementById("wheelHorn"),
     wheelAngleVal: document.getElementById("wheelAngleVal"),
     blinkerLeft: document.getElementById("blinkerLeft"),
     blinkerRight: document.getElementById("blinkerRight")
@@ -193,6 +194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById('loadingCancelBtn').addEventListener('click', () => {loadToken++;player.cancelLoad();hideLoadingModal();switchTab('recordings');});
   document.getElementById('loadingRetryBtn').addEventListener('click', () => {if(lastOpen)playClipInDrive(lastOpen.clip,lastOpen.autoPlay,lastOpen.startAt);});
   player.onTimeUpdate = seconds => { timeline.update(activeClip?.id,seconds); };
+  player.onCameraViewChange = view => { if(openCalibrateBtn) openCalibrateBtn.disabled=!!view?.single; };
   player.onStateChange = ({state,message,loaded,total}) => {
     const status = document.getElementById('playbackStatus');
     status.textContent = message || ({playing:'Playing',paused:'Paused',loading:'Preparing video…',buffering:'Buffering…',ended:'Drive complete',idle:'Choose a recording',error:'Playback unavailable'}[state] || state);
@@ -212,6 +214,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   async function ensureCarSession() { /* Selected source owns pairing. */ }
   function apiFetch(url,options={}) { return window.BVSourceManager.fetch(url,options); }
+
+  let stopRecordingNotice=null;
+  function updateRecordingNotice(){
+    stopRecordingNotice?.();stopRecordingNotice=null;
+    const nodes=[document.getElementById('recordingDownloadNotice'),document.getElementById('recordingDownloadNoticeLoading')];
+    nodes.filter(Boolean).forEach(node=>{node.hidden=true;});
+    if(window.BVSourceManager.source.kind==='car')stopRecordingNotice=startRecordingNotice({fetcher:apiFetch,nodes});
+  }
+  updateRecordingNotice();window.BVSourceManager.subscribe(updateRecordingNotice);
+
+  let rawController=null,rawReadyUrl=null;
+  const rawPanel=document.getElementById('rawDownloadPanel'),rawText=document.getElementById('rawDownloadStatus'),rawSave=document.getElementById('rawDownloadSave'),rawCancel=document.getElementById('rawDownloadCancel');
+  function clearRaw(){rawController?.abort();rawController=null;if(rawReadyUrl)URL.revokeObjectURL(rawReadyUrl);rawReadyUrl=null;rawSave.hidden=true;rawPanel.hidden=true;}
+  window.BVSourceManager.subscribe(clearRaw);window.addEventListener('pagehide',clearRaw);
+  rawCancel.addEventListener('click',()=>rawController?.abort());
+  document.getElementById('rawDownloadClose').addEventListener('click',clearRaw);
+  async function downloadRaw(id){
+    if(rawController){rawPanel.hidden=false;return;}
+    clearRaw();rawPanel.hidden=false;rawCancel.hidden=false;rawText.textContent='Preparing original recording and metadata…';
+    const controller=new AbortController(),generation=window.BVSourceManager.generation;rawController=controller;
+    try{
+      const result=await BVRawDownload.save({manager:window.BVSourceManager,id,signal:controller.signal,saveFilePicker:typeof window.showSaveFilePicker==='function'?window.showSaveFilePicker.bind(window):null,onProgress:({bytes,total,sourceKind})=>{if(window.BVSourceManager.generation!==generation)return;rawText.textContent=(sourceKind==='usb'?'Building ZIP from your USB drive':'Downloading original ZIP')+' · '+formatBytes(bytes)+(total?' / '+formatBytes(total):'');}});
+      if(window.BVSourceManager.generation!==generation)return;
+      if(result.mode==='file'){rawText.textContent='Original recording ZIP saved.';}
+      else {rawReadyUrl=URL.createObjectURL(result.blob);rawSave.href=rawReadyUrl;rawSave.download=result.fileName;rawSave.hidden=false;rawText.textContent='Original recording ZIP ready. Save it to Files or Downloads.';rawSave.click();}
+    }catch(error){if(window.BVSourceManager.generation===generation)rawText.textContent=error.name==='AbortError'?'ZIP download cancelled.':error.message;}
+    finally{if(rawController===controller){rawController=null;rawCancel.hidden=true;}}
+  }
+  document.addEventListener('click',event=>{const link=event.target.closest?.('[data-raw-recording]');if(link){event.preventDefault();downloadRaw(link.dataset.rawRecording);}});
 
   const releaseChecker=new ReleaseChecker({fetcher:fetch.bind(window),storage:sessionStorage});
   let checkingUpdates=false;
@@ -397,6 +428,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <small style="display:block;color:var(--tesla-muted);font-size:11px;margin-top:2px;">${DriveTimeline.format(seg.clip.durationSeconds)} · ${formatBytes(seg.clip.bytes||0)}</small>
             </div>
             <div class="clip-row-actions" style="display:flex;align-items:center;gap:6px;">
+              <a class="clip-row-raw" href="#" data-raw-recording="${seg.clip.id}" download aria-label="Download original Clip ${i+1} and metadata as ZIP" title="Original BVR recording and metadata">Raw ZIP</a>
               <button class="btn-lock-clip" type="button" title="${seg.clip.locked ? 'Recording is locked. Tap to unlock.' : 'Lock recording to prevent deletion'}" style="display:flex;align-items:center;background:rgba(255,255,255,0.06);border:1px solid ${seg.clip.locked ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'};border-radius:6px;padding:4px 8px;cursor:pointer;color:${seg.clip.locked ? '#f59e0b' : 'var(--tesla-muted)'};transition:all 0.2s ease;">
                 ${getLockSvg(seg.clip.locked, 13)}
               </button>
@@ -797,7 +829,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if(token!==loadToken)return;
       hideLoadingModal();
 
-      if (!isClipIdentified(clip.id)) {
+      if (!isClipIdentified(clip.id) && player.requiresCameraMappingAt(startAt)) {
         openIdentifyModal({
           clip,
           drive,
@@ -1014,6 +1046,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       nativeLink.style.display = native ? "inline-block" : "none";
       nativeLink.href = (native && player.nativeInfo) ? player.nativeInfo.downloadUrl : '#';
     }
+    const rawLink=document.getElementById('rawRecordingDownloadLink');
+    const rawId=player.activeClipId || player.manifest?.id;
+    if(rawLink){rawLink.hidden=!rawId;rawLink.href='#';rawLink.dataset.rawRecording=rawId||'';}
     const nativeNote = document.getElementById('nativeExportNote');
     if (nativeNote) nativeNote.hidden = !native;
 

@@ -3,6 +3,65 @@
  * Extracts H.264 RTP video packets and JSON telemetry from binary .bvr files.
  * Zero external dependencies.
  */
+function recordedCameraEvent(obj, atUs, payload, expectedCrc) {
+  const schema=obj.type==='perception-schema' && Array.isArray(obj.cameraControlSources) && obj.cameraControlSources.some(source=>source.source==='ICAM.XView3D');
+  if (!schema && (obj.type !== 'camera-control' || obj.source !== 'ICAM.XView3D' || obj.schemaVersion !== 1 ||
+      !['observed','snapshot','unavailable'].includes(obj.state))) return null;
+  let crc = 0xffffffff;
+  for (const byte of payload) { crc ^= byte; for (let bit=0;bit<8;bit++) crc=(crc>>>1)^((crc&1)?0xedb88320:0); }
+  const valid = ((crc ^ 0xffffffff) >>> 0) === expectedCrc;
+  if (schema) return {atUs,hex:null,label:valid?'Camera view':'Camera view unavailable'};
+  return {atUs, hex: valid && obj.state !== 'unavailable' && /^[0-9a-f]{6}$/i.test(obj.currentStateHex || '') ? obj.currentStateHex.toLowerCase() : null};
+}
+
+// BMW TrafficSignRecognition 0x3540/0x8001: 16 UInt8 fields in the
+// recorded OEM catalogue. Speed classes use the FASuS five-unit classes;
+// 29 is a gong request, 0/254/255 are not numeric limits. This is the
+// car's fused sign result, not a claim that the camera alone supplied it.
+function recordedSpeedLimitEvent(obj, atUs, payload, expectedCrc) {
+  if (obj.type!=='perception' || obj.serviceId!==0x3540 || obj.eventId!==0x8001 ||
+      obj.instanceId!==1 || obj.majorVersion!==1 || obj.schemaVersion!==1 ||
+      obj.source!=='de.bmw.dass.TrafficSignRecognition') return null;
+  const event={atUs,limit:null,unit:null};
+  let crc=0xffffffff;
+  for (const byte of payload) { crc^=byte; for(let bit=0;bit<8;bit++) crc=(crc>>>1)^((crc&1)?0xedb88320:0); }
+  if (((crc^0xffffffff)>>>0)!==expectedCrc || obj.payloadEncoding!=='base64' || typeof obj.payload!=='string') return event;
+  try {
+    const raw=atob(obj.payload);
+    if(raw.length!==16) return event;
+    const b=Uint8Array.from(raw,c=>c.charCodeAt(0)),code=b[3];
+    if(b[0]!==1 || !((code>=1 && code<=28)||code===30) || b[7]>1) return event;
+    event.limit=code*5; event.unit=b[7]===1?'mph':'km/h';
+  } catch(e) { /* invalid payload clears the previous reading */ }
+  return event;
+}
+
+// Horn samples are observations, never latched state. Match the recorder's 2s
+// freshness limit and keep the archive timestamp separate from the sample time.
+function recordedHornEvent(obj, atUs, payload, expectedCrc) {
+  const dedicated = (obj.type === 'horn' || obj.type === 'horn-status') && obj.source === 'BDC.HUPE_TASTER';
+  const field = obj.type === 'telemetry' && obj.fields && obj.fields.horn;
+  if (!dedicated && !field) return null;
+  let crc = 0xffffffff;
+  for (const byte of payload) { crc ^= byte; for (let bit=0; bit<8; bit++) crc=(crc>>>1)^((crc&1)?0xedb88320:0); }
+  if (((crc ^ 0xffffffff) >>> 0) !== expectedCrc) return {atUs, sampleUs:atUs, pressed:false};
+  if (field) return hornFieldEvent(field, atUs);
+  return {atUs, sampleUs:atUs, pressed:obj.schemaVersion === 1 && obj.type === 'horn' && obj.valid === true && obj.pressed === true};
+}
+
+function hornFieldEvent(field, atUs) {
+  const valid = field && field.valid === true && field.sourceValid === true && field.latched === false &&
+    typeof field.value === 'boolean' && Number.isFinite(field.atUs) && field.atUs >= 0 && field.atUs <= atUs &&
+    Number.isFinite(field.ageUs) && field.ageUs >= 0 && field.ageUs <= 2000000;
+  return {atUs, sampleUs:valid ? field.atUs : atUs, pressed:valid && field.value === true};
+}
+
+function latestRecordedAt(records, targetUs) {
+  let lo=0,hi=records.length-1,best=-1;
+  while (lo<=hi) {const mid=(lo+hi)>>1; if(records[mid].atUs<=targetUs){best=mid;lo=mid+1;}else hi=mid-1;}
+  return records[best] || null;
+}
+
 class BvrParser {
   constructor(arrayBuffer) {
     this.buffer = arrayBuffer;
@@ -11,6 +70,9 @@ class BvrParser {
     this.videoRecords = [];
     this.telemetryRecords = [];
     this.cameraPairEvents = [];
+    this.cameraViewEvents = [];
+    this.speedLimitEvents = [];
+    this.hornEvents = [];
     this.startMonotonicUs = null;
     this.endMonotonicUs = null;
     this.parsed = false;
@@ -75,6 +137,12 @@ class BvrParser {
         try {
           const jsonText = textDecoder.decode(payload);
           const obj = JSON.parse(jsonText);
+          const horn = recordedHornEvent(obj, atUs, payload, expectedCrc);
+          if (horn) this.hornEvents.push(horn);
+          const speedLimit = recordedSpeedLimitEvent(obj, atUs, payload, expectedCrc);
+          if (speedLimit) this.speedLimitEvents.push(speedLimit);
+          const cameraView = recordedCameraEvent(obj, atUs, payload, expectedCrc);
+          if (cameraView) this.cameraViewEvents.push(cameraView);
           if (obj.type === "telemetry" && obj.fields) {
             this.telemetryRecords.push({
               atUs: atUs,
@@ -116,9 +184,53 @@ class BvrParser {
   /**
    * Returns interpolated or nearest telemetry at a given playback time in seconds.
    */
+  getCameraViewAtTime(seconds, manifestStartUs) {
+    const events=this.cameraViewEvents || [];
+    if (!events.length) return null; // Legacy recordings have no authoritative view metadata.
+    const start=manifestStartUs !== undefined ? manifestStartUs : (this.startMonotonicUs || 0);
+    const target=start+seconds*1000000;
+    let found=null;
+    for (const event of events) if (event.atUs <= target && (!found || event.atUs >= found.atUs)) found=event;
+    if (!found) return {single:true,label:'Camera view',atUs:start,rawStateHex:null};
+    if (!found.hex) return {single:true,label:found.label || 'Camera view unavailable',atUs:found.atUs,rawStateHex:null};
+    const app=parseInt(found.hex.slice(0,2),16),mode=parseInt(found.hex.slice(2,4),16),perspective=parseInt(found.hex.slice(4,6),16);
+    let single=true,label='Camera view';
+    if ([50,51,52].includes(app) && mode===50 && [7,9,10].includes(perspective)) {single=false;label='Recorder view';}
+    else if (app===1) label=mode===3 ? 'Bird’s-eye parking view' : 'Parking view';
+    else if (app===2) label=mode===5 ? 'Front wide view' : mode===6 ? 'Rear wide view' : 'Wide camera view';
+    else if (app===3) label=mode===13 ? 'Trailer zoom view' : 'Rear camera view';
+    else if (app===0) label='Camera switching';
+    else if (app===20) label='Off-road view';
+    else if (app===60) label='Remote 360° view';
+    else if (app===255 || mode===255) label='Camera view unavailable';
+    else if ([50,51,52].includes(app)) label=perspective===1 ? 'Front camera' : perspective===2 ? 'Rear camera' : 'Recorder camera view';
+    return {single,label,atUs:found.atUs,rawStateHex:found.hex};
+  }
+
+  getCarSpeedLimitAtTime(seconds, manifestStartUs) {
+    const target=(manifestStartUs ?? this.startMonotonicUs ?? 0)+seconds*1000000;
+    const events=this.speedLimitEvents || [];
+    let lo=0,hi=events.length-1,best=-1;
+    while(lo<=hi){const mid=(lo+hi)>>1;if(events[mid].atUs<=target){best=mid;lo=mid+1;}else hi=mid-1;}
+    const found=events[best];
+    return found && target-found.atUs<=2500000 ? found : {limit:null,unit:null};
+  }
+
+  getHornAtTime(seconds, manifestStartUs) {
+    const targetUs=(manifestStartUs ?? this.startMonotonicUs ?? 0)+seconds*1000000;
+    let event=latestRecordedAt(this.hornEvents || [],targetUs);
+    // Native preview supplies the original telemetry snapshots rather than BVR
+    // event records. Never borrow the first (future) snapshot before it occurred.
+    const rec=latestRecordedAt(this.telemetryRecords || [],targetUs);
+    if(rec && (!event || rec.atUs>event.atUs)) event=hornFieldEvent(rec.fields && rec.fields.horn,rec.atUs);
+    return Boolean(event && event.pressed && targetUs>=event.sampleUs && targetUs-event.sampleUs<=2000000);
+  }
+
   getTelemetryAtTime(playbackSeconds, manifestStartUs) {
     const startUs = manifestStartUs !== undefined ? manifestStartUs : (this.startMonotonicUs || 0);
     const targetUs = startUs + playbackSeconds * 1000000.0;
+    const carLimit = BvrParser.prototype.getCarSpeedLimitAtTime.call(this, playbackSeconds, startUs);
+    const hornPressed = BvrParser.prototype.getHornAtTime.call(this, playbackSeconds, startUs);
 
     if (!this.telemetryRecords || this.telemetryRecords.length === 0) {
       return {
@@ -128,11 +240,13 @@ class BvrParser {
         gasPressed: false,
         acceleratorPercent: 0,
         steeringAngleDeg: 0,
+        hornPressed,
         indicator: "off",
         latitude: null,
         longitude: null,
-        speedLimit: null,
-        speedLimitUnit: "mph"
+        speedLimit: carLimit.limit,
+        speedLimitSource: "Car-detected speed limit",
+        speedLimitUnit: carLimit.unit || "mph"
       };
     }
 
@@ -160,11 +274,13 @@ class BvrParser {
         gasPressed: false,
         acceleratorPercent: 0,
         steeringAngleDeg: 0,
+        hornPressed,
         indicator: "off",
         latitude: null,
         longitude: null,
-        speedLimit: null,
-        speedLimitUnit: "mph",
+        speedLimit: carLimit.limit,
+        speedLimitSource: "Car-detected speed limit",
+        speedLimitUnit: carLimit.unit || "mph",
         atUs: targetUs
       };
     }
@@ -228,13 +344,6 @@ class BvrParser {
       longitude = fields.longitude.value;
     }
 
-    let speedLimit = null;
-    let speedLimitUnit = "mph";
-    const limitField = fields.speedLimit || fields.speed_limit || fields.maxspeed;
-    if (limitField && limitField.value != null) {
-      speedLimit = Number(limitField.value);
-      if (limitField.unit) speedLimitUnit = limitField.unit;
-    }
 
     return {
       speedKph: Math.round(speedKph),
@@ -243,11 +352,13 @@ class BvrParser {
       gasPressed: gasPressed,
       acceleratorPercent: Math.round(acceleratorPercent),
       steeringAngleDeg: Math.round(steeringAngleDeg),
+      hornPressed,
       indicator: indicator,
       latitude: latitude,
       longitude: longitude,
-      speedLimit: speedLimit,
-      speedLimitUnit: speedLimitUnit,
+      speedLimit: carLimit.limit,
+      speedLimitSource: "Car-detected speed limit",
+      speedLimitUnit: carLimit.unit || "mph",
       atUs: rec.atUs
     };
   }
@@ -318,6 +429,9 @@ class StreamingBvrParser {
 
     this.telemetryRecords = [];
     this.cameraPairEvents = [];
+    this.cameraViewEvents = [];
+    this.speedLimitEvents = [];
+    this.hornEvents = [];
     this.startMonotonicUs = null;
     this.endMonotonicUs = null;
   }
@@ -385,6 +499,7 @@ class StreamingBvrParser {
       const atUsLow = view.getUint32(offset + 12, true);
       const atUsHigh = view.getUint32(offset + 16, true);
       const atUs = atUsHigh * 4294967296 + atUsLow;
+      const expectedCrc = view.getUint32(offset + 20, true);
 
       const payload = new Uint8Array(buf.buffer, buf.byteOffset + offset + 24, length);
 
@@ -394,6 +509,12 @@ class StreamingBvrParser {
         try {
           const jsonText = this.textDecoder.decode(payload);
           const obj = JSON.parse(jsonText);
+          const horn = recordedHornEvent(obj, atUs, payload, expectedCrc);
+          if (horn) this.hornEvents.push(horn);
+          const speedLimit = recordedSpeedLimitEvent(obj, atUs, payload, expectedCrc);
+          if (speedLimit) this.speedLimitEvents.push(speedLimit);
+          const cameraView = recordedCameraEvent(obj, atUs, payload, expectedCrc);
+          if (cameraView) this.cameraViewEvents.push(cameraView);
           if (obj.type === "telemetry" && obj.fields) {
             const rec = { atUs, fields: obj.fields };
             this.telemetryRecords.push(rec);
@@ -426,6 +547,10 @@ class StreamingBvrParser {
     if (offset < totalBytes) {
       this.leftover = buf.slice(offset);
     }
+  }
+
+  getCameraViewAtTime(seconds, manifestStartUs) {
+    return BvrParser.prototype.getCameraViewAtTime.call(this, seconds, manifestStartUs);
   }
 
   getTelemetryAtTime(playbackSeconds, manifestStartUs) {

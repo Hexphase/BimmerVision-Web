@@ -508,7 +508,7 @@ test('export quarantines damaged source AUs and keeps missing camera footage bla
  s.VideoDecoder=class{constructor(o){this.o=o;this.decodeQueueSize=0;}configure(){}decode(c){submitted.push(c.timestamp);this.o.output({timestamp:c.timestamp,close(){}});}async flush(){}close(){}};
  const player={duration:.1,manifest:{id:'loss'},streamComplete:true,assembler:{},cameraMapping:{phase0:'frontRear'},decodedFrames:new Map(),lastLrFrame:{stale:true},
    accessUnits:[{index:0,time:0,isKeyFrame:true,avcc:new Uint8Array([1])},{index:1,time:.03,damaged:true,avcc:new Uint8Array([2])},{index:2,time:.06,avcc:new Uint8Array([3])}]};
- const e=new s.Exporter(player);e.renderFrame=(_,o)=>images.push({fr:o.fr,lr:o.lr});
+ const e=new s.Exporter(player);e.renderFrame=(_,o)=>images.push(o.cameraFrames || {fr:o.fr,lr:o.lr});
  await e.export({includeHud:false});assert.deepEqual(submitted,[0,2]);assert.ok(images.length>0);assert.ok(images.every(o=>o.lr===null));assert.ok(images.every(o=>o.fr));
 });
 

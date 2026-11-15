@@ -7,6 +7,7 @@
   'use strict';
   const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
   const MAX_JSON = 1048576;
+  const rawZip = typeof module === 'object' && module.exports ? require('./raw-zip') : globalThis.BVRawZip;
   const LABEL = 'USB view only, mappings saved this browser';
   const abort = () => new DOMException('USB reading cancelled', 'AbortError');
   function check(signal) { if (signal && signal.aborted) throw abort(); }
@@ -110,7 +111,7 @@
         const header = new Uint8Array(await capture.slice(0, 16).arrayBuffer());
         const dv = new DataView(header.buffer, header.byteOffset, header.byteLength);
         if (!magic(header, 'BVR1') || dv.getUint32(4, true) !== 1 || dv.getUint32(8, true) !== 16) throw Error('Invalid archive header');
-        recordings.set(manifest.id.toLowerCase(), {manifest, capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
+        recordings.set(manifest.id.toLowerCase(), {manifest, manifestFile:mf, capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
       } catch (error) { warnings.push(`${group.id}: ${error.message}`); }
       onProgress({phase: 'catalog', completed: ++count, total: groups.size});
     }
@@ -130,10 +131,16 @@
         if (url.pathname === '/api/v1/capabilities') return json({nativePreview: false, readOnly: true, mappingStorage: 'browser'});
         if (url.pathname === '/api/v1/version') return json({version: '0.2.8', repository: 'Hexphase/BimmerVision'});
         if (url.pathname === '/api/v1/speed-limit') return json(null);
-        const match = /^\/api\/v1\/recordings\/([a-f0-9-]+)\/(manifest\.json|capture\.bvr|mapping(?:\.json)?)$/i.exec(url.pathname);
+        const match = /^\/api\/v1\/recordings\/([a-f0-9-]+)\/(manifest\.json|capture\.bvr|raw\.zip|mapping(?:\.json)?)$/i.exec(url.pathname);
         if (!match) return json({error: 'USB endpoint unavailable'}, 404);
         const record = recordings.get(match[1].toLowerCase());
         if (!record) return json({error: 'Recording unavailable'}, 404);
+        if (match[2] === 'raw.zip') {
+          const files=[{name:'manifest.json',file:record.manifestFile},{name:'capture.bvr',file:record.capture}];
+          if(record.mappingFile)files.push({name:'mapping.json',file:record.mappingFile});
+          const body=method==='HEAD'?null:rawZip.createStream(files,'BimmerVision-'+record.manifest.id,{signal:init.signal,guard(){check(signal);if(closed)throw abort();}});
+          return new Response(body,{headers:{'Content-Type':'application/zip','Content-Disposition':'attachment; filename="BimmerVision-'+record.manifest.id+'.zip"'}});
+        }
         if (match[2] === 'manifest.json') return json(record.manifest);
         if (match[2] === 'capture.bvr') return ranged(record.capture, new Headers(init.headers || (request && request.headers) || {}).get('Range'), method);
         const key = 'bimmervision_mapping_' + record.manifest.id;

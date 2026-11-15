@@ -71,7 +71,7 @@ class RemoteSource{
       if(controller.signal.aborted)throw controller.signal.reason||abortError();
       clearTimeout(timer);
       // Bulk recording streams use the player's inactivity bounds. JSON bodies remain bounded.
-      if(!/\/api\/v1\/(?:recordings\/[^/]+\/(?:data|download|video|capture\.bvr|[^/]+\.mp4)|preview\/)/.test(url.pathname))timer=setTimeout(()=>controller.abort(new DOMException('Car response timed out. '+HELP,'TimeoutError')),timeoutMs);
+      if(!/\/api\/v1\/(?:recordings\/[^/]+\/(?:data|download|video|capture\.bvr|raw\.zip|[^/]+\.mp4)|preview\/)/.test(url.pathname))timer=setTimeout(()=>controller.abort(new DOMException('Car response timed out. '+HELP,'TimeoutError')),timeoutMs);
       if(!response.body){cleanup();return response;}
       reader=response.body.getReader();
       const body=new ReadableStream({start(c){streamController=c;},async pull(c){try{const part=await reader.read();if(controller.signal.aborted)return;if(part.done){c.close();cleanup();}else c.enqueue(part.value);}catch(error){if(!controller.signal.aborted)c.error(error);cleanup();}},cancel(reason){cleanup();return reader.cancel(reason);}});

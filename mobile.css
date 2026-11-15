@@ -308,4 +308,8 @@
 .release-notice a {color:#82caff;white-space:nowrap;}
 .release-notice button {margin-left:auto;min-width:32px;min-height:32px;background:transparent;border:0;color:#fff;font-size:22px;cursor:pointer;}
 .release-check-status {font-size:12px;line-height:1.6;color:var(--tesla-muted);margin:10px 0;}
+.recording-notice {flex-shrink:0;margin:10px 24px 0;padding:12px 16px;border:1px solid #73542a;border-radius:10px;background:#282015;color:#ffe0a7;font-size:13px;line-height:1.5;}
+.recording-notice[hidden] {display:none !important;}
+.recording-notice-inline {margin:12px 0 0;text-align:left;}
+@media(max-width:700px){.recording-notice:not(.recording-notice-inline){margin:10px 12px 0;}}
 @media(max-width:700px){.release-notice{margin:10px 12px 0;padding:10px 12px;flex-wrap:wrap;gap:8px;}.release-notice>span{flex:1 1 75%;}.release-notice a{order:2;}}

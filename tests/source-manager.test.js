@@ -15,5 +15,5 @@ test('switching source closes the old source and exposes view-only state',async(
 test('USB metadata is local and unsupported operations fail rather than uploading',async()=>{
  const m=new SourceManager({nativeFetch:()=>{throw Error('Unexpected network')}});m.setSource({kind:'usb',readOnly:true,fetch:async()=>new Response('{}')});
  const c=await (await m.fetch('/api/v1/capabilities')).json();assert.equal(c.nativePreview,false);assert.equal(c.readOnly,true);
- const v=await(await m.fetch('/api/v1/version')).json();assert.equal(v.version,'0.1.0');
+ const v=await(await m.fetch('/api/v1/version')).json();assert.equal(v.version,require('../package.json').version);
 });
