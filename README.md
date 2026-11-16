@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/bimmervision-readme.png" alt="BimmerVision" width="600">
+</p>
+
 # BimmerVision Web
 
 **Your BimmerVision recordings, directly in your browser.** A GitHub Pages edition of the BimmerVision player, with the same camera views, drive timeline, telemetry, maps and video export.
