@@ -2,6 +2,32 @@
 
 **Your BimmerVision recordings, directly in your browser.** A GitHub Pages edition of the BimmerVision player, with the same camera views, drive timeline, telemetry, maps and video export.
 
+## See playback and exports
+
+<table>
+<tr>
+<td width="30%" valign="top">
+<a href="docs/images/playback-mobile.png"><img src="docs/images/playback-mobile.png" alt="Full-length mobile BimmerVision playback screen with four cameras, telemetry, timeline, camera selector, driving view and GPS map" width="240"></a>
+<p><sub>Full mobile playback screen. Select either image to see it at its original size.</sub></p>
+</td>
+<td width="70%" valign="top">
+<h3>Your whole drive, in one place</h3>
+<p>Watch the front, rear, left and right cameras together, then choose an individual camera from the top-down vehicle selector. On mobile, the video and compact instrument bar stay pinned while you scroll through the drive timeline, camera controls, Driving view and map.</p>
+<ul>
+<li><strong>Follow the recording:</strong> scrub the timeline across clips, tap the video to play or pause, or double-tap either edge to skip ten seconds.</li>
+<li><strong>Read the instruments:</strong> speed, detected speed limit, turn signals, steering, brake and accelerator activity stay synchronized with the footage.</li>
+<li><strong>See the driving context:</strong> the metadata-based 3D view shows the blue driver vehicle, supported traffic detections, lead distance in feet, lane information and recognized road signs.</li>
+<li><strong>Review the route:</strong> recorded GPS positions connect the video to its location on the map. Available details depend on the metadata captured by the car.</li>
+</ul>
+<p>The same playback design is available in the car-hosted player and BimmerVision Web. Local USB recordings and metadata are processed in your browser; they are not uploaded to BimmerVision.</p>
+<h3>Export the footage and its context</h3>
+<p>The example below is a frame from an exported video: all four camera views, the GPS map, Driving view and synchronized instrument overlays, including speed, speed limit, blinkers, steering and pedal activity. Choose the cameras and overlays you want when exporting.</p>
+<a href="docs/images/exported-video-metadata.png"><img src="docs/images/exported-video-metadata.png" alt="Exported BimmerVision video showing four camera views, GPS map, 3D driving visualization, lead distance, speed limit and instrument overlays" width="640"></a>
+<p><sub>Exported video with camera footage and recorded vehicle metadata.</sub></p>
+</td>
+</tr>
+</table>
+
 ## Open the player
 
 **[Launch BimmerVision Web](https://hexphase.github.io/BimmerVision-Web/)**
