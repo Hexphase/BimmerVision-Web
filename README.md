@@ -85,7 +85,7 @@ Pairing stays between your device and the car. The web host does not proxy recor
 - Full recording download before playback, with visible progress and cancellation.
 - Change between USB and car sources without leaving the app.
 
-Player behavior matches the recording webserver in BimmerVision 0.2.37. The hosted player retains local USB access and direct paired-car access.
+Player behavior matches the recording webserver in BimmerVision 0.2.38. The hosted player retains local USB access and direct paired-car access.
 
 The homepage footer follows the iDrive app’s version metadata, refreshing online on page load and every 15 minutes while visible. When paired, the connected car’s reported version takes priority. Settings keeps the web build number separate. Offline, the bundled iDrive version remains available; run `npm run sync:idrive-version` alongside an iDrive release to refresh that bundled baseline from the sibling BimmerVision repository.
 
