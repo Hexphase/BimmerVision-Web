@@ -1,3 +1,4 @@
+const PerceptionCapture = typeof BVPerceptionCapture !== 'undefined' ? BVPerceptionCapture : (typeof module !== 'undefined' && module.exports ? require('./perception-data').BVPerceptionCapture : null);
 /**
  * BimmerVision BVR1 Archive Parser
  * Extracts H.264 RTP video packets and JSON telemetry from binary .bvr files.
@@ -73,6 +74,7 @@ class BvrParser {
     this.cameraViewEvents = [];
     this.speedLimitEvents = [];
     this.hornEvents = [];
+    this.perception = PerceptionCapture ? new PerceptionCapture() : null;
     this.startMonotonicUs = null;
     this.endMonotonicUs = null;
     this.parsed = false;
@@ -137,6 +139,7 @@ class BvrParser {
         try {
           const jsonText = textDecoder.decode(payload);
           const obj = JSON.parse(jsonText);
+          this.perception?.addEvent(obj, atUs, payload, expectedCrc);
           const horn = recordedHornEvent(obj, atUs, payload, expectedCrc);
           if (horn) this.hornEvents.push(horn);
           const speedLimit = recordedSpeedLimitEvent(obj, atUs, payload, expectedCrc);
@@ -432,6 +435,7 @@ class StreamingBvrParser {
     this.cameraViewEvents = [];
     this.speedLimitEvents = [];
     this.hornEvents = [];
+    this.perception = PerceptionCapture ? new PerceptionCapture() : null;
     this.startMonotonicUs = null;
     this.endMonotonicUs = null;
   }
@@ -509,6 +513,7 @@ class StreamingBvrParser {
         try {
           const jsonText = this.textDecoder.decode(payload);
           const obj = JSON.parse(jsonText);
+          this.perception?.addEvent(obj, atUs, payload, expectedCrc);
           const horn = recordedHornEvent(obj, atUs, payload, expectedCrc);
           if (horn) this.hornEvents.push(horn);
           const speedLimit = recordedSpeedLimitEvent(obj, atUs, payload, expectedCrc);

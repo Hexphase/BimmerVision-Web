@@ -1,0 +1,16 @@
+.driving-panel {flex:0 0 auto;overflow:hidden;min-width:0;}
+.driving-panel .section-header {display:flex;align-items:center;gap:10px;padding:12px;}
+.driving-status {margin-left:auto;font-size:8px;letter-spacing:.12em;color:#8993a3;}
+.driving-angle {border:1px solid #303743;border-radius:6px;background:transparent;color:#a5aebc;font:inherit;font-size:10px;padding:5px 7px;cursor:pointer;}
+.driving-angle[aria-pressed="true"] {color:#55a6ff;border-color:#32679c;}
+.driving-stage {height:280px;position:relative;background:#101216;overflow:hidden;}
+.driving-stage canvas {display:block;width:100%;height:100%;}
+.driving-message {position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:24px;color:#99a3b3;font-size:12px;line-height:1.7;pointer-events:none;background:#101216e8;}
+.driving-message[hidden] {display:none;}
+.driving-distance {position:absolute;top:12px;left:12px;color:#d5e7ff;font-size:12px;letter-spacing:.02em;pointer-events:none;}
+.driving-detail {padding:9px 12px;min-height:30px;color:#8490a2;font-size:9px;line-height:1.4;}
+.live-map-panel {flex:0 0 auto;min-height:190px;}
+.live-map-box {min-height:170px;}
+@media(max-width:900px){.driving-stage{height:320px;}.driving-detail{font-size:10px;}}
+
+.driving-stage .driving-signs {position:absolute;top:10px;right:10px;width:auto;height:56px;max-width:calc(100% - 20px);object-fit:contain;pointer-events:none;}

@@ -138,6 +138,18 @@ class ClipExporter {
    * @param {function} options.onProgress - callback (progress 0..1, statusText)
    */
   async export(options = {}) {
+    if(!options.overlays?.drivingView)return this._exportPrepared(options);
+    const operation=this._operationContext(options);let renderer,abandoned=false;
+    try {
+      await this._prepareRecording(options.onProgress||(()=>{}));this._checkOperation(operation);
+      if(!this.player?.drivingView?.createExportRenderer)throw new Error('Driving view metadata is unavailable for this recording.');
+      const creating=this.player.drivingView.createExportRenderer().then(value=>{if(abandoned){value.dispose();throw new Error('Export cancelled because the recording changed.');}return value;});
+      renderer=await this._awaitCompletion(creating,operation,'preparing Driving view');this._checkOperation(operation);
+      return await this._exportPrepared({...options,drivingViewRenderer:renderer});
+    } finally {abandoned=true;renderer?.dispose();}
+  }
+
+  async _exportPrepared(options = {}) {
     if (typeof VideoEncoder === 'undefined' || typeof Mp4Muxer === 'undefined') {
       if (typeof MediaRecorder !== 'undefined') {
         return this._exportWithMediaRecorder(options);
@@ -162,6 +174,7 @@ class ClipExporter {
     } : null);
 
     const includeMap = overlays ? (overlays.map !== undefined ? Boolean(overlays.map) : Boolean(options.includeMap)) : false;
+    const includeDriving=overlays?.drivingView===true,includeSide=includeMap||includeDriving;
     const hasTelemetryBar = overlays ? (overlays.includeHud !== false && (
       overlays.blinkers !== false ||
       overlays.speed !== false ||
@@ -172,8 +185,8 @@ class ClipExporter {
       overlays.time !== false
     )) : false;
 
-    const exportW = includeMap ? 1920 : 1280;
-    const exportH = includeMap ? (hasTelemetryBar ? 1080 : 960) : (hasTelemetryBar ? 1040 : 960);
+    const exportW = includeSide ? 1920 : 1280;
+    const exportH = includeSide ? (hasTelemetryBar ? 1080 : 960) : (hasTelemetryBar ? 1040 : 960);
 
     await this._prepareRecording(progress);
     const operation=this._operationContext(options);this._checkOperation(operation);
@@ -185,6 +198,10 @@ class ClipExporter {
     const requested = Number(options.duration);
     const duration = requested > 0 ? Math.min(requested, full) : full;
     const start = Math.max(0, full - duration);
+    if(includeMap && player.liveMap?.prepareForExport) {
+      progress(.03,'Preparing export map…');
+      await this._awaitCompletion(player.liveMap.prepareForExport(start,640,includeDriving?480:960,{check:()=>this._checkOperation(operation)}),operation,'preparing map tiles');
+    }
     const fps = 30;
     const totalFrames = Math.max(1, Math.round(duration * fps));
 
@@ -203,7 +220,7 @@ class ClipExporter {
     let fallbackConfig = null;
     let encoder;
     let decoder;
-    let submitted = 0;
+    let submitted = 0,minimumBitmapIndex=0;
     let flushed = false;
     const bitmaps = new Map();
     const pending = new Set(),openFrames=new Set();let disposed=false;
@@ -248,7 +265,7 @@ class ClipExporter {
       if (typeof VideoDecoder !== 'undefined' && units?.length && player.assembler) {
         decoder = new VideoDecoder({
           output: frame => {
-            if(disposed){frame.close();return;}
+            if(disposed||frame.timestamp<minimumBitmapIndex){frame.close();return;}
             openFrames.add(frame);
             const job = createImageBitmap(frame).then(bitmap => {
               if(disposed){bitmap.close();return;}
@@ -273,6 +290,11 @@ class ClipExporter {
       }
 
       let targetIndex = 0;
+      while(targetIndex+1<(units?.length||0)&&units[targetIndex+1].time<=start)targetIndex++;
+      // Preserve the preceding camera pair and decode only the required GOP.
+      minimumBitmapIndex=Math.max(0,targetIndex-12);
+      submitted=Math.max(0,targetIndex-1);
+      while(submitted>0&&(!units[submitted].isKeyFrame||units[submitted].damaged))submitted--;
       for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
         this._checkOperation(operation);
         const time = start + frameIndex / fps;
@@ -347,6 +369,7 @@ class ClipExporter {
           telemetry: parser ? parser.getTelemetryAtTime(time, manifest.startMonotonicUs) : null,
           mapping: mapping,
           manifest: manifest,
+          drivingView: options.drivingViewRenderer,
           map: player?.liveMap
         });
 
@@ -433,6 +456,7 @@ class ClipExporter {
     } : null);
 
     const includeMap = overlays ? (overlays.map !== undefined ? Boolean(overlays.map) : Boolean(options.includeMap)) : false;
+    const includeDriving=overlays?.drivingView===true,includeSide=includeMap||includeDriving;
     const hasTelemetryBar = overlays ? (overlays.includeHud !== false && (
       overlays.blinkers !== false ||
       overlays.speed !== false ||
@@ -443,8 +467,8 @@ class ClipExporter {
       overlays.time !== false
     )) : false;
 
-    const exportW = includeMap ? 1920 : 1280;
-    const exportH = includeMap ? (hasTelemetryBar ? 1080 : 960) : (hasTelemetryBar ? 1040 : 960);
+    const exportW = includeSide ? 1920 : 1280;
+    const exportH = includeSide ? (hasTelemetryBar ? 1080 : 960) : (hasTelemetryBar ? 1040 : 960);
 
     await this._prepareRecording(progress);
     const operation=this._operationContext(options);this._checkOperation(operation);
@@ -455,6 +479,10 @@ class ClipExporter {
     const requested = Number(options.duration);
     const duration = requested > 0 ? Math.min(requested, full) : full;
     const start = Math.max(0, full - duration);
+    if(includeMap && player.liveMap?.prepareForExport) {
+      progress(.03,'Preparing export map…');
+      await this._awaitCompletion(player.liveMap.prepareForExport(start,640,includeDriving?480:960,{check:()=>this._checkOperation(operation)}),operation,'preparing map tiles');
+    }
     const fps = 30;
     const totalFrames = Math.max(1, Math.round(duration * fps));
 
@@ -473,7 +501,8 @@ class ClipExporter {
       telemetry: parser ? parser.getTelemetryAtTime(start, manifest.startMonotonicUs) : null,
       mapping: player.cameraMapping,
       manifest: manifest,
-      map: player?.liveMap
+      drivingView: options.drivingViewRenderer,
+          map: player?.liveMap
     });
 
     const stream = canvas.captureStream ? canvas.captureStream(fps) : null;
@@ -505,7 +534,7 @@ class ClipExporter {
     try {
     if(!nativeVideo && player.seekAndWait){
       await this._awaitCompletion(player.seekAndWait(start),operation,'preparing first export frame');
-      this.renderFrame(canvas,{view,overlays,speedUnit,time:start,manifest,mapping,map:player.liveMap});
+      this.renderFrame(canvas,{view,overlays,speedUnit,time:start,manifest,mapping,drivingView:options.drivingViewRenderer,map:player.liveMap});
     }
     recorder.start(100);
     if (nativeVideo && typeof nativeVideo.play === 'function' && typeof requestAnimationFrame === 'function') {
@@ -555,7 +584,8 @@ class ClipExporter {
               telemetry: parser ? parser.getTelemetryAtTime(curTime, manifest.startMonotonicUs) : null,
               mapping: mapping,
               manifest: manifest,
-              map: player?.liveMap
+              drivingView: options.drivingViewRenderer,
+          map: player?.liveMap
             });
 
             if (track && typeof track.requestFrame === 'function') {
@@ -614,7 +644,8 @@ class ClipExporter {
             telemetry: parser ? parser.getTelemetryAtTime(time, manifest.startMonotonicUs) : null,
             mapping: mapping,
             manifest: manifest,
-            map: player?.liveMap
+            drivingView: options.drivingViewRenderer,
+          map: player?.liveMap
           });
 
           const track = stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
@@ -671,6 +702,8 @@ class ClipExporter {
     } : null);
 
     const includeMap = overlays ? (overlays.map !== undefined ? Boolean(overlays.map) : Boolean(options.includeMap)) : false;
+    const includeDriving=overlays?.drivingView===true,includeSide=includeMap||includeDriving;
+    if(includeDriving&&!options.drivingView?.drawTo)throw new Error('Driving view is not ready for export.');
     const hasTelemetryBar = overlays ? (overlays.includeHud !== false && (
       overlays.blinkers !== false ||
       overlays.speed !== false ||
@@ -681,9 +714,9 @@ class ClipExporter {
       overlays.time !== false
     )) : false;
 
-    const exportW = includeMap ? 1920 : 1280;
-    const barH = includeMap ? 120 : 80;
-    const exportH = includeMap ? (hasTelemetryBar ? 1080 : 960) : (hasTelemetryBar ? 1040 : 960);
+    const exportW = includeSide ? 1920 : 1280;
+    const barH = includeSide ? 120 : 80;
+    const exportH = includeSide ? (hasTelemetryBar ? 1080 : 960) : (hasTelemetryBar ? 1040 : 960);
 
     try {
       if (targetCanvas.width !== exportW) targetCanvas.width = exportW;
@@ -756,13 +789,16 @@ class ClipExporter {
     const timeSec = options.time != null ? options.time : (this.player?.currentTime || 0);
     const manifest = options.manifest || this.player?.manifest;
 
-    // Draw route map alongside cameras if requested
-    if (includeMap) {
-      const liveMap = options.map || this.player?.liveMap;
-      if (liveMap && typeof liveMap.drawTo === "function") {
-        liveMap.drawTo(ctx, 1280, 0, 640, 960, timeSec);
-      } else {
-        this._drawFallbackMap(ctx, 1280, 0, 640, 960, telem, timeSec, manifest);
+    // Map and Driving view share the original640px sidebar.
+    if (includeSide) {
+      const mapHeight=includeDriving?480:960;
+      if(includeMap) {
+        const liveMap = options.map || this.player?.liveMap;
+        if(liveMap && typeof liveMap.drawTo==='function')liveMap.drawTo(ctx,1280,0,640,mapHeight,timeSec);
+        else this._drawFallbackMap(ctx,1280,0,640,mapHeight,telem,timeSec,manifest);
+      }
+      if(includeDriving) {
+        options.drivingView.drawTo(ctx,1280,includeMap?480:0,640,includeMap?480:960,timeSec);
       }
 
       // Vertical divider between cameras and map
@@ -1065,72 +1101,26 @@ class ClipExporter {
 
     const drawPedals = (x, centerY) => {
       let px = x;
-      if (ov.brake) {
-        const isBrake = Boolean(telem.brakePressed);
+      const pedal = (kind, active) => {
         ctx.save();
-        if (isBrake) {
-          ctx.shadowColor = "#EE2440";
-          ctx.shadowBlur = 14;
-          ctx.fillStyle = "rgba(238, 36, 64, 0.4)";
-        } else {
-          ctx.fillStyle = "rgba(35, 38, 48, 0.75)";
+        const color=active?(kind==='brake'?'#EE2440':'#38D47A'):'#9aa4b3';
+        ctx.strokeStyle=color;ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';
+        ctx.translate(px,centerY-29);ctx.scale(.8,.8);
+        ctx.beginPath();
+        if(kind==='brake'){
+          ctx.moveTo(32,9);ctx.lineTo(32,19);ctx.stroke();
+          ctx.beginPath();ctx.roundRect(12,19,40,26,5);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(21,27);ctx.lineTo(43,27);ctx.moveTo(21,36);ctx.lineTo(43,36);
+        }else{
+          ctx.roundRect(23,9,20,42,5);ctx.stroke();ctx.beginPath();
+          ctx.moveTo(29,19);ctx.lineTo(29,41);ctx.moveTo(37,19);ctx.lineTo(37,41);ctx.moveTo(19,55);ctx.lineTo(47,55);
         }
-        ctx.beginPath();
-        ctx.roundRect(px, centerY - 16, 50, 32, 5);
-        ctx.fill();
-        ctx.strokeStyle = isBrake ? "#EE2440" : "rgba(160, 170, 195, 0.55)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.fillStyle = isBrake ? "#EE2440" : "rgba(120, 130, 150, 0.65)";
-        ctx.fillRect(px + 21, centerY - 26, 8, 10);
-
-        ctx.strokeStyle = isBrake ? "#ffffff" : "rgba(160, 170, 195, 0.75)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(px + 10, centerY - 6); ctx.lineTo(px + 40, centerY - 6);
-        ctx.moveTo(px + 10, centerY + 3); ctx.lineTo(px + 40, centerY + 3);
-        ctx.stroke();
-
-        ctx.fillStyle = isBrake ? "#EE2440" : "rgba(160, 170, 195, 0.85)";
-        ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillText("BRAKE", px + 7, centerY + 28);
-        ctx.restore();
-        px += 58;
-      }
-
-      if (ov.gas) {
-        const isGas = Boolean(telem.gasPressed || (telem.acceleratorPercent ?? 0) > 5);
-        ctx.save();
-        if (isGas) {
-          ctx.shadowColor = "#38D47A";
-          ctx.shadowBlur = 14;
-          ctx.fillStyle = "rgba(56, 212, 122, 0.4)";
-        } else {
-          ctx.fillStyle = "rgba(35, 38, 48, 0.75)";
-        }
-        ctx.beginPath();
-        ctx.roundRect(px + 4, centerY - 22, 26, 42, 5);
-        ctx.fill();
-        ctx.strokeStyle = isGas ? "#38D47A" : "rgba(160, 170, 195, 0.55)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        ctx.fillStyle = isGas ? "#38D47A" : "rgba(120, 130, 150, 0.65)";
-        ctx.fillRect(px, centerY + 17, 34, 5);
-
-        ctx.strokeStyle = isGas ? "#ffffff" : "rgba(160, 170, 195, 0.75)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(px + 12, centerY - 15); ctx.lineTo(px + 12, centerY + 9);
-        ctx.moveTo(px + 22, centerY - 15); ctx.lineTo(px + 22, centerY + 9);
-        ctx.stroke();
-
-        ctx.fillStyle = isGas ? "#38D47A" : "rgba(160, 170, 195, 0.85)";
-        ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, sans-serif";
-        ctx.fillText("GAS", px + 9, centerY + 32);
-        ctx.restore();
-      }
+        ctx.stroke();ctx.restore();
+        ctx.save();ctx.fillStyle=color;ctx.font='bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(kind==='brake'?'BRAKE':'GAS',px+(kind==='brake'?9:16),centerY+30);ctx.restore();
+      };
+      if(ov.brake){pedal('brake',Boolean(telem.brakePressed));px+=58;}
+      if(ov.gas)pedal('gas',Boolean(telem.gasPressed||(telem.acceleratorPercent??0)>5));
     };
 
     const startMs = new Date(manifest?.startedAt || this.player?.manifest?.startedAt || '').getTime();

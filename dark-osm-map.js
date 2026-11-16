@@ -54,6 +54,19 @@ class DarkOsmMap {
     }
   }
 
+  // Short exports can jump well beyond the tiles cached by the current view.
+  // Queue the export-sized map before encoding; unavailable Internet stays bounded.
+  async prepareForExport(time,width,height,{timeoutMs=6000,check=()=>{}}={}) {
+    const canvas=(this.canvas?.ownerDocument||document).createElement('canvas');canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext('2d'),deadline=Date.now()+timeoutMs;
+    while(true) {
+      check();this.drawTo(ctx,0,0,width,height,time);
+      if(!this.pendingTiles.size)return true;
+      if(Date.now()>=deadline)return false;
+      await new Promise(resolve=>setTimeout(resolve,25));
+    }
+  }
+
   render() {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;

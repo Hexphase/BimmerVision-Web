@@ -4,3 +4,9 @@
 .raw-download-panel{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:1200;width:min(580px,calc(100% - 32px));box-sizing:border-box;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#18181d;color:#f5f5f7;border:1px solid #44444d;border-radius:16px;padding:16px;box-shadow:0 8px 32px #0009}.raw-download-panel span{flex:1 1 200px;font-size:13px;line-height:1.5}.raw-download-panel a{text-decoration:none;text-align:center}
 
 .source-get-app{display:inline-flex;align-items:center;gap:10px;text-decoration:none}.source-get-app:hover{background:#303038}.source-get-app:focus-visible{outline:2px solid #53b8f4;outline-offset:3px}
+
+.source-privacy {margin:0 0 24px;padding:20px 24px;border:1px solid #303b47;border-radius:16px;background:#121920;}
+.source-privacy-heading {display:flex;align-items:center;gap:10px;color:#b9dbf4;font-size:14px;}
+.source-privacy p {font-size:13px;line-height:1.7;color:#b5bdc9;max-width:800px;margin-top:9px;}
+.source-privacy p.source-privacy-map {font-size:11px;color:#8994a4;}
+@media(max-width:700px){.source-privacy {padding:18px;}.source-privacy p {font-size:12px;}.source-privacy-heading {font-size:13px;}}

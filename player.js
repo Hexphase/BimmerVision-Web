@@ -173,6 +173,7 @@ class BimmerVisionPlayer {
 
   cancelLoad() {
     ++this._clipEpoch; ++this._decoderEpoch;
+    this.drivingView?.reset();
     this.pause();
     this._speedLimitAbort?.abort(); this._speedLimitAbort=null; this._speedLimitPending=null;
     this.currentSpeedLimit=null; this._speedLimitLocationKey=null; this._lastSpeedLimitLookupCoord=null;
@@ -264,6 +265,7 @@ class BimmerVisionPlayer {
     this.currentTime = 0; this.currentAuIndex = 0; this.nextDecodeIdx = 0;
     this.loadedByteOffset = 0; this.totalBytes = 0; this.accessUnits = [];
     this.bvrUrl = bvrUrl;
+    this.drivingView?.reset('Reading recording metadata…');
     this._setState('loading', 'Reading recording information…');
     const response = await this._loadOperation(bvFetch(manifestUrl, {signal}),signal);
     if (!response.ok) throw new Error('Recording information unavailable: HTTP ' + response.status);
@@ -291,6 +293,7 @@ class BimmerVisionPlayer {
       while(released<assembler.accessUnits.length) assembler.accessUnits[released++].data=null;
       if (!this.accessUnits.length) throw new Error('No usable video frames in this recording.');
       this.streamComplete=true;
+      this.drivingView?.load(parser,manifest);
       this._setState('loading','Preparing camera frames…');
       this._initDecoder(); this._decodeAhead();
       if(this.liveMap)this.liveMap.setTrack(parser.getRouteSeries(manifest.startMonotonicUs));
@@ -344,6 +347,7 @@ class BimmerVisionPlayer {
     if (!live()) throw new DOMException('Cancelled','AbortError');
     this.duration = Number.isFinite(video.duration) ? video.duration : this.duration;
     this.streamComplete = true;
+    this.drivingView?.loadSource(this.bvrUrl,manifest);
     if (this.liveMap) this.liveMap.setTrack(this.parser.getRouteSeries(manifest.startMonotonicUs));
     this._renderNativeFrame(); this._updateScrubber(); this._updateTelemetryHud(); this._setState('paused');
   }
@@ -469,6 +473,8 @@ class BimmerVisionPlayer {
   setSpeedUnit(unit) {this.speedUnit=unit;this._updateTelemetryHud();}
   setSedanSelector(selector) {this.sedanSelector=selector;}
   setLiveMap(map) {this.liveMap=map;}
+
+  setDrivingView(view) {this.drivingView=view;}
   _tick() {
     if(!this.isPlaying) return;
     const now=performance.now(),dt=Math.min(0.15,Math.max(0,(now-this.lastFrameWallTime)/1000)); this.lastFrameWallTime=now;
@@ -766,6 +772,7 @@ class BimmerVisionPlayer {
   }
 
   _updateTelemetryHud() {
+    this.drivingView?.setTime(this.currentTime);
     if (!this.parser) return;
     const telem = this.parser.getTelemetryAtTime(this.currentTime, this.manifest ? this.manifest.startMonotonicUs : 0);
 

@@ -59,3 +59,11 @@ test('directory handles request only file reads; cancellation prevents further u
   const source=await sourceAPI.fromDirectoryHandle(handle);assert.equal((await list(source)).length,1);source.close();await assert.rejects(()=>source.fetch('/api/v1/recordings'),{name:'AbortError'});await source.indexing;
   const controller=new AbortController();controller.abort();await assert.rejects(()=>sourceAPI.fromFiles(files,{signal:controller.signal}),{name:'AbortError'});
 });
+test('large compatibility folder listings yield before cataloguing and honour cancellation',async()=>{
+ const files=Array.from({length:10000},(_,i)=>({name:'ignored-'+i,webkitRelativePath:'BimmerVision/ignored-'+i})),controller=new AbortController();let yielded=false;setTimeout(()=>{yielded=true;controller.abort();},0);
+ await assert.rejects(sourceAPI.fromFiles([...files,...fixture()],{signal:controller.signal}),{name:'AbortError'});assert.equal(yielded,true);
+});
+test('native directory enumeration yields and can cancel before walking a huge folder',async()=>{
+ const controller=new AbortController();let visited=0;const handle={name:'BimmerVision',async*entries(){for(let i=0;i<10000;i++){visited++;yield['ignored-'+i,{kind:'file',getFile(){throw Error('unrelated file must not be read');}}];}}};setTimeout(()=>controller.abort(),0);
+ await assert.rejects(sourceAPI.fromDirectoryHandle(handle,{signal:controller.signal}),{name:'AbortError'});assert(visited<=100);
+});

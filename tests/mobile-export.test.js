@@ -76,6 +76,26 @@ test('export supplies sample durations when a browser encoder omits them', async
   assert.ok(calls.every(c => c[3] === 33333));
   assert.match(result.fileName, /\.m4v$/);
 });
+test('short exports near recording end decode from the preceding keyframe instead of the entire drive',async()=>{
+ const {s}=createMockEnvironment(),submitted=[];
+ s.EncodedVideoChunk=class{constructor(o){Object.assign(this,o);}};
+ s.createImageBitmap=async f=>({close(){}});
+ s.RtpH264Assembler={makeAvcC:()=>new Uint8Array([1])};
+ s.VideoDecoder=class{constructor(o){this.o=o;this.decodeQueueSize=0;}configure(){}decode(c){submitted.push(c.timestamp);this.o.output({timestamp:c.timestamp,close(){}});}async flush(){}close(){}};
+ const player={_clipEpoch:1,duration:10,manifest:{id:'late'},assembler:{},cameraMapping:{phase0:'frontRear'},decodedFrames:new Map(),accessUnits:Array.from({length:100},(_,index)=>({index,time:index/10,isKeyFrame:index%10===0,avcc:new Uint8Array([1])}))};
+ await new s.Exporter(player).export({duration:.1,includeHud:false});
+ assert.equal(submitted[0],90);assert(submitted.every(i=>i>=90));
+});
+test('late export from an open GOP skips bitmap conversion for discarded preroll frames',async()=>{
+ const {s}=createMockEnvironment(),converted=[];
+ s.EncodedVideoChunk=class{constructor(o){Object.assign(this,o);}};
+ s.createImageBitmap=async f=>{converted.push(f.timestamp);return {close(){}};};
+ s.RtpH264Assembler={makeAvcC:()=>new Uint8Array([1])};
+ s.VideoDecoder=class{constructor(o){this.o=o;this.decodeQueueSize=0;}configure(){}decode(c){this.o.output({timestamp:c.timestamp,close(){}});}async flush(){}close(){}};
+ const player={_clipEpoch:1,duration:10,manifest:{id:'open-gop'},assembler:{},cameraMapping:{phase0:'frontRear'},decodedFrames:new Map(),accessUnits:Array.from({length:100},(_,index)=>({index,time:index/10,isKeyFrame:index===0,avcc:new Uint8Array([1])}))};
+ await new s.Exporter(player).export({duration:.1,includeHud:false});
+ assert(converted.length<20);assert(converted.includes(98)&&converted.includes(99));
+});
 
 test('renderFrame renders different camera angle views correctly', () => {
   const { s, drawnImages } = createMockEnvironment();

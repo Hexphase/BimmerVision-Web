@@ -1,12 +1,4 @@
-/**
- * BimmerVision Interactive Sedan Camera Selector
- * Exact mathematical replication of CamGeo from SedanCameraPanel.axaml.cs.
- * Cones and markers are geometrically locked to the BMW sedan body.
- * Features:
- * - 'All' and 'Source' layout switcher buttons in the header
- * - 'Tap a camera view to see' hint indicator
- * - Fully clickable front, rear, left, right camera cones & hit zones with tactile pulse animation
- */
+/* Top-down camera picker with soft coverage fields and camera buttons. */
 class SedanCameraSelector {
   constructor(containerEl, onSelect, onIdentify) {
     this.container = containerEl;
@@ -19,41 +11,6 @@ class SedanCameraSelector {
   setLayout(layout) {
     this.activeLayout = layout;
     this._updateActiveClasses();
-    this._triggerPulseAnimation(layout);
-  }
-
-  _triggerPulseAnimation(layout) {
-    // Remove existing animation classes
-    this.container.querySelectorAll(".anim-pulse, .anim-pop").forEach((el) => {
-      el.classList.remove("anim-pulse", "anim-pop");
-    });
-
-    // Re-trigger animation on target elements
-    requestAnimationFrame(() => {
-      if (layout === "front") {
-        const c = this.container.querySelector("#coneFront");
-        const t = this.container.querySelector(".target-front");
-        if (c) c.classList.add("anim-pulse");
-        if (t) t.classList.add("anim-pop");
-      } else if (layout === "rear") {
-        const c = this.container.querySelector("#coneRear");
-        const t = this.container.querySelector(".target-rear");
-        if (c) c.classList.add("anim-pulse");
-        if (t) t.classList.add("anim-pop");
-      } else if (layout === "left") {
-        const c = this.container.querySelector("#coneLeft");
-        const t = this.container.querySelector(".target-left");
-        if (c) c.classList.add("anim-pulse");
-        if (t) t.classList.add("anim-pop");
-      } else if (layout === "right") {
-        const c = this.container.querySelector("#coneRight");
-        const t = this.container.querySelector(".target-right");
-        if (c) c.classList.add("anim-pulse");
-        if (t) t.classList.add("anim-pop");
-      } else if (layout === "quad") {
-        this.container.querySelectorAll(".beam-cone").forEach((c) => c.classList.add("anim-pulse"));
-      }
-    });
   }
 
   _render() {
@@ -80,73 +37,50 @@ class SedanCameraSelector {
             </svg>
             Source
           </button>
-          <button id="sedanIdentifyBtn" class="sedan-view-pill" title="Identify Camera Pairs">
+          <button id="sedanIdentifyBtn" class="sedan-view-pill" title="Calibrate camera assignments">
             <svg viewBox="0 0 14 12" width="11" height="10" fill="none" stroke="currentColor" stroke-width="1.5">
               <circle cx="7" cy="6" r="3.5"></circle>
               <line x1="7" y1="1" x2="7" y2="2.5"></line>
               <line x1="7" y1="9.5" x2="7" y2="11"></line>
             </svg>
-            Identify
+            Calibrate
           </button>
         </div>
       </div>
 
       <div class="sedan-stage-wrapper">
         <div class="sedan-stage-box">
-          <!-- Exact CamGeo SVG Beams & Markers (viewBox 0 0 200 240) -->
-          <svg class="sedan-beams" viewBox="0 0 200 240">
+          <svg class="sedan-beams" viewBox="0 0 200 240" aria-hidden="true">
             <defs>
-              <!-- Front Beam Radial Gradient (BMW M Red) -->
-              <radialGradient id="beamGradFront" cx="100" cy="64" r="66" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#EE2440" stop-opacity="0.8"/>
-                <stop offset="28%" stop-color="#EE2440" stop-opacity="0.55"/>
-                <stop offset="62%" stop-color="#EE2440" stop-opacity="0.25"/>
-                <stop offset="88%" stop-color="#EE2440" stop-opacity="0.08"/>
-                <stop offset="100%" stop-color="#EE2440" stop-opacity="0"/>
+              <filter id="cameraFieldSoftEdge" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.8"/></filter>
+              <radialGradient id="beamGradFront" cx="100" cy="91" r="86" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#2065db" stop-opacity=".48"/>
+                <stop offset=".5" stop-color="#2065db" stop-opacity=".22"/>
+                <stop offset="1" stop-color="#2065db" stop-opacity="0"/>
               </radialGradient>
-
-              <!-- Rear Beam Radial Gradient (BMW M Blue) -->
-              <radialGradient id="beamGradRear" cx="100" cy="171" r="66" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#3DA8F2" stop-opacity="0.8"/>
-                <stop offset="28%" stop-color="#3DA8F2" stop-opacity="0.55"/>
-                <stop offset="62%" stop-color="#3DA8F2" stop-opacity="0.25"/>
-                <stop offset="88%" stop-color="#3DA8F2" stop-opacity="0.08"/>
-                <stop offset="100%" stop-color="#3DA8F2" stop-opacity="0"/>
+              <radialGradient id="beamGradRear" cx="100" cy="166" r="68" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#2065db" stop-opacity=".48"/>
+                <stop offset=".5" stop-color="#2065db" stop-opacity=".22"/>
+                <stop offset="1" stop-color="#2065db" stop-opacity="0"/>
               </radialGradient>
-
-              <!-- Left Beam Radial Gradient (BMW M Blue) -->
-              <radialGradient id="beamGradLeft" cx="66" cy="97" r="66" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#3DA8F2" stop-opacity="0.8"/>
-                <stop offset="28%" stop-color="#3DA8F2" stop-opacity="0.55"/>
-                <stop offset="62%" stop-color="#3DA8F2" stop-opacity="0.25"/>
-                <stop offset="88%" stop-color="#3DA8F2" stop-opacity="0.08"/>
-                <stop offset="100%" stop-color="#3DA8F2" stop-opacity="0"/>
+              <radialGradient id="beamGradLeft" cx="68" cy="100" r="63" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#2065db" stop-opacity=".48"/>
+                <stop offset=".5" stop-color="#2065db" stop-opacity=".22"/>
+                <stop offset="1" stop-color="#2065db" stop-opacity="0"/>
               </radialGradient>
-
-              <!-- Right Beam Radial Gradient (BMW M Blue) -->
-              <radialGradient id="beamGradRight" cx="134" cy="97" r="66" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stop-color="#3DA8F2" stop-opacity="0.8"/>
-                <stop offset="28%" stop-color="#3DA8F2" stop-opacity="0.55"/>
-                <stop offset="62%" stop-color="#3DA8F2" stop-opacity="0.25"/>
-                <stop offset="88%" stop-color="#3DA8F2" stop-opacity="0.08"/>
-                <stop offset="100%" stop-color="#3DA8F2" stop-opacity="0"/>
+              <radialGradient id="beamGradRight" cx="132" cy="100" r="63" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#2065db" stop-opacity=".48"/>
+                <stop offset=".5" stop-color="#2065db" stop-opacity=".22"/>
+                <stop offset="1" stop-color="#2065db" stop-opacity="0"/>
               </radialGradient>
             </defs>
-
-            <!-- Front Cone (Wedge from 64px up to 12px) - Clickable -->
-            <path id="coneFront" class="beam-cone clickable-cone" data-cam="front" d="M 100 64 L 51 20 A 66 66 0 0 1 149 20 Z" fill="url(#beamGradFront)"/>
-
-            <!-- Rear Cone (Wedge from 171px down to 226px) - Clickable -->
-            <path id="coneRear" class="beam-cone clickable-cone" data-cam="rear" d="M 100 171 L 146 218 A 66 66 0 0 1 54 218 Z" fill="url(#beamGradRear)"/>
-
-            <!-- Left Cone (Wedge from 66px left to 10px) - Clickable -->
-            <path id="coneLeft" class="beam-cone clickable-cone" data-cam="left" d="M 66 97 L 18 52 A 66 66 0 0 0 18 142 Z" fill="url(#beamGradLeft)"/>
-
-            <!-- Right Cone (Wedge from 134px right to 190px) - Clickable -->
-            <path id="coneRight" class="beam-cone clickable-cone" data-cam="right" d="M 134 97 L 182 142 A 66 66 0 0 0 182 52 Z" fill="url(#beamGradRight)"/>
+            <path id="coneFront" class="beam-cone clickable-cone" data-cam="front" d="M100 110 0 0H200Z" fill="url(#beamGradFront)"/>
+            <path id="coneRear" class="beam-cone clickable-cone" data-cam="rear" d="M100 148 200 240H0Z" fill="url(#beamGradRear)"/>
+            <path id="coneLeft" class="beam-cone clickable-cone" data-cam="left" d="M68 100 0 38V162Z" fill="url(#beamGradLeft)"/>
+            <path id="coneRight" class="beam-cone clickable-cone" data-cam="right" d="M132 100 200 162V38Z" fill="url(#beamGradRight)"/>
           </svg>
 
-          <!-- Authentic BMW Sedan (Centered at 100, 120 with width 80, height 154) -->
+          <!-- Side camera origins align with the rendered mirror centers at (68,100)/(132,100). -->
           <img class="sedan-img" src="assets/sedan-topdown.png" alt="BMW Sedan">
 
           <!-- Generous Invisible Touch / Click Hit Zones for Instant Switching -->
@@ -155,26 +89,10 @@ class SedanCameraSelector {
           <div class="cam-hit-zone hit-left" data-cam="left" title="Left Camera View"></div>
           <div class="cam-hit-zone hit-right" data-cam="right" title="Right Camera View"></div>
 
-          <!-- Exact Hit Targets & Badges -->
-          <div class="camera-target target-front" data-cam="front" title="Front Camera">
-            <span class="cam-dot dot-front"></span>
-            <span class="cam-badge">FRONT</span>
-          </div>
-
-          <div class="camera-target target-rear" data-cam="rear" title="Rear Camera">
-            <span class="cam-badge">REAR</span>
-            <span class="cam-dot dot-rear"></span>
-          </div>
-
-          <div class="camera-target target-left" data-cam="left" title="Left Camera">
-            <span class="cam-dot dot-left"></span>
-            <span class="cam-badge">LEFT</span>
-          </div>
-
-          <div class="camera-target target-right" data-cam="right" title="Right Camera">
-            <span class="cam-dot dot-right"></span>
-            <span class="cam-badge">RIGHT</span>
-          </div>
+          <button type="button" class="camera-target target-front" data-cam="front" title="Front camera" aria-label="Front camera" aria-pressed="false"><span class="cam-dot" aria-hidden="true"></span></button>
+          <button type="button" class="camera-target target-rear" data-cam="rear" title="Rear camera" aria-label="Rear camera" aria-pressed="false"><span class="cam-dot" aria-hidden="true"></span></button>
+          <button type="button" class="camera-target target-left" data-cam="left" title="Left camera" aria-label="Left camera" aria-pressed="false"><span class="cam-dot" aria-hidden="true"></span></button>
+          <button type="button" class="camera-target target-right" data-cam="right" title="Right camera" aria-label="Right camera" aria-pressed="false"><span class="cam-dot" aria-hidden="true"></span></button>
 
           <!-- Clickable Car Body for Quad / All -->
           <div class="target-center-car" data-cam="quad" title="All Cameras (Quad Grid)"></div>
@@ -233,14 +151,15 @@ class SedanCameraSelector {
     const cLeft = this.container.querySelector("#coneLeft");
     const cRight = this.container.querySelector("#coneRight");
 
-    if (cFront) cFront.style.opacity = isQuad || this.activeLayout === "front" ? "1" : "0.08";
-    if (cRear) cRear.style.opacity = isQuad || this.activeLayout === "rear" ? "1" : "0.08";
-    if (cLeft) cLeft.style.opacity = isQuad || this.activeLayout === "left" ? "1" : "0.08";
-    if (cRight) cRight.style.opacity = isQuad || this.activeLayout === "right" ? "1" : "0.08";
+    if (cFront) cFront.style.opacity = this.activeLayout === "front" ? "1" : isQuad ? "0.35" : "0";
+    if (cRear) cRear.style.opacity = this.activeLayout === "rear" ? "1" : isQuad ? "0.35" : "0";
+    if (cLeft) cLeft.style.opacity = this.activeLayout === "left" ? "1" : isQuad ? "0.35" : "0";
+    if (cRight) cRight.style.opacity = this.activeLayout === "right" ? "1" : isQuad ? "0.35" : "0";
 
     // Targets
     this.container.querySelectorAll(".camera-target").forEach((t) => {
       const cam = t.dataset.cam;
+      t.setAttribute("aria-pressed", String(this.activeLayout === cam || isQuad));
       if (this.activeLayout === cam || isQuad) {
         t.classList.add("active");
       } else {

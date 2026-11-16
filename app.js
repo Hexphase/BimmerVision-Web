@@ -1,12 +1,10 @@
 /**
  * BimmerVision Unified Web App Controller
- * Full Drives Grouping, Dark OSM Maps, Corrected Sedan Diagram, and Tabbed Workflow.
+ * Full Drives Grouping, Dark OSM Maps, Corrected Sedan Diagram, and Drive Playback.
  */
 document.addEventListener("DOMContentLoaded", async () => {
   await window.BVSourceManager.ready;
   // Tabs & Views
-  const tabRecordings = document.getElementById("tabRecordings");
-  const tabPlayback = document.getElementById("tabPlayback");
   const viewRecordings = document.getElementById("viewRecordings");
   const viewPlayback = document.getElementById("viewPlayback");
 
@@ -91,6 +89,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 1. Initialize Player & Exporter
   const player = new BimmerVisionPlayer(canvas, hudElements);
   window.player = player;
+  const drivingView = new BVDrivingView(document.getElementById('drivingViewPanel'));
+  player.setDrivingView(drivingView);
   const exporter = new ClipExporter(player);
 
   // 2. Initialize Dark OSM Maps
@@ -100,6 +100,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const overviewMap = new DarkOsmMap(overviewMapCanvas, { fitAll: true });
   const playbackMap = new DarkOsmMap(playbackMapCanvas, { fitAll: false });
   player.setLiveMap(playbackMap);
+
+  const driveIcon = name => {
+    const paths={play:'<path d="m8 5 11 7-11 7Z" fill="currentColor" stroke="none"/>',overview:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16v-4m5 4V8m5 8v-6"/>',clips:'<rect x="5" y="3" width="16" height="14" rx="2"/><path d="M17 21H5a2 2 0 0 1-2-2V7m8 0h6m-6 4h6"/>',download:'<path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/>'};
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[name]+'</svg>';
+  };
 
   // 3. Initialize Interactive Sedan Camera Selector (All, Source, Front, Rear, Left, Right, Identify)
   let sedanSelector = null;
@@ -114,14 +119,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     );
     player.setSedanSelector(sedanSelector);
+    new BVPlaybackLayout(document.getElementById("viewPlayback"),player);
   }
 
   // 4. Tab Navigation Controller ('Recordings' and 'Playback')
   function switchTab(tabName) {
+    if(tabName==='recordings')window.BVRecordingCache?.clear();
+    document.body.dataset.screen=tabName==='recordings'?'library':'playback';
+    document.querySelector('.app-menu').open=false;
     window.scrollTo({top:0,behavior:"instant"});
     if (tabName === "recordings") {
-      tabRecordings.classList.add("active");
-      tabPlayback.classList.remove("active");
       viewRecordings.classList.add("active");
       viewPlayback.classList.remove("active");
       setTimeout(() => {
@@ -129,8 +136,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         overviewMap.render();
       }, 50);
     } else {
-      tabPlayback.classList.add("active");
-      tabRecordings.classList.remove("active");
       viewPlayback.classList.add("active");
       viewRecordings.classList.remove("active");
       setTimeout(() => {
@@ -141,15 +146,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  tabRecordings.addEventListener("click", () => switchTab("recordings"));
-  tabPlayback.addEventListener("click", () => {
-    if (selectedDrive && (!activeDrive || activeDrive.id !== selectedDrive.id)) playClipInDrive(selectedDrive.segments[0].clip,true);
-    else switchTab("playback");
-  });
-
   let detectedDrives = [];
   let selectedDrive = null;
   let activeDrive = null, activeClip = null, loadToken = 0, lastOpen = null;
+  const recordingNavigation = new BVRecordingNavigation({previous:document.getElementById('skipBackBtn'),next:document.getElementById('skipFwdBtn'),getContext:()=>({drive:activeDrive,clipId:activeClip?.id}),openClip:clip=>playClipInDrive(clip,true)});
   const cameraStore = new CameraStore(apiFetch, localStorage);
   let dragWasPlaying=false, seekToken=0, previewAt=0;
   const timeline = new DriveTimeline(document.getElementById('driveTimeline'), (seg, offset, options={}) => {
@@ -193,9 +193,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById('libraryRefreshBtn').addEventListener('click', () => location.reload());
   document.getElementById('loadingCancelBtn').addEventListener('click', () => {loadToken++;player.cancelLoad();hideLoadingModal();switchTab('recordings');});
   document.getElementById('loadingRetryBtn').addEventListener('click', () => {if(lastOpen)playClipInDrive(lastOpen.clip,lastOpen.autoPlay,lastOpen.startAt);});
-  player.onTimeUpdate = seconds => { timeline.update(activeClip?.id,seconds); };
+  player.onTimeUpdate = seconds => {
+    timeline.update(activeClip?.id,seconds);
+    hudElements.scrubber.style.setProperty('--seek-progress',(player.duration>0?Math.max(0,Math.min(100,seconds/player.duration*100)):0)+'%');
+    document.getElementById('dockElapsed').textContent=DriveTimeline.format(seconds);
+    document.getElementById('dockDuration').textContent=DriveTimeline.format(player.duration);
+  };
   player.onCameraViewChange = view => { if(openCalibrateBtn) openCalibrateBtn.disabled=!!view?.single; };
   player.onStateChange = ({state,message,loaded,total}) => {
+    recordingNavigation.update(state==='loading');
     const status = document.getElementById('playbackStatus');
     status.textContent = message || ({playing:'Playing',paused:'Paused',loading:'Preparing video…',buffering:'Buffering…',ended:'Drive complete',idle:'Choose a recording',error:'Playback unavailable'}[state] || state);
     status.dataset.state=state;
@@ -249,6 +255,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function checkForUpdates(force=false){
     if(checkingUpdates)return;
     checkingUpdates=true;
+    const versionSource=window.BVSourceManager.source;
     const button=document.getElementById('checkUpdatesBtn'),status=document.getElementById('releaseCheckStatus'),banner=document.getElementById('releaseNotice');
     if(window.BVSourceManager.source.kind!=='car'){button.hidden=true;banner.hidden=true;document.getElementById('installedCarVersion').textContent='USB viewing';status.textContent='The hosted web player updates when you reload this page. Car updates are available through MGU Store.';checkingUpdates=false;return;}
     button.hidden=false;button.disabled=true;status.textContent='Checking GitHub using your device’s internet connection…';
@@ -257,8 +264,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       const response=await apiFetch('/api/v1/version',{signal:abort.signal});
       if(!response.ok)throw new Error('Installed version unavailable.');
       const info=await response.json();
+      if(window.BVSourceManager.source!==versionSource)return;
       document.getElementById('installedCarVersion').textContent=info.version||'Unavailable';
+      window.BVAppVersion?.setConnected(info.version);
       const result=await releaseChecker.check(info.version,{force});
+      if(window.BVSourceManager.source!==versionSource)return;
       if(result.state==='update'){
         status.textContent=`Version ${result.latestVersion} is available. Installed: ${result.currentVersion}.`;
         document.getElementById('releaseNoticeText').textContent=`BimmerVision ${result.latestVersion} is available · installed ${result.currentVersion}`;
@@ -270,8 +280,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         banner.hidden=true;
         status.textContent=result.state==='current'?`No newer stable release found. Installed: ${info.version}.`:`Could not check for updates. ${result.reason||''}`;
       }
-    }catch(error){banner.hidden=true;status.textContent='Could not check for updates. Check your device’s internet connection and try again.';}
-    finally{clearTimeout(timer);checkingUpdates=false;button.disabled=false;}
+    }catch(error){if(window.BVSourceManager.source===versionSource){banner.hidden=true;status.textContent='Could not check for updates. Check your device’s internet connection and try again.';}}
+    finally{clearTimeout(timer);checkingUpdates=false;button.disabled=false;if(window.BVSourceManager.source!==versionSource)checkForUpdates(true);}
   }
   document.getElementById('checkUpdatesBtn').addEventListener('click',()=>checkForUpdates(true));
   document.getElementById('dismissReleaseNotice').addEventListener('click',()=>{
@@ -338,8 +348,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             <div style="flex:1;">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
                 <h3 class="drive-departure" style="font-size:15px;font-weight:600;color:#fff;margin:0;">${escapeHtml(drive.startTime || 'Recorded drive')}</h3>
-                <span class="drive-badge-pill" style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,0.06);color:var(--tesla-muted);border:1px solid rgba(255,255,255,0.08);font-weight:500;">${escapeHtml(drive.durationFormatted)}</span>
-                <span class="drive-badge-pill" style="font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,0.06);color:var(--tesla-muted);border:1px solid rgba(255,255,255,0.08);font-weight:500;">${drive.segments.length} ${drive.segments.length === 1 ? 'clip' : 'clips'}</span>
               </div>
               <p class="drive-route-summary" style="margin:0;font-size:12px;color:var(--tesla-muted);display:flex;align-items:center;gap:6px;">
                 <span class="route-marker" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--m-blue);box-shadow:0 0 8px var(--m-blue);"></span>
@@ -356,16 +364,17 @@ document.addEventListener("DOMContentLoaded", async () => {
               <span class="drive-storage" style="font-size:11px;color:var(--tesla-muted);font-weight:500;padding-left:4px;">${formatBytes(drive.bytes)}</span>
             </div>
           </div>
+          <p class="drive-description">${escapeHtml(drive.durationFormatted)} of footage${drive.endpoints.end.time ? ` · Ends ${escapeHtml(drive.endpoints.end.time)}` : ''} · ${drive.segments.length} ${drive.segments.length===1?'recording':'recordings'}</p>
           <div class="drive-card-actions" style="margin-top:10px;display:flex;gap:6px;align-items:center;">
-            <button class="drive-play" type="button" aria-label="Play drive from ${escapeHtml(drive.startTime || drive.date)}" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="m8 5 11 7-11 7z"/></svg>Play drive
+            <button class="drive-play" type="button" aria-label="Play drive from ${escapeHtml(drive.startTime || drive.date)}" title="Play drive" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;">
+              ${driveIcon("play")}<span>Play drive</span>
             </button>
             <div class="drive-secondary-actions" style="display:flex;gap:6px;">
-              <button class="btn-view-entire-drive" type="button" style="padding:6px 12px;border-radius:999px;font-size:12px;">Overview <span aria-hidden="true">↗</span></button>
-              <button class="btn-toggle-recordings" type="button" aria-expanded="false" style="padding:6px 12px;border-radius:999px;font-size:12px;">${drive.segments.length} ${drive.segments.length===1 ? "clip" : "clips"} <span aria-hidden="true">⌄</span></button>
+              <button class="btn-view-entire-drive" type="button" aria-label="Drive overview" title="Drive overview" style="padding:6px 12px;border-radius:999px;font-size:12px;">${driveIcon("overview")}<span>Overview</span></button>
+              <button class="btn-toggle-recordings" type="button" aria-label="Show all ${drive.segments.length} clips" aria-controls="drive-clips-${escapeHtml(drive.id)}" title="Recordings in this drive" aria-expanded="false" style="padding:6px 12px;border-radius:999px;font-size:12px;">${driveIcon("clips")}<span class="drive-clips-label">Show all ${drive.segments.length} clips</span></button>
             </div>
           </div>
-          <div class="drive-recordings-drawer"></div>
+          <div id="drive-clips-${escapeHtml(drive.id)}" class="drive-recordings-drawer" hidden></div>
         `;
         card.querySelector('.drive-play').addEventListener('click', () => { selectDrive(drive,card); playClipInDrive(drive.segments[0].clip,true); });
         card.querySelector('.btn-view-entire-drive').addEventListener('click', () => { selectDrive(drive,card); viewRecordings.classList.add('detail-open'); if(window.innerWidth<=760)document.querySelector('.drive-overview-stage').scrollIntoView({block:'start',behavior:'smooth'}); });
@@ -415,7 +424,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         const toggle = card.querySelector('.btn-toggle-recordings'), drawer=card.querySelector('.drive-recordings-drawer');
-        toggle.addEventListener('click', () => { const open=drawer.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open)); });
+        toggle.addEventListener('click', () => { const open=drawer.classList.toggle('open');drawer.hidden=!open;toggle.setAttribute('aria-expanded',String(open));const label=open?'Hide clips':`Show all ${drive.segments.length} clips`;toggle.setAttribute('aria-label',label);toggle.querySelector('.drive-clips-label').textContent=label; });
         drive.segments.forEach((seg,i) => {
           const row = document.createElement('div'); row.className='recording-clip-row';
           row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.05);gap:10px;transition:background 0.2s ease;';
@@ -428,15 +437,15 @@ document.addEventListener("DOMContentLoaded", async () => {
               <small style="display:block;color:var(--tesla-muted);font-size:11px;margin-top:2px;">${DriveTimeline.format(seg.clip.durationSeconds)} · ${formatBytes(seg.clip.bytes||0)}</small>
             </div>
             <div class="clip-row-actions" style="display:flex;align-items:center;gap:6px;">
-              <a class="clip-row-raw" href="#" data-raw-recording="${seg.clip.id}" download aria-label="Download original Clip ${i+1} and metadata as ZIP" title="Original BVR recording and metadata">Raw ZIP</a>
+              <a class="clip-row-raw" href="#" data-raw-recording="${seg.clip.id}" download aria-label="Download original Clip ${i+1} and metadata as ZIP" title="Download original BVR recording and metadata">${driveIcon("download")}<span>Original ZIP</span></a>
               <button class="btn-lock-clip" type="button" title="${seg.clip.locked ? 'Recording is locked. Tap to unlock.' : 'Lock recording to prevent deletion'}" style="display:flex;align-items:center;background:rgba(255,255,255,0.06);border:1px solid ${seg.clip.locked ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'};border-radius:6px;padding:4px 8px;cursor:pointer;color:${seg.clip.locked ? '#f59e0b' : 'var(--tesla-muted)'};transition:all 0.2s ease;">
                 ${getLockSvg(seg.clip.locked, 13)}
               </button>
               <button class="btn-delete-clip" type="button" title="Delete recording" style="display:flex;align-items:center;background:rgba(238,36,64,0.1);border:1px solid rgba(238,36,64,0.3);border-radius:6px;padding:4px 8px;cursor:pointer;color:#EE2440;transition:all 0.2s ease;">
                 ${getTrashSvg(13)}
               </button>
-              <button class="clip-row-play" type="button" title="Play clip" style="display:flex;align-items:center;gap:4px;background:rgba(61,168,242,0.12);border:1px solid rgba(61,168,242,0.25);border-radius:6px;padding:4px 8px;color:var(--m-blue);cursor:pointer;font-size:11px;">
-                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="m8 5 11 7-11 7z"/></svg>
+              <button class="clip-row-play" type="button" aria-label="Play recording ${i+1}" title="Play recording" style="display:flex;align-items:center;gap:4px;background:rgba(61,168,242,0.12);border:1px solid rgba(61,168,242,0.25);border-radius:6px;padding:4px 8px;color:var(--m-blue);cursor:pointer;font-size:11px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg><span>Play</span>
               </button>
             </div>
           `;
@@ -492,7 +501,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });driveListEl.appendChild(section);
     });
     if(selectedDrive){const refreshed=detectedDrives.find(d=>d.id===selectedDrive.id);if(refreshed)selectDrive(refreshed,[...document.querySelectorAll(".drive-card")].find(card=>card.dataset.id===refreshed.id));}
-    if(activeDrive){const refreshed=detectedDrives.find(d=>d.id===activeDrive.id);if(refreshed){activeDrive=refreshed;timeline.setDrive(refreshed);timeline.update(activeClip?.id,player.currentTime);}}
+    if(activeDrive){const refreshed=detectedDrives.find(d=>d.id===activeDrive.id);if(refreshed){activeDrive=refreshed;timeline.setDrive(refreshed);timeline.update(activeClip?.id,player.currentTime);recordingNavigation.update();}}
   } catch (err) {
     if(quiet)return;
     console.error("Failed to load recordings:", err);
@@ -507,7 +516,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.BVSourceManager.subscribe(()=>{
     loadToken++;player.cancelLoad();hideLoadingModal();
     activeClip=null;activeDrive=null;selectedDrive=null;detectedDrives=[];librarySignature=null;
-    tabPlayback.disabled=true;document.getElementById('exportModal').classList.remove('open');document.getElementById('identifyModal').classList.remove('open');
+    recordingNavigation.update(false);
+    document.getElementById('exportModal').classList.remove('open');document.getElementById('identifyModal').classList.remove('open');
     switchTab('recordings');loadLibrary();checkForUpdates(true);
   });
   window.addEventListener('bimmervision:library-updated',()=>loadLibrary({quiet:true,onlyChanged:true}));
@@ -535,13 +545,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     if (overviewDeleteBtn) {
       overviewDeleteBtn.disabled = false;
-    }
-
-    // Enable Playback tab now that a drive is selected
-    if (tabPlayback.classList.contains("disabled") || tabPlayback.disabled) {
-      tabPlayback.classList.remove("disabled");
-      tabPlayback.removeAttribute("disabled");
-      tabPlayback.setAttribute("title", "Open Playback");
     }
 
     // Populate Overview
@@ -581,7 +584,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="btn-lock-clip" type="button" title="${seg.clip.locked ? 'Recording is locked. Tap to unlock.' : 'Lock recording to prevent deletion'}" style="background:rgba(255,255,255,0.06);border:1px solid ${seg.clip.locked ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'};border-radius:6px;padding:5px 8px;cursor:pointer;color:${seg.clip.locked ? '#f59e0b' : 'var(--tesla-muted)'};display:inline-flex;align-items:center;justify-content:center;">${getLockSvg(seg.clip.locked, 13)}</button>
           <button class="btn-delete-clip" type="button" title="Delete recording" style="background:rgba(238,36,64,0.1);border:1px solid rgba(238,36,64,0.3);border-radius:6px;padding:5px 8px;cursor:pointer;color:#EE2440;display:inline-flex;align-items:center;justify-content:center;">${getTrashSvg(13)}</button>
-          <button class="unit-toggle-pill btn-play-clip" style="padding: 2px 8px;">Play</button>
+          <button class="unit-toggle-pill btn-play-clip" type="button" aria-label="Play recording ${sIdx+1}" title="Play recording" style="padding: 2px 8px;">${driveIcon("play")}<span>Play</span></button>
         </div>
       `;
 
@@ -803,11 +806,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     player.cancelLoad();
     lastOpen={clip,autoPlay,startAt};
     const drive=detectedDrives.find(d=>d.segments.some(s=>s.clip.id===clip.id));
-    if(drive) {activeDrive=drive;timeline.setDrive(drive);}
+    activeDrive=drive||null;
+    if(drive)timeline.setDrive(drive);
     activeClip=clip;
+    window.BVRecordingCache?.setWindow(drive,clip.id,{native:player.nativeAvailable});
+    recordingNavigation.update(true);
     updatePlaybackLockUI();
     document.getElementById('playbackTitle').textContent = drive ? `${drive.date} · ${drive.startTime}` : 'Drive playback';
-    document.getElementById('playbackClipLabel').textContent = `Clip ${(drive?.segments.findIndex(s=>s.clip.id===clip.id) ?? 0)+1} of ${drive?.segments.length||1}`;
+    document.getElementById('playbackClipLabel').textContent = `Recording ${(drive?.segments.findIndex(s=>s.clip.id===clip.id) ?? 0)+1} of ${drive?.segments.length||1}`;
+    document.getElementById('dockRecordingLabel').textContent=document.getElementById('playbackClipLabel').textContent;
     document.getElementById('loadingRetryBtn').hidden=true;
     document.getElementById('playbackRetryBtn').hidden=true;
     document.getElementById('loadingProgress').textContent='';
@@ -828,6 +835,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       await paintLoading();
       if(token!==loadToken)return;
       hideLoadingModal();
+      window.BVRecordingCache?.start();
 
       if (!isClipIdentified(clip.id) && player.requiresCameraMappingAt(startAt)) {
         openIdentifyModal({
@@ -850,10 +858,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  const appMenu=document.querySelector('.app-menu');
+  document.getElementById('quickExportBtn').addEventListener('click',()=>document.getElementById('openExportBtn').click());
+  appMenu.addEventListener('click',event=>{if(event.target.closest('button'))appMenu.open=false;});
+  document.addEventListener('click',event=>{if(!appMenu.contains(event.target))appMenu.open=false;});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&appMenu.open){event.preventDefault();appMenu.open=false;appMenu.querySelector('summary').focus();}});
+
   // 6. Transport Controls
   hudElements.playBtn.addEventListener("click", () => player.togglePlay());
-  document.getElementById("skipBackBtn").addEventListener("click", () => player.step(-1));
-  document.getElementById("skipFwdBtn").addEventListener("click", () => player.step(1));
 
   hudElements.scrubber.addEventListener("input", (e) => {
     player.seek(parseFloat(e.target.value));
@@ -910,7 +922,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 8. Desktop Keyboard Shortcuts
   window.addEventListener("keydown", (e) => {
     if (document.querySelector(".modal-backdrop.open") || videoLoadingModal.style.display === "flex") return;
-    if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if (e.defaultPrevented || e.target.closest?.('input,select,textarea,button,a,summary,[contenteditable="true"]')) return;
 
     if (e.code === "Space") {
       e.preventDefault();
@@ -954,21 +966,27 @@ document.addEventListener("DOMContentLoaded", async () => {
       brake: document.getElementById("exportToggleBrake") ? document.getElementById("exportToggleBrake").checked : true,
       gas: document.getElementById("exportToggleGas") ? document.getElementById("exportToggleGas").checked : true,
       time: document.getElementById("exportToggleTime") ? document.getElementById("exportToggleTime").checked : true,
+      drivingView: document.getElementById("exportToggleDriving").checked && !document.getElementById("exportToggleDriving").disabled,
       map: document.getElementById("exportToggleMap") ? document.getElementById("exportToggleMap").checked : true,
     };
   }
 
-  function updateExportPreview() {
+  let exportDrivingPreview=null,exportPreviewEpoch=0,exportInProgress=false;
+  function releaseExportDrivingPreview(){++exportPreviewEpoch;exportDrivingPreview?.dispose();exportDrivingPreview=null;}
+  new MutationObserver(()=>{if(!exportModal.classList.contains('open'))releaseExportDrivingPreview();}).observe(exportModal,{attributes:true,attributeFilter:['class']});
+
+  async function updateExportPreview() {
+    const previewToken=++exportPreviewEpoch,recordingEpoch=player._clipEpoch;
+
     const previewCanvas = document.getElementById("exportPreviewCanvas");
     if (!previewCanvas) return;
     const view = document.getElementById("exportCameraSelect") ? document.getElementById("exportCameraSelect").value : "quad";
     const speedUnit = document.getElementById("exportUnitSelect") ? document.getElementById("exportUnitSelect").value : (player.speedUnit || "mph");
     const overlays = getExportOverlays();
 
-    const midInfo = player.getMidRecordingFrames ? player.getMidRecordingFrames() : {
-      fr: player.lastFrFrame,
-      lr: player.lastLrFrame,
-      time: (player.duration || 0) / 2
+    const midInfo = {
+      fr:player.lastFrFrame,lr:player.lastLrFrame,time:player.currentTime||0,
+      telemetry:player.parser?.getTelemetryAtTime(player.currentTime||0,player.manifest?.startMonotonicUs)
     };
 
     const tsEl = document.getElementById("exportPreviewTimestamp");
@@ -978,7 +996,35 @@ document.addEventListener("DOMContentLoaded", async () => {
       tsEl.textContent = `${String(mins).padStart(2, "0")}:${secs}`;
     }
 
-    exporter.renderPreview(previewCanvas, {
+    const note=document.getElementById('exportDrivingNote');
+    if(overlays.drivingView) {
+      startExportBtn.disabled=true;
+      if(!exportDrivingPreview) {
+        note.textContent='Preparing Driving view preview…';
+        try {
+          const prepared=await player.drivingView.createExportRenderer();
+          if(previewToken!==exportPreviewEpoch||recordingEpoch!==player._clipEpoch||!exportModal.classList.contains('open')){prepared.dispose();return;}
+          exportDrivingPreview=prepared;
+        } catch(error) {if(previewToken===exportPreviewEpoch){note.textContent=error.message;startExportBtn.disabled=true;}return;}
+      }
+      note.textContent=overlays.map?'Export sidebar: route map on top, Driving view below. Distances in feet.':'Export sidebar: Driving view. Distances in feet.';
+      startExportBtn.disabled=exportInProgress;
+    } else {
+      exportDrivingPreview?.dispose();exportDrivingPreview=null;
+      note.textContent=document.getElementById('exportToggleDriving').disabled?'This recording has no supported Driving view metadata available.':'Optional: add Driving view below the route map.';
+      startExportBtn.disabled=exportInProgress;
+    }
+
+    if(overlays.map&&player.liveMap?.prepareForExport) {
+      const sidebarNote=note.textContent;startExportBtn.disabled=true;note.textContent='Preparing map for preview…';
+      try {
+        await player.liveMap.prepareForExport(midInfo.time,640,overlays.drivingView?480:960,{check:()=>{if(previewToken!==exportPreviewEpoch||recordingEpoch!==player._clipEpoch||!exportModal.classList.contains('open'))throw new Error('Preview changed');}});
+      } catch(error) {if(previewToken===exportPreviewEpoch)note.textContent=error.message;return;}
+      if(previewToken!==exportPreviewEpoch||recordingEpoch!==player._clipEpoch)return;
+      note.textContent=sidebarNote;startExportBtn.disabled=exportInProgress;
+    }
+
+    try {exporter.renderPreview(previewCanvas, {
       view: view,
       overlays: overlays,
       speedUnit: speedUnit,
@@ -988,8 +1034,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       telemetry: midInfo.telemetry,
       mapping: player.cameraMapping,
       manifest: player.manifest,
-      map: player.liveMap
-    });
+      map: player.liveMap,
+      drivingView: exportDrivingPreview
+    });} catch(error){exportDrivingPreview?.dispose();exportDrivingPreview=null;note.textContent=error.message;startExportBtn.disabled=true;}
   }
 
   const overlayCheckboxIds = [
@@ -1000,7 +1047,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "exportToggleBrake",
     "exportToggleGas",
     "exportToggleTime",
-    "exportToggleMap"
+    "exportToggleMap",
+    "exportToggleDriving"
   ];
 
   overlayCheckboxIds.forEach(id => {
@@ -1019,7 +1067,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     selectAllOverlaysBtn.addEventListener("click", () => {
       overlayCheckboxIds.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.checked = true;
+        if (el && !el.disabled) el.checked = true;
       });
       updateExportPreview();
     });
@@ -1059,6 +1107,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const manualBtn = document.getElementById("downloadExportLink");
     if (manualBtn) manualBtn.style.display = "none";
 
+    const drivingToggle=document.getElementById('exportToggleDriving');
+    drivingToggle.disabled=!player.drivingView?.data?.frames?.some(f=>f.o.length||f.b.length);
+    if(drivingToggle.disabled)drivingToggle.checked=false;
     updateExportPreview();
   });
 
@@ -1071,6 +1122,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   startExportBtn.addEventListener("click", async (e) => {
+    if(exportInProgress)return;
+    exportInProgress=true;
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -1144,7 +1197,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       progressText.textContent = "Export error: " + (err.message || String(err));
       alert("Export failed: " + (err.message || String(err)));
       startExportBtn.disabled = false;
-    }
+    } finally {exportInProgress=false;}
   });
 
   // 11. Camera Identity Modal Controller (Matches Mac/Windows Desktop Alignment)

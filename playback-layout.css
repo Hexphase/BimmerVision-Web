@@ -1,0 +1,213 @@
+/* Approved playback workspace: quiet navigation and one synchronized player. */
+.mobile-redesign .app-header {position:relative;display:flex;height:76px;gap:26px;padding:0 24px;background:#0c0d0f;border-bottom:1px solid #292c32;}
+.mobile-redesign .app-header::after {display:none;}
+.mobile-redesign .app-header .brand-wordmark {width:150px;height:auto;}
+.header-context {display:flex;align-items:center;gap:22px;min-width:0;flex:1;}
+.header-context>.back-link {white-space:nowrap;font-size:13px;color:#d7dbe2;}
+.playback-context {min-width:0;}
+.playback-context h1 {font-size:17px;line-height:1.35;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.playback-context p {display:flex;gap:12px;align-items:center;font-size:10px;color:#9199a7;margin-top:3px;}
+.header-actions {display:flex;align-items:center;gap:18px;margin-left:auto;}
+.header-export {background:none;color:#e4e8ef;font:inherit;border:0;min-height:44px;padding:8px;cursor:pointer;}
+.app-menu {position:relative;z-index:200;}
+.app-menu summary {list-style:none;cursor:pointer;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;font-size:17px;letter-spacing:2px;border-radius:8px;}
+.app-menu summary::-webkit-details-marker {display:none;}
+.app-menu summary:hover {background:#20242b;}
+.app-menu-content {position:absolute;top:calc(100% + 8px);right:0;display:flex;flex-direction:column;gap:12px;width:250px;padding:16px;border:1px solid #353b45;border-radius:12px;background:#191c22;box-shadow:0 12px 40px #0008;}
+.app-menu-content .playback-tools {margin:0;display:block;}
+.mobile-redesign .app-menu-content .recording-actions {display:flex;flex-direction:column;margin:0;padding:0;border:0;background:none;}
+.mobile-redesign .app-menu-content .recording-actions .export-btn {width:100%;justify-content:flex-start;}
+.mobile-redesign .app-menu-content .advanced-toggle-label {display:flex;font-size:12px;min-height:36px;}
+.mobile-redesign .app-menu-content .unit-toggle-pill {width:100%;min-height:40px;justify-content:flex-start;text-align:left;font-size:12px;}
+.mobile-redesign .app-menu-content .status-pill {display:flex;font-size:11px;}
+body[data-screen="library"] .header-context,body[data-screen="library"] .header-export,body[data-screen="library"] .playback-tools {display:none;}
+.app-menu-content .camera-review-action {display:none;}
+.control-btn:disabled {opacity:.25;cursor:default;filter:grayscale(1);}
+.control-btn:disabled:hover {background:transparent;transform:none;}
+.mobile-redesign #viewPlayback .playback-grid {display:grid;flex:none;grid-template-columns:minmax(0,1.65fr) minmax(240px,.7fr) minmax(170px,.35fr);grid-template-rows:minmax(136px,.48fr) minmax(170px,1fr) auto auto;grid-template-areas:"cameras map map" "cameras driving selector" "instruments instruments instruments" "transport transport transport";gap:12px;width:100%;max-width:none;height:calc(100dvh - 76px);min-height:520px;margin:0;padding:16px 20px 12px;box-sizing:border-box;align-items:stretch;}
+.mobile-redesign #viewPlayback .sedan-panel-card {grid-area:selector;width:100%;height:100%;min-height:0;margin:0;overflow:hidden;border-radius:14px;}
+#viewPlayback #sedanSelectorContainer {display:grid;grid-template-columns:minmax(0,1fr) 150px;align-items:stretch;height:100%;}
+#viewPlayback .sedan-panel-header {padding:16px;display:flex;flex-direction:column;justify-content:center;gap:12px;border:0;min-width:0;}
+#viewPlayback .sedan-header-meta {display:flex;flex-direction:column;align-items:start;gap:5px;}
+#viewPlayback .sedan-hint-text {font-size:10px;color:#8792a2;letter-spacing:0;text-transform:none;}
+#viewPlayback .sedan-view-switchers {width:auto;align-self:start;margin:0;min-width:0;}
+#viewPlayback .sedan-view-pill {min-height:40px;padding:6px 10px;font-size:11px;}
+#viewPlayback .sedan-view-pill svg {display:none;}
+#viewPlayback .sedan-stage-wrapper {flex:1;min-height:0;padding:0;overflow:hidden;}
+#viewPlayback .sedan-stage-box {flex:0 0 200px;transform:scale(.55);transform-origin:center;}
+.mobile-redesign #viewPlayback #playerStage {grid-area:cameras;display:flex;min-height:0;height:100%;min-width:0;overflow:hidden;border-radius:14px;box-shadow:none;}
+.mobile-redesign #viewPlayback .canvas-viewport {width:100%;height:100%;min-height:0;max-height:none;aspect-ratio:auto;flex:1;}
+.mobile-redesign #viewPlayback #videoCanvas {width:100%;height:100%;object-fit:contain;}
+.mobile-redesign #viewPlayback #drivingViewPanel {grid-area:driving;height:100%;min-height:0;width:100%;display:flex;flex-direction:column;border-radius:14px;}
+#viewPlayback .driving-panel .section-header {padding:8px 10px;flex:0 0 auto;}
+#viewPlayback .driving-stage {height:auto;min-height:0;flex:1;}
+#viewPlayback .driving-detail {min-height:0;padding:5px 10px;font-size:8px;}
+.mobile-redesign #viewPlayback .live-map-panel {grid-area:map;height:100%;min-height:0;width:100%;display:flex;flex-direction:column;border-radius:14px;}
+#viewPlayback .live-map-panel .section-header {padding:8px 10px;flex:0 0 auto;}
+#viewPlayback .live-map-box {flex:1;height:auto;min-height:0;}
+.mobile-redesign #viewPlayback .cockpit-hud {grid-area:instruments;box-sizing:border-box;width:100%;padding:5px 24px;border-radius:14px;background:#111419;}
+.mobile-redesign #viewPlayback .transport-panel {grid-area:transport;padding:0 4px;min-width:0;gap:5px;}
+.mobile-redesign #viewPlayback .transport-action-row {margin-top:0;}
+.mobile-redesign #viewPlayback .drive-timeline {flex:0 0 auto;}
+.dock-clock,.dock-recording-label {display:none;}
+#viewPlayback .play-btn {background:#1689f5;color:#fff;border-color:#1689f5;}
+
+#viewPlayback .canvas-viewport::after {display:none;}
+#viewPlayback :is(.live-map-box,.sedan-view-switchers,.sedan-view-pill) {border-radius:0;}
+
+/* One flat workspace; the original camera selector remains in the page. */
+.playback-vision-pair {display:contents;}
+#viewPlayback .sedan-view-pill.active {background:#1689f5;color:#fff;}
+#viewPlayback #sedanSelectorContainer {display:flex;flex-direction:column;}
+#viewPlayback .sedan-panel-header {padding:8px;gap:6px;flex:0 0 auto;}
+#viewPlayback .sedan-hint-text {display:none;}
+#viewPlayback .sedan-view-switchers {align-self:stretch;}
+#viewPlayback .sedan-view-pill {padding:5px 3px;min-height:44px;font-size:11px;}
+#viewPlayback .sedan-stage-wrapper {width:100%;height:auto;flex:1;min-height:0;}
+.mobile-redesign #viewPlayback .playback-grid {padding:0;gap:1px;background:#282c32;grid-template-columns:minmax(0,1.65fr) minmax(150px,.38fr) minmax(230px,.67fr);grid-template-rows:minmax(250px,1fr) minmax(140px,.55fr) auto auto;grid-template-areas:"cameras selector driving" "cameras map map" "instruments instruments instruments" "transport transport transport";}
+.mobile-redesign #viewPlayback :is(#playerStage,.panel-card,.cockpit-hud,.transport-panel) {border-radius:0;border:0;box-shadow:none;margin:0;}
+.mobile-redesign #viewPlayback .transport-panel {background:#101216;padding:8px 20px;}
+.mobile-redesign #viewPlayback .cockpit-hud {padding:2px 24px;}
+.export-driving-note {grid-column:1/-1;font-size:11px;line-height:1.6;color:#98a5b7;}
+.meta-toggle-item:has(input:disabled) {opacity:.4;}
+
+@media(max-width:999px) {
+ html:has(body[data-screen="playback"]) {scroll-padding-top:calc(56px + env(safe-area-inset-top,0px) + min(75vw, max(100px, calc(100dvh - 210px - env(safe-area-inset-top,0px)))));}
+ html,body.mobile-redesign {overflow-x:clip;overflow-y:visible;}
+ body[data-screen="playback"] {--playback-header-height:calc(56px + env(safe-area-inset-top,0px));--pinned-video-height:min(75vw, max(100px, calc(100dvh - 210px - env(safe-area-inset-top,0px))));background:#101216;}
+ body[data-screen="playback"] .app-shell {height:auto;min-height:100dvh;overflow:visible;}
+ body[data-screen="playback"] .app-header {position:sticky;top:0;z-index:80;display:grid;grid-template-columns:88px minmax(0,1fr) 88px;height:var(--playback-header-height);min-height:0;padding:env(safe-area-inset-top,0px) 8px 0;gap:0;box-sizing:border-box;background:#0c0d0f;}
+ body[data-screen="playback"] .app-header .header-left {display:none;}
+ body[data-screen="playback"] .header-context {display:contents;}
+ body[data-screen="playback"] .header-context>.back-link {grid-column:1;grid-row:1;justify-self:start;font-size:12px;min-height:44px;padding:0 4px;}
+ body[data-screen="playback"] .playback-context {grid-column:2;grid-row:1;min-width:0;text-align:center;}
+ body[data-screen="playback"] .playback-context h1 {font-size:12px;line-height:1.4;white-space:normal;}
+ body[data-screen="playback"] .playback-context p {position:absolute;top:100%;left:0;right:0;justify-content:center;pointer-events:none;margin:0;background:#101216;}
+ body[data-screen="playback"] :is(#playbackClipLabel,#playbackStatus) {display:none;}
+ body[data-screen="playback"] #playbackRetryBtn {pointer-events:auto;}
+ body[data-screen="playback"] .header-actions {grid-column:3;grid-row:1;margin:0;gap:0;justify-self:end;}
+ .mobile-redesign .header-export {display:none;}
+ .mobile-redesign #viewPlayback {animation:none;overflow:visible;height:auto;flex:none;}
+ .mobile-redesign #viewPlayback .playback-grid {display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 300px 360px 280px;grid-template-areas:"instruments" "transport" "selector" "driving" "map";height:auto;min-height:0;gap:1px;padding:var(--pinned-video-height) 0 env(safe-area-inset-bottom,0px);overflow:visible;}
+ .mobile-redesign #viewPlayback #playerStage {position:fixed;top:var(--playback-header-height);left:0;right:0;z-index:70;width:100%;height:var(--pinned-video-height);min-height:0;background:#000;}
+ .mobile-redesign #viewPlayback .canvas-viewport {height:100%;width:100%;max-height:none;aspect-ratio:auto;}
+ .mobile-redesign #viewPlayback #videoCanvas {display:block;width:100%;height:100%;object-fit:contain;}
+ .mobile-redesign #viewPlayback .cockpit-hud {height:54px;min-height:0;padding:2px 10px;background:#101216;}
+ #viewPlayback .hud-speed-val {font-size:30px;}
+ #viewPlayback .hud-speed-unit {font-size:9px;}
+ #viewPlayback .hud-center {gap:6px;}
+ #viewPlayback .wheel-group,#viewPlayback .wheel-wrapper {width:48px;height:48px;}
+ #viewPlayback .blinker-icon {width:24px;height:24px;}
+ #viewPlayback .pedals-group {gap:7px;}
+ #viewPlayback .pedal-label {font-size:7px;}
+ #viewPlayback .pedal-card svg {width:28px;height:28px;}
+ .mobile-redesign #viewPlayback .transport-panel {position:static;grid-area:transport;width:100%;height:auto;min-height:112px;padding:8px 16px;gap:2px;backdrop-filter:none;}
+ .mobile-redesign #viewPlayback .drive-timeline {display:none;}
+ .mobile-redesign #viewPlayback .dock-clock {display:flex;justify-content:space-between;align-items:center;font-size:10px;line-height:16px;font-variant-numeric:tabular-nums;color:#b6bfcc;}
+ .mobile-redesign #viewPlayback .dock-recording-label {display:block;font-size:10px;}
+ .mobile-redesign #viewPlayback .scrubber-bar-row[hidden] {display:flex!important;gap:0;}
+ #viewPlayback .scrubber-bar-row #timecode {display:none;}
+ .mobile-redesign #viewPlayback .scrub-slider {height:26px;width:100%;margin:0;}
+ #viewPlayback .scrub-slider::-webkit-slider-runnable-track {height:4px;background:linear-gradient(to right,#1689f5 0 var(--seek-progress,0%),#383f49 var(--seek-progress,0%) 100%);}
+ .mobile-redesign #viewPlayback .transport-action-row {margin:0;}
+ .mobile-redesign #viewPlayback .playback-controls {width:100%;justify-content:center;gap:38px;margin:0;}
+ #viewPlayback .playback-controls .control-btn {width:44px;height:44px;border:0;}
+ #viewPlayback .playback-controls .control-btn::after {display:none;}
+ .mobile-redesign #viewPlayback .sedan-panel-card {grid-area:selector;position:static;width:100%;height:300px;min-height:0;background:#14161a;}
+ #viewPlayback #sedanSelectorContainer {height:100%;}
+ #viewPlayback .sedan-panel-header {padding:10px 16px;}
+ #viewPlayback .sedan-header-meta {flex-direction:row;}
+ #viewPlayback .sedan-stage-wrapper {height:auto;width:100%;min-height:0;flex:1;}
+ .mobile-redesign #viewPlayback #drivingViewPanel {position:static;grid-area:driving;height:360px;min-height:0;}
+ #viewPlayback .driving-stage {height:auto;min-height:0;flex:1;}
+ #viewPlayback .driving-detail {padding:8px 12px;font-size:9px;}
+ .mobile-redesign #viewPlayback .live-map-panel {grid-area:map;height:280px;min-height:0;}
+ #viewPlayback .live-map-box {height:auto;min-height:0;flex:1;}
+}
+
+/* Quiet camera diagram: neutral dots, blue active field, no badges or flashing cones. */
+#viewPlayback .sedan-stage-wrapper {background:#151619;}
+#viewPlayback .sedan-img {width:92px;height:178px;left:54px;top:31px;filter:drop-shadow(0 4px 5px #0004);}
+#viewPlayback .camera-target {display:flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;background:none;border:0;border-radius:50%;animation:none;}
+#viewPlayback .camera-target .cam-dot {display:block;width:9px;height:9px;margin:0;border:0;background:#828489;box-shadow:none;}
+#viewPlayback .camera-target.active .cam-dot {background:#1761d1;box-shadow:none;}
+#viewPlayback .target-front {left:100px;top:-2px;transform:translateX(-50%);}
+#viewPlayback .target-rear {left:100px;bottom:-4px;transform:translateX(-50%);}
+#viewPlayback .target-left {left:8px;top:100px;transform:translateY(-50%);}
+#viewPlayback .target-right {right:8px;top:100px;transform:translateY(-50%);}
+#viewPlayback .beam-cone {animation:none;filter:none;transition:opacity .25s ease;}
+#viewPlayback .cockpit-hud {min-height:0;height:58px;}
+#viewPlayback .wheel-group,#viewPlayback .wheel-wrapper {width:44px;height:44px;}
+#viewPlayback .hud-speed-val {font-size:34px;}
+#viewPlayback .hud-limit-sign {width:28px;height:34px;border-width:2px;}
+#viewPlayback .hud-limit-text {font-size:15px;}
+#viewPlayback .hud-limit-label {font-size:6px;}
+@media(max-width:999px) {
+ .mobile-redesign #viewPlayback .cockpit-hud {height:54px;}
+ #viewPlayback .hud-left {gap:10px;}
+ #viewPlayback .hud-speed-val {font-size:28px;}
+ #viewPlayback .wheel-group,#viewPlayback .wheel-wrapper {width:40px;height:40px;}
+}
+
+/* Coverage fades to transparent before the SVG boundary; soften the angular sides. */
+#viewPlayback .beam-cone {filter:url(#cameraFieldSoftEdge);}
+#viewPlayback #videoCanvas {cursor:pointer;touch-action:manipulation;}
+.playback-action-feedback {position:absolute;left:50%;top:50%;display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:#0b0e15b8;color:#fff;pointer-events:none;z-index:10;opacity:0;}
+.playback-action-feedback svg {width:30px;height:30px;fill:currentColor;}
+@media(max-width:999px) {
+ html:has(body[data-screen="playback"]) {scroll-padding-top:calc(110px + env(safe-area-inset-top,0px) + min(75vw, max(100px, calc(100dvh - 210px - env(safe-area-inset-top,0px)))));}
+ .mobile-redesign #viewPlayback .cockpit-hud {position:fixed;top:calc(var(--playback-header-height) + var(--pinned-video-height));left:0;right:0;z-index:70;width:100%;height:54px;}
+ .mobile-redesign #viewPlayback .playback-grid {grid-template-rows:auto 300px 360px 280px;grid-template-areas:"transport" "selector" "driving" "map";padding-top:calc(var(--pinned-video-height) + 54px);}
+}
+
+/* Typography replaces the speed-limit sign. */
+#viewPlayback .hud-limit-sign {background:none;border:0;border-radius:0;box-shadow:none;width:auto;min-width:30px;height:auto;gap:0;align-items:center;}
+#viewPlayback .hud-limit-label {font-family:inherit;font-size:9px;font-weight:500;line-height:1.1;color:#969eaa;letter-spacing:0;text-transform:none;}
+#viewPlayback .hud-limit-text {font-family:inherit;font-size:28px;font-weight:800;line-height:1;color:#fff;letter-spacing:-1px;font-variant-numeric:tabular-nums;}
+.mobile-redesign #viewPlayback .cockpit-hud {height:52px;}
+.seek-feedback {display:flex;flex-direction:column;align-items:center;gap:0;font-size:12px;font-weight:600;line-height:1.2;}
+.seek-feedback>span:first-child {font-size:25px;line-height:1;}
+@media(max-width:999px) {
+ .mobile-redesign #viewPlayback .cockpit-hud {height:48px;}
+ #viewPlayback .wheel-group,#viewPlayback .wheel-wrapper {width:36px;height:36px;}
+ #viewPlayback .hud-limit-text {font-size:26px;}
+ .mobile-redesign #viewPlayback .transport-action-row,.mobile-redesign #viewPlayback .dock-clock,.mobile-redesign #viewPlayback .scrubber-bar-row[hidden] {display:none!important;}
+ .mobile-redesign #viewPlayback .drive-timeline {display:block;width:100%;}
+ .mobile-redesign #viewPlayback .transport-panel {min-height:0;padding:10px 12px;}
+ .mobile-redesign #viewPlayback .timeline-viewport {border-radius:0;}
+ .mobile-redesign #viewPlayback .playback-grid {padding-top:calc(var(--pinned-video-height) + 48px);}
+ html:has(body[data-screen="playback"]) {scroll-padding-top:calc(104px + env(safe-area-inset-top,0px) + min(75vw, max(100px, calc(100dvh - 210px - env(safe-area-inset-top,0px)))));}
+}
+
+#playbackBackBtn {display:inline-flex;align-items:center;gap:4px;}
+#playbackBackBtn svg {flex:none;}
+#viewPlayback .hud-limit-label {font-size:5.85px;}
+#viewPlayback .hud-limit-text {font-size:18.2px;}
+.playback-hover-control {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(155,155,155,.02);pointer-events:none;opacity:0;transition:opacity .15s ease;}
+.playback-hover-control svg {width:38px;height:38px;fill:#fff;filter:drop-shadow(0 1px 5px #0008);}
+@media(hover:hover) and (pointer:fine) {
+ #playerStage:hover .playback-hover-control {opacity:1;}
+ #playerStage:has(.playback-action-feedback[data-animating="true"]) .playback-hover-control {opacity:0;}
+}
+@media(max-width:999px) {
+ #viewPlayback .hud-limit-text {font-size:16.9px;}
+ body[data-screen="playback"] .header-context>.back-link {font-size:11px;}
+}
+
+#viewPlayback .driving-angle {margin-left:auto;white-space:nowrap;}
+#viewPlayback .driving-status:empty {display:none;}
+@media(min-width:1000px) {
+ .mobile-redesign #viewPlayback .playback-grid {grid-template-rows:minmax(250px,1fr) minmax(100px,.35fr) 52px auto;grid-template-areas:"cameras selector driving" "cameras map map" "instruments map map" "transport map map";}
+}
+
+/* Approved Option A pedal outlines. */
+#viewPlayback .pedal-card {color:#9aa4b3;}
+#viewPlayback .pedal-card svg {filter:none;transition:color .15s ease;}
+#viewPlayback .pedal-active-brake {color:#EE2440;}
+#viewPlayback .pedal-active-gas {color:#38D47A;}
+
+#viewPlayback #playerStage {position:relative;}
+@media(max-width:999px) {.mobile-redesign #viewPlayback #playerStage {position:fixed;}}
+/* Lower the pedal artwork without changing label or row geometry. */
+#viewPlayback :is(.pedal-brake,.pedal-gas) {position:relative;top:4px;}
+#viewPlayback .pedal-label {position:relative;top:-2px;}

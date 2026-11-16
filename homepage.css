@@ -1,0 +1,168 @@
+/* Welcome page: one continuous graphite canvas, with local playback first. */
+#sourceScreen {padding:0;background:#0b0d11;color:#f0f3f8;}
+#sourceScreen .source-wrap {max-width:1600px;margin:auto;}
+#sourceScreen .home-header {height:82px;padding:0 48px;border-bottom:1px solid #252a33;}
+#sourceScreen .home-header img {width:184px;}
+#sourceScreen .home-header nav {display:flex;align-items:center;gap:32px;}
+#sourceScreen .home-header a {display:inline-flex;align-items:center;gap:8px;min-height:44px;color:#b2bbc9;text-decoration:none;font-size:12px;}
+#sourceScreen .home-header .home-get-app {color:#edf2f8;}
+#sourceScreen .home-hero {display:grid;grid-template-columns:1.05fr 1fr;min-height:566px;border-bottom:1px solid #252a33;}
+#sourceScreen .home-hero-copy {padding:64px 40px 58px 64px;align-self:center;}
+#sourceScreen .source-eyebrow {font-size:10px;letter-spacing:.17em;font-weight:550;color:#7c9cc5;}
+#sourceScreen h1 {font-size:clamp(50px,5.8vw,88px);font-weight:550;line-height:1.02;letter-spacing:-.06em;margin:24px 0;}
+#sourceScreen h1>span {color:#6eafff;}
+#sourceScreen .home-lede {font-size:16px;color:#a7b0c0;line-height:1.8;max-width:410px;}
+#sourceScreen .home-local {margin:30px 0 22px;}
+#sourceScreen .source-primary,#sourceScreen .source-secondary {display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;border-radius:0;padding:12px 20px;font-family:inherit;font-size:12px;font-weight:550;}
+#sourceScreen .source-primary {background:#2587ef;border:1px solid #2587ef;color:white;}
+#sourceScreen .source-primary:hover {background:#449bfa;}
+#sourceScreen #openUsbBtn {min-height:52px;min-width:253px;}
+#sourceScreen .source-secondary {background:transparent;border:1px solid #343d4b;color:#d0d8e4;}
+#sourceScreen .source-secondary:hover {background:#ffffff08;}
+#sourceScreen .home-folder-hint {font-size:11px;line-height:1.7;color:#7f8b9d;max-width:310px;margin:12px 0 0;}
+#sourceScreen .home-privacy-link {display:inline-flex;align-items:center;gap:8px;min-height:44px;text-decoration:none;font-size:11px;color:#9daabf;}
+#sourceScreen .home-privacy-link svg {color:#6fa6da;flex:none;}
+#sourceScreen .home-visual {position:relative;display:flex;flex-direction:column;min-width:0;margin:0;overflow:hidden;background:radial-gradient(ellipse at 50% 65%,#152236 0,#0d121b 42%,#0b0d11 76%);border-left:1px solid #1d2530;}
+#sourceScreen .home-visual-heading {display:flex;align-items:center;gap:8px;padding:28px 32px;color:#78879c;letter-spacing:.12em;font-size:9px;}
+#sourceScreen .home-live-mark {width:5px;height:5px;border-radius:50%;background:#5196e8;}
+#sourceScreen .home-visual-mode {margin-left:auto;color:#a9b9cd;font-size:12px;letter-spacing:0;}
+#sourceScreen .home-road {position:relative;flex:1;min-height:375px;}
+#sourceScreen .home-visual figcaption {display:flex;justify-content:center;gap:24px;padding:24px 14px;font-size:10px;color:#718096;}
+#sourceScreen .home-visual figcaption>span+span:before {content:'';display:inline-block;width:3px;height:3px;background:#3c5270;vertical-align:middle;margin-right:24px;}
+#sourceScreen .home-capabilities {display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #252a33;}
+#sourceScreen .home-capabilities article {display:flex;align-items:flex-start;gap:18px;padding:30px 34px;}
+#sourceScreen .home-capabilities article+article {border-left:1px solid #252a33;}
+#sourceScreen .home-feature-number {font-size:10px;color:#627997;line-height:26px;}
+#sourceScreen .home-capabilities h2 {font-size:16px;line-height:1.5;font-weight:500;margin:0 0 9px;letter-spacing:-.2px;}
+#sourceScreen .home-capabilities p {font-size:12px;line-height:1.8;color:#8996a9;margin:0;max-width:280px;}
+#sourceScreen .home-connect {display:grid;grid-template-columns:.85fr 1.15fr;border-bottom:1px solid #252a33;}
+#sourceScreen .home-connect-copy {padding:56px 48px 56px 64px;}
+#sourceScreen .home-connect-copy h2,#sourceScreen .home-privacy h2 {font-size:36px;line-height:1.12;letter-spacing:-1.4px;font-weight:500;margin:19px 0 22px;}
+#sourceScreen .home-connect-copy>p {max-width:310px;font-size:13px;line-height:1.9;color:#8e9aac;margin-bottom:24px;}
+#sourceScreen .home-connect-step {display:flex;align-items:center;gap:10px;font-size:11px;line-height:1.7;color:#a3afbf;margin-top:12px;}
+#sourceScreen .home-connect-step>span {display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none;border:1px solid #303e50;color:#88a6cd;font-size:9px;}
+#sourceScreen .home-connect-form {padding:56px 48px;border:0;border-radius:0;background:#10141b;align-self:stretch;}
+#sourceScreen .source-card:before {display:none;}
+#sourceScreen .home-connection-fields {display:grid;grid-template-columns:1.3fr 1fr;gap:18px;}
+#sourceScreen .source-card label {font-size:11px;color:#aeb9c9;margin:0 0 10px;}
+#sourceScreen .source-card input {min-width:0;border:1px solid #303a49;background:#0c1017;border-radius:0;min-height:48px;font-size:12px;color:#e4eaf3;}
+#sourceScreen .source-card input::placeholder {color:#65758a;opacity:1;}
+#sourceScreen .source-actions {gap:10px;margin-top:20px;}
+#sourceScreen .source-text-button {min-height:44px;padding:10px 0;color:#87addc;font-size:11px;}
+#sourceScreen .source-detail {font-size:11px!important;line-height:1.9;max-width:480px;color:#7d8ba0!important;margin-top:16px;}
+#sourceScreen .qr-camera-panel {max-width:none;margin:18px 0 0;border-radius:0;border-color:#303a49;}
+#sourceScreen .qr-camera-panel video {border-radius:0;max-height:240px;}
+#sourceScreen .home-privacy {display:grid;grid-template-columns:.85fr 1.15fr;gap:48px;margin:0;padding:44px 64px;border:0;border-bottom:1px solid #252a33;border-radius:0;background:#0c0f14;}
+#sourceScreen .home-privacy h2 {font-size:30px;margin-bottom:0;}
+#sourceScreen .source-privacy-heading {color:#c0cfdf;font-size:13px;margin-top:5px;}
+#sourceScreen .source-privacy p {color:#8f9eb1;font-size:12px;line-height:1.9;}
+#sourceScreen .source-privacy .source-privacy-map {font-size:10px;color:#687a91;margin-top:12px;}
+#sourceScreen .source-work-status {position:fixed;left:24px;right:24px;bottom:calc(18px + env(safe-area-inset-bottom,0px));max-width:580px;margin:auto;z-index:1100;padding:16px 20px;border:1px solid #35445a;background:#141c28;box-shadow:0 12px 50px #0008;max-height:45dvh;overflow:auto;}
+#sourceScreen .source-work-status:not(:has(#sourceProgress:not(:empty),#sourceError:not([hidden]),#cancelSourceWork:not([hidden]),#returnToRecordingsBtn:not([hidden]))) {display:none;}
+#sourceScreen .source-progress {font-size:12px;}
+#sourceScreen .source-error {font-size:12px;padding:0;border:0;border-radius:0;background:none;line-height:1.8;}
+#sourceScreen .source-footer {padding:26px 48px;font-size:10px;line-height:1.8;align-items:center;}
+#sourceScreen .source-footer>div {display:flex;gap:28px;flex-wrap:wrap;}
+#sourceScreen .source-footer a {min-height:44px;display:inline-flex;align-items:center;color:#9cabbf;}
+#sourceScreen :is(button,a,input):focus-visible {outline:2px solid #6aafff;outline-offset:4px;}
+.home-sr-only {position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+@media(max-width:1050px) {
+ #sourceScreen .home-header {padding:0 28px;}
+ #sourceScreen .home-hero-copy {padding:48px 28px;}
+ #sourceScreen .home-capabilities article {padding:26px 24px;gap:12px;}
+ #sourceScreen .home-connect-copy {padding:44px 28px;}
+ #sourceScreen .home-connect-form {padding:44px 28px;}
+ #sourceScreen .home-connection-fields {grid-template-columns:1fr;gap:18px;}
+ #sourceScreen .home-privacy {padding:40px 28px;gap:30px;}
+}
+@media(max-width:700px) {
+ #sourceScreen .home-header {height:66px;padding:0 20px;}
+ #sourceScreen .home-header img {width:148px;}
+ #sourceScreen .home-header nav {gap:0;}
+ #sourceScreen .home-header nav>a:first-child {display:none;}
+ #sourceScreen .home-header a {font-size:10px;gap:5px;}
+ #sourceScreen .home-hero {grid-template-columns:1fr;min-height:0;}
+ #sourceScreen .home-hero-copy {padding:42px 24px 24px;}
+ #sourceScreen h1 {font-size:clamp(46px,12vw,68px);margin:20px 0;}
+ #sourceScreen .home-lede {font-size:14px;line-height:1.8;}
+ #sourceScreen .home-local {margin:24px 0 14px;}
+ #sourceScreen #openUsbBtn {width:100%;min-width:0;}
+ #sourceScreen .home-folder-hint {max-width:290px;}
+ #sourceScreen .home-visual {min-height:360px;border-left:0;border-top:1px solid #202835;}
+ #sourceScreen .home-visual-heading {padding:20px 24px;}
+ #sourceScreen .home-road {min-height:262px;}
+ #sourceScreen .home-visual figcaption {padding:18px 12px;font-size:9px;gap:14px;}
+ #sourceScreen .home-visual figcaption>span+span:before {margin-right:14px;}
+ #sourceScreen .home-capabilities {grid-template-columns:1fr;}
+ #sourceScreen .home-capabilities article {padding:24px;gap:20px;}
+ #sourceScreen .home-capabilities article+article {border-left:0;border-top:1px solid #252a33;}
+ #sourceScreen .home-capabilities p {max-width:none;}
+ #sourceScreen .home-connect {grid-template-columns:1fr;}
+ #sourceScreen .home-connect-copy {padding:36px 24px;}
+ #sourceScreen .home-connect-copy h2 {font-size:34px;}
+ #sourceScreen .home-connect-form {padding:28px 24px;}
+ #sourceScreen .source-actions>* {flex:1;}
+ #sourceScreen .home-privacy {grid-template-columns:1fr;gap:25px;padding:34px 24px;}
+ #sourceScreen .source-footer {padding:22px 24px;gap:12px;}
+ #sourceScreen .source-footer>div {gap:20px;}
+ #sourceScreen .source-work-status {left:12px;right:12px;padding:14px;}
+}
+@media(prefers-reduced-motion:no-preference) {
+ #sourceScreen .home-hero-copy {animation:home-arrive .5s ease-out both;}
+ @keyframes home-arrive {from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+}
+html:has(#sourceScreen:not([hidden])) {scroll-padding-top:16px;}
+#sourceScreen .source-card input::placeholder {color:#8191a8;}
+/* Intro first, then USB and direct-car connection in a clear sequence. */
+#sourceScreen .home-hero {min-height:440px;}
+#sourceScreen .home-hero-copy {padding-top:48px;padding-bottom:42px;}
+#sourceScreen h1 {font-size:clamp(48px,5.7vw,84px);margin:22px 0;}
+#sourceScreen .home-product-description {font-size:22px;line-height:1.45;font-weight:450;max-width:400px;letter-spacing:-.45px;color:#c6d3e5;margin:0 0 18px;}
+#sourceScreen .home-lede {font-size:14px;line-height:1.8;}
+#sourceScreen .home-app-cta {display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin:24px 0 12px;}
+#sourceScreen .home-app-cta>span {font-size:12px;color:#9eacbf;}
+#sourceScreen .home-road {min-height:285px;}
+#sourceScreen .home-usb-action {display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:48px;background:#10141b;}
+#sourceScreen .home-usb-symbol {color:#6a9ed9;margin-bottom:20px;}
+#sourceScreen .home-usb-action h3 {font-size:20px;font-weight:500;letter-spacing:-.4px;margin:0 0 12px;}
+#sourceScreen .home-usb-action>p {font-size:12px;color:#8999ae;line-height:1.8;max-width:340px;margin-bottom:24px;}
+#sourceScreen .home-usb-private {font-size:10px;color:#8395ab;line-height:1.8;margin-top:14px;}
+#sourceScreen .home-network-note {border-left:2px solid #427eb8;background:#121c29;padding:14px 16px;margin:20px 0 24px;}
+#sourceScreen .home-network-note strong {font-size:12px;color:#b7cde8;font-weight:550;}
+#sourceScreen .home-network-note p {font-size:11px;line-height:1.8;color:#a1b1c6;margin:7px 0 0;}
+#sourceScreen .usb-instructions {position:fixed;inset:0;margin:auto;width:min(500px,calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #364257;border-radius:0;padding:32px;background:#111720;color:#ecf1f7;box-shadow:0 24px 80px #0008;}
+#sourceScreen .usb-instructions::backdrop {background:#04070cc9;backdrop-filter:blur(5px);}
+#sourceScreen .usb-instructions h2 {font-size:27px;line-height:1.2;letter-spacing:-.7px;font-weight:500;margin:20px 0 14px;max-width:350px;}
+#sourceScreen .usb-instructions>p {font-size:12px;line-height:1.8;color:#9dadc2;}
+#sourceScreen .usb-instructions-close {position:absolute;right:6px;top:6px;display:flex;align-items:center;justify-content:center;width:44px;height:44px;background:none;border:0;color:#aab8cb;cursor:pointer;}
+#sourceScreen .usb-instructions ol {padding-left:22px;margin:22px 0 26px;}
+#sourceScreen .usb-instructions li {padding-left:6px;margin:0 0 16px;color:#b4c0d1;font-size:13px;line-height:1.8;}
+#sourceScreen .usb-instructions li::marker {color:#72a8e4;font-size:11px;}
+#sourceScreen #selectUsbDriveBtn {width:100%;}
+#sourceScreen .usb-instructions .usb-instructions-privacy {font-size:10px;margin-top:14px;text-align:center;}
+@media(max-width:1050px) {#sourceScreen .home-usb-action {padding:36px 28px;}}
+@media(max-width:700px) {
+ #sourceScreen .home-hero-copy {padding:36px 24px 24px;}
+ #sourceScreen .home-visual {display:none;}
+ #sourceScreen .home-hero {min-height:0;}
+ #sourceScreen h1 {font-size:clamp(42px,11vw,64px);}
+ #sourceScreen .home-product-description {font-size:21px;}
+ #sourceScreen .home-app-cta {gap:12px;}
+ #sourceScreen .home-usb .home-connect-copy {padding:32px 24px 24px;}
+ #sourceScreen .home-usb-action {padding:28px 24px;}
+ #sourceScreen #openUsbBtn {width:100%;}
+ #sourceScreen .usb-instructions {padding:26px 22px;}
+ #sourceScreen .usb-instructions h2 {font-size:24px;max-width:250px;}
+ #sourceScreen .usb-instructions li {font-size:12px;}
+}
+
+/* Pre-rendered from the same approved fleet geometry as Driving view. */
+#sourceScreen .usb-instructions::backdrop {backdrop-filter:none;}
+#sourceScreen #usbPickerStatus:empty {display:none;}
+
+#sourceScreen .home-visual {background:#101216;}
+#sourceScreen .home-road {overflow:hidden;}
+#sourceScreen .home-driving-image {position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(1.18);transform-origin:50% 90%;}
+
+#sourceScreen .source-footer .home-footer-identity {display:flex;flex-direction:column;align-items:flex-start;gap:0;}
+#sourceScreen .source-footer #footerAppVersion {min-height:32px;color:#8298b5;font-size:10px;font-variant-numeric:tabular-nums;}

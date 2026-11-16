@@ -1,0 +1,88 @@
+/* The library shares playback's flat, edge-to-edge layout. */
+.mobile-redesign #viewRecordings .recordings-grid {grid-template-columns:minmax(340px,.9fr) minmax(0,1.4fr);max-width:none;width:100%;padding:0;margin:0;gap:0;}
+#viewRecordings .library-heading {padding:28px 24px 22px;margin:0;}
+#viewRecordings .library-heading h1 {font-size:30px;}
+#viewRecordings .library-list-caption {padding:0 24px 20px;margin:0;}
+.mobile-redesign #viewRecordings .date-group {margin:0;}
+.mobile-redesign #viewRecordings .date-group-header {margin:0;padding:13px 24px;background:#0f1115;border-top:1px solid #282c32;border-bottom:1px solid #282c32;font-size:11px;color:#9da6b5;}
+.mobile-redesign #viewRecordings .drive-card {width:100%;margin:0;padding:22px 24px;border:0;border-bottom:1px solid #2a2e36;border-radius:0;background:#15181d;box-shadow:none;}
+.mobile-redesign #viewRecordings .drive-card.active {background:#19232e;box-shadow:inset 3px 0 #1689f5;}
+#viewRecordings .drive-card-header>div:first-child {min-width:0;}
+#viewRecordings .drive-departure {font-size:20px!important;font-weight:550!important;}
+#viewRecordings .drive-storage {border:0;background:none;font-size:10px!important;padding:0!important;}
+#viewRecordings .drive-route-summary {overflow-wrap:anywhere;line-height:1.6;}
+.mobile-redesign #viewRecordings .drive-card-actions {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px!important;align-items:stretch!important;margin-top:18px!important;}
+#viewRecordings .drive-secondary-actions {display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important;min-width:0;}
+#viewRecordings :is(.drive-play,.btn-view-entire-drive,.btn-toggle-recordings) {min-height:44px;border-radius:0!important;padding:8px 10px!important;font-size:11px!important;white-space:nowrap;}
+.mobile-redesign #viewRecordings .drive-recordings-drawer.open {padding-top:12px;margin:14px -24px -22px;}
+.mobile-redesign #viewRecordings .recording-clip-row {padding:12px 24px;gap:8px;min-width:0;}
+#viewRecordings .clip-row-info {min-width:0;}
+#viewRecordings .clip-row-info strong {overflow-wrap:anywhere;}
+#viewRecordings :is(.clip-row-raw,.clip-row-play) {min-height:44px;border-radius:0!important;}
+.mobile-redesign #viewRecordings .drive-overview-stage {padding:0;border:0;border-left:1px solid #2a2e36;border-radius:0;align-self:stretch;min-height:calc(100dvh - 76px);}
+#viewRecordings .overview-placeholder {border-radius:0;background:#111419;}
+.mobile-redesign #viewRecordings .overview-header-row {padding:24px;margin:0;}
+.mobile-redesign #viewRecordings .endpoints-row {gap:1px;background:#2a2e36;}
+.mobile-redesign #viewRecordings .endpoint-card {padding:20px 24px;border:0;border-radius:0;}
+.mobile-redesign #viewRecordings .overview-map-card {border:0;border-radius:0;margin:0;}
+.mobile-redesign #viewRecordings .metrics-grid {gap:1px;background:#2a2e36;}
+.mobile-redesign #viewRecordings .metric-card {border:0;border-radius:0;padding:20px;}
+.mobile-redesign #viewRecordings .drive-segments-box {padding:24px;border-radius:0;}
+@media(max-width:760px) {
+ .mobile-redesign #viewRecordings .recordings-grid {display:block;padding:0;}
+ #viewRecordings .library-heading {padding:24px 20px 20px;}
+ #viewRecordings .library-list-caption {padding:0 20px 18px;}
+ .mobile-redesign #viewRecordings .date-group-header {padding:12px 20px;}
+ .mobile-redesign #viewRecordings .drive-card {padding:20px;}
+ .mobile-redesign #viewRecordings .drive-recordings-drawer.open {margin:14px -20px -20px;}
+ .mobile-redesign #viewRecordings .recording-clip-row {padding:12px 20px;}
+ .mobile-redesign #viewRecordings .detail-open .drive-overview-stage {padding:0;border:0;}
+ .mobile-redesign #viewRecordings.detail-open .drive-overview-stage {padding:0;border:0;}
+ #viewRecordings .drive-overview-stage>.back-link {margin:0;padding:12px 20px;}
+ .mobile-redesign #viewRecordings .overview-header-row {padding:16px 20px 22px;}
+ .mobile-redesign #viewRecordings .endpoint-card {padding:16px 20px;}
+ .mobile-redesign #viewRecordings .drive-segments-box {padding:20px;}
+}
+.mobile-redesign #viewRecordings .segment-item {border-radius:0;margin:0;border:0;border-bottom:1px solid #2a2e36;padding:14px 0;}
+#viewRecordings .overview-play-btn {border-radius:0;}
+@media(max-width:760px) {
+ body[data-screen="library"].mobile-redesign .app-header {display:flex;height:62px;min-height:62px;padding:0 20px;gap:0;}
+ body[data-screen="library"] .header-left {flex:1;}
+}
+.mobile-redesign #viewRecordings .drive-recordings-drawer:not(.open) {display:none;}
+.mobile-redesign #viewRecordings .drive-recordings-drawer.open {width:calc(100% + 48px);}
+.mobile-redesign #viewRecordings .recording-clip-row {border-radius:0;padding:12px 24px!important;}
+@media(max-width:760px) {
+ .mobile-redesign #viewRecordings .drive-recordings-drawer.open {width:calc(100% + 40px);}
+ .mobile-redesign #viewRecordings .recording-clip-row {padding:12px 20px!important;}
+}
+
+/* Icon-only actions retain native controls, labels and generous hit targets. */
+.drive-action-sr-label {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.mobile-redesign #viewRecordings .drive-card-actions {display:flex!important;justify-content:flex-start;gap:8px!important;}
+#viewRecordings .drive-secondary-actions {display:contents!important;}
+#viewRecordings :is(.drive-play,.btn-view-entire-drive,.btn-toggle-recordings,.overview-play-btn,.clip-row-raw,.clip-row-play,.btn-play-clip,.btn-lock-drive,.btn-delete-drive,.btn-lock-clip,.btn-delete-clip,.library-refresh) {width:44px;min-width:44px;height:44px;min-height:44px;padding:10px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none;justify-content:center;align-items:center;flex:0 0 44px;}
+#viewRecordings :is(.drive-play,.btn-view-entire-drive,.btn-toggle-recordings,.overview-play-btn,.clip-row-raw,.clip-row-play,.btn-play-clip,.library-refresh):hover {background:#ffffff0b!important;}
+#viewRecordings :is(.drive-play,#overviewPlayBtn,.clip-row-play,.btn-play-clip) {color:#54b3ff;}
+#viewRecordings .library-refresh {display:flex;}
+#viewRecordings .btn-toggle-recordings[aria-expanded="true"] {color:#54b3ff;background:#1689f512!important;}
+#viewRecordings .clip-row-raw {display:flex;}
+#viewRecordings :is(.btn-view-entire-drive,.btn-toggle-recordings,.clip-row-raw) svg {width:20px;height:20px;}
+#viewRecordings .overview-play-btn {margin:0;}
+#viewRecordings .drive-overview-stage>.back-link {width:64px;min-height:44px;align-items:center;justify-content:center;}
+.mobile-redesign #viewRecordings .drive-card-actions {flex-direction:row;}
+
+/* Drive actions combine recognizable icons with explicit labels. */
+#viewRecordings .library-description {max-width:340px;margin:8px 0 12px;line-height:1.6;color:#a4adbb;font-size:12px;}
+#viewRecordings .drive-description {margin:12px 0 0;color:#9da6b5;font-size:11px;line-height:1.6;}
+.mobile-redesign #viewRecordings .drive-card-actions {display:grid!important;grid-template-columns:1fr 1fr;gap:8px!important;}
+#viewRecordings :is(.drive-play,.btn-view-entire-drive,.btn-toggle-recordings,.overview-play-btn,.clip-row-raw,.clip-row-play,.btn-play-clip) {width:auto;min-width:44px;flex:0 1 auto;display:inline-flex;gap:8px;padding:10px 12px!important;background:#ffffff06!important;}
+#viewRecordings .drive-play {background:#1689f5!important;color:white!important;}
+#viewRecordings .btn-toggle-recordings {grid-column:1/-1;justify-content:center;}
+#viewRecordings .drive-overview-stage>.back-link {width:auto;display:inline-flex;gap:8px;}
+#viewRecordings .drive-action-label {font-size:12px;}
+#viewRecordings .recording-clip-row .clip-row-actions {flex-wrap:wrap;}
+@media(max-width:760px) {
+ .mobile-redesign #viewRecordings .recording-clip-row {flex-direction:column;align-items:stretch!important;}
+ #viewRecordings .clip-row-actions {justify-content:flex-start;}
+}

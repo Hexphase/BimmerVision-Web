@@ -7,6 +7,7 @@
   'use strict';
   const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
   const MAX_JSON = 1048576;
+  const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
   const rawZip = typeof module === 'object' && module.exports ? require('./raw-zip') : globalThis.BVRawZip;
   const LABEL = 'USB view only, mappings saved this browser';
   const abort = () => new DOMException('USB reading cancelled', 'AbortError');
@@ -41,6 +42,7 @@
     if (!magic(header, 'BVR1') || dv.getUint32(4, true) !== 1 || dv.getUint32(8, true) !== 16) throw Error('Invalid BVR1 archive');
     while (pos + 24 <= blob.size && route.length < 14400) {
       if (++records > 2000000) throw Error('Archive record limit exceeded');
+      if(records%200===0){await yieldUI();if(cancelled())throw abort();}
       const h = await read(pos, 24);
       if (h.length !== 24 || !magic(h, 'BVRR')) throw Error('Invalid BVR record');
       dv = new DataView(h.buffer, h.byteOffset, h.byteLength);
@@ -86,7 +88,9 @@
     const {signal, onProgress = () => {}} = options;
     check(signal);
     const groups = new Map(), warnings = [], recordings = new Map();
+    let discoveryCount=0;
     for (const {path, file} of entries) {
+      if(++discoveryCount%200===0){await yieldUI();check(signal);}
       const parts = safeParts(path);
       if (!parts || parts.length < 2 || !UUID.test(parts[parts.length - 2])) continue;
       const dir = parts.slice(0, -1).join('/'), filename = parts[parts.length - 1];
@@ -114,6 +118,7 @@
         recordings.set(manifest.id.toLowerCase(), {manifest, manifestFile:mf, capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
       } catch (error) { warnings.push(`${group.id}: ${error.message}`); }
       onProgress({phase: 'catalog', completed: ++count, total: groups.size});
+      if(count%20===0){await yieldUI();check(signal);}
     }
     let closed = false;
     const source = {
@@ -173,16 +178,18 @@
     return source;
   }
   async function fromFiles(files, options = {}) {
-    const entries = Array.from(files, file => ({path: file.webkitRelativePath || file.name, file}));
+    const entries=[];let count=0;
+    for(const file of files){check(options.signal);const path=file.webkitRelativePath||file.name;if(['manifest.json','capture.bvr','mapping.json'].includes(file.name||path.split('/').at(-1)))entries.push({path,file});if(++count%200===0)await yieldUI();}
     return create(entries, entries[0] && entries[0].path.split('/')[0] || 'USB recordings', options);
   }
   async function fromDirectoryHandle(handle, options = {}) {
-    const entries = [];
+    const entries = [];let visited=0;
     async function walk(dir, prefix, depth) {
       check(options.signal);
       if (depth > 8) return;
       for await (const [name, child] of dir.entries()) {
         check(options.signal);
+        if(++visited%100===0){options.onProgress?.({phase:'discovery',message:'Finding your recordings…'});await yieldUI();check(options.signal);}
         if (!safeParts(name)) continue;
         if (child.kind === 'directory') {
           if (depth === 0 || name === 'BimmerVision' || name === 'Library' || UUID.test(name)) await walk(child, prefix + name + '/', depth + 1);

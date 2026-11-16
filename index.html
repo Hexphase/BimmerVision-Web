@@ -11,53 +11,102 @@
   <link rel="icon" type="image/x-icon" href="assets/bimmervision.ico">
   <link rel="stylesheet" href="style.css?v=web-020">
   <link rel="stylesheet" href="mobile.css?v=web-020">
-  <link rel="stylesheet" href="hosted.css?v=web-020">
+  <link rel="stylesheet" href="hosted.css?v=privacy-1">
+  <link rel="stylesheet" href="driving-view.css?v=signs-1">
+  <link rel="stylesheet" href="playback-layout.css?v=mirror-dots-13">
+  <link rel="stylesheet" href="recordings-layout.css?v=descriptive-3">
+  <link rel="stylesheet" href="homepage.css?v=home-version-7">
 </head>
-<body class="mobile-redesign" data-source-readonly="false">
+<body class="mobile-redesign" data-source-readonly="false" data-screen="library">
   <main id="sourceScreen" class="source-screen" aria-labelledby="sourceTitle">
     <div class="source-wrap">
-      <header class="source-brand"><img src="assets/bimmervision-wordmark.png" alt="BimmerVision"><span>WEB PLAYER</span></header>
-      <div class="source-intro"><span class="source-eyebrow">YOUR RECORDINGS, IN FOCUS</span><h1 id="sourceTitle">Every drive.<br>Every angle.</h1><p>Open recordings from a USB drive or connect directly to your car. Your footage stays with you.</p><div class="source-actions"><a class="source-secondary source-get-app" href="https://github.com/Hexphase/BimmerVision">Don't Have BimmerVision? <span aria-hidden="true">↗</span></a></div></div>
-      <div class="source-grid">
-        <section class="source-card" aria-labelledby="usbSourceTitle"><span class="source-number">01 / ON YOUR COMPUTER</span><h2 id="usbSourceTitle">Open a USB drive</h2><p>Connect your recording drive and choose its <strong>BimmerVision</strong> folder.</p><button id="openUsbBtn" type="button" class="source-primary">Choose USB folder <span aria-hidden="true">↗</span></button><input id="usbFolderInput" type="file" webkitdirectory multiple hidden><p class="source-detail">View only. Your original recordings are never modified or uploaded. Camera assignments are saved in this browser.</p></section>
-        <section class="source-card" aria-labelledby="carSourceTitle"><span class="source-number">02 / CONNECTED TO YOUR CAR</span><h2 id="carSourceTitle">Connect to your car</h2><p>Open <strong>Connect Phone</strong> in iDrive and use the address and code shown there.</p>
-          <form id="carConnectForm"><label for="carAddress">Car IP address or QR link</label><input id="carAddress" name="carAddress" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="192.168.1.10 or paste a QR link" required><label for="carCode">8-digit pairing code</label><input id="carCode" name="carCode" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]{8}" maxlength="8" placeholder="Code shown in iDrive"><div class="source-actions"><button id="connectCarBtn" type="submit" class="source-primary">Connect</button><button id="scanQrBtn" type="button" class="source-secondary">Scan QR code</button></div></form>
-          <button id="uploadQrBtn" type="button" class="source-text-button">Use a QR code image instead</button><input id="qrFileInput" type="file" accept="image/*" hidden>
-          <p class="source-detail">Stay connected to BMW Wi-Fi / CarPlay and keep Connect Phone open. Current Chrome or Edge is recommended; allow local network access if your browser asks.</p>
-          <p id="carFallback" class="source-detail" hidden><a id="carFallbackLink" target="_blank" rel="noopener noreferrer">Open the car’s built-in player ↗</a></p>
-        </section>
-      </div>
-      <section id="qrCameraPanel" class="qr-camera-panel" hidden aria-label="QR code scanner"><video id="qrCameraVideo" autoplay playsinline muted></video><p>Point your camera at the QR code in iDrive.</p><button id="stopQrBtn" type="button" class="source-secondary">Stop camera</button></section>
-      <p id="sourceProgress" class="source-progress" role="status" aria-live="polite"></p><p id="sourceError" class="source-error" role="alert" hidden></p><button id="cancelSourceWork" type="button" class="source-secondary" hidden>Cancel</button><button id="returnToRecordingsBtn" type="button" class="source-secondary" hidden>Return to recordings</button>
-      <footer class="source-footer"><span>360° cameras. One complete story.</span><a href="https://github.com/Hexphase/BimmerVision-Web" target="_blank" rel="noopener noreferrer">About BimmerVision Web ↗</a></footer>
+      <header class="source-brand home-header">
+        <img src="assets/bimmervision-wordmark.png" alt="BimmerVision">
+        <nav aria-label="Welcome navigation"><a href="#carConnection">Connect to car</a><a href="https://github.com/Hexphase/BimmerVision" class="home-get-app">Get BimmerVision<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></nav>
+      </header>
+
+      <section class="home-hero">
+        <div class="home-hero-copy">
+          <span class="source-eyebrow">BUILT FOR YOUR BMW</span>
+          <h1 id="sourceTitle">Bimmer<span>Vision.</span></h1>
+          <p class="home-product-description">Continuous native 360° camera recording for your BMW.</p>
+          <p class="home-lede">The recording app for your BMW’s own cameras. Replay your drives, explore the metadata, and keep the moments that matter.</p>
+          <div class="home-app-cta"><span>Don’t have BimmerVision?</span><a class="source-get-app source-primary" href="https://github.com/Hexphase/BimmerVision">Get it here<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div>
+          <a class="home-privacy-link" href="#recordingPrivacy"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg>No uploads. Local processing.</a>
+        </div>
+        <figure class="home-visual" aria-label="Illustration of the driving visualization">
+          <div class="home-visual-heading"><span class="home-live-mark"></span>YOUR DRIVE, RECONSTRUCTED<span class="home-visual-mode">360°</span></div>
+          <div class="home-road"><img class="home-driving-image" src="assets/vehicles/home-driving.webp?v=lead-distance-5" width="1400" height="800" alt="Illustration using the approved 3D vehicles, centered in three lanes with the blue driver vehicle in front a 125 ft example distance above the lead car, and a 45 MPH speed-limit sign on the right."></div>
+          <figcaption><span>Camera replay</span><span>Driving view</span><span>Route map</span></figcaption>
+        </figure>
+      </section>
+
+      <section id="usbConnection" class="home-connect home-usb" aria-labelledby="usbSourceTitle">
+        <div class="home-connect-copy"><span class="source-eyebrow">01 / USB PLAYBACK</span><h2 id="usbSourceTitle">Connect your<br>USB drive.</h2><p>Open the recordings saved by your BMW. Bring the drive to this computer and choose your BimmerVision folder.</p></div>
+        <div class="home-usb-action"><svg class="home-usb-symbol" viewBox="0 0 48 48" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12" y="17" width="24" height="25" rx="3"/><path d="M17 17V6h14v11M22 10v3m4-3v3"/></svg><h3>Your recordings, on this device.</h3><p>A quick walkthrough will help you connect and select your recording drive.</p><button id="openUsbBtn" type="button" class="source-primary">Connect USB drive<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6 6 6-6 6M3 12h17"/></svg></button><input id="usbFolderInput" type="file" webkitdirectory multiple hidden><span class="home-usb-private">Local playback. Your recordings are never uploaded.</span></div>
+      </section>
+
+      <dialog id="usbInstructions" class="usb-instructions" aria-labelledby="usbInstructionsTitle" aria-describedby="usbInstructionsText usbInstructionSteps">
+        <button id="closeUsbInstructionsBtn" class="usb-instructions-close" type="button" aria-label="Close USB instructions"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+        <span class="source-eyebrow">CONNECT YOUR RECORDING DRIVE</span><h2 id="usbInstructionsTitle">Open your USB recordings.</h2><p id="usbInstructionsText">Get your recording drive ready, then select its BimmerVision folder.</p>
+        <ol id="usbInstructionSteps"><li>Stop recording in BimmerVision, then safely remove the USB drive from your BMW.</li><li>Connect the USB drive to this computer.</li><li>Press <strong>Select Drive</strong> below, navigate to your USB drive, and select the <strong>BimmerVision</strong> folder.</li></ol>
+        <p id="usbPickerStatus" role="status" aria-live="polite"></p>
+        <button id="selectUsbDriveBtn" type="button" class="source-primary" autofocus>Select Drive</button><p class="usb-instructions-privacy">Your recordings are processed locally and never uploaded.</p>
+      </dialog>
+
+      <section id="carConnection" class="home-connect" aria-labelledby="carSourceTitle">
+        <div class="home-connect-copy"><span class="source-eyebrow">02 / CAR NETWORK PLAYBACK</span><h2 id="carSourceTitle">Connect over your<br>car’s local network.</h2><p>Keep the drive in your BMW and connect directly to BimmerVision in iDrive.</p><div class="home-network-note"><strong>Use the Wi-Fi broadcast by your BMW.</strong><p>This device must join the car’s own local Wi-Fi network—not the home Wi-Fi network your car may be connected to.</p></div><div class="home-connect-step"><span>1</span>Join your BMW’s transmitted Wi-Fi network on this device.</div><div class="home-connect-step"><span>2</span>Open Connect Phone in iDrive and use its address and pairing code.</div></div>
+        <div class="source-card home-connect-form">
+          <form id="carConnectForm">
+            <div class="home-connection-fields"><div><label for="carAddress">Car IP address or QR link</label><input id="carAddress" name="carAddress" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="192.168.1.10 or paste a QR link" required></div><div><label for="carCode">8-digit pairing code</label><input id="carCode" name="carCode" type="text" inputmode="numeric" autocomplete="off" pattern="[0-9]{8}" maxlength="8" placeholder="Code shown in iDrive"></div></div>
+            <div class="source-actions"><button id="connectCarBtn" type="submit" class="source-primary">Connect to car<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6 6 6-6 6M3 12h17"/></svg></button><button id="scanQrBtn" type="button" class="source-secondary"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path d="M7 7h3v3H7Zm7 0h3v3h-3ZM7 14h3v3H7Zm7 0h3v3h-3Z"/></svg>Scan QR code</button></div>
+          </form>
+          <button id="uploadQrBtn" type="button" class="source-text-button">Choose a QR code image</button><input id="qrFileInput" type="file" accept="image/*" hidden>
+          <p class="source-detail">Use a current Chrome or Edge browser and allow local network access if asked. Pairing connects your browser directly to your car.</p>
+          <p id="carFallback" class="source-detail" hidden><a id="carFallbackLink" target="_blank" rel="noopener noreferrer">Open the car’s built-in player</a></p>
+          <section id="qrCameraPanel" class="qr-camera-panel" hidden aria-label="QR code scanner"><video id="qrCameraVideo" autoplay playsinline muted></video><p>Point your camera at the QR code in iDrive.</p><button id="stopQrBtn" type="button" class="source-secondary">Stop camera</button></section>
+        </div>
+      </section>
+
+      <section id="recordingPrivacy" class="source-privacy home-privacy" aria-label="Recording privacy">
+        <div><span class="source-eyebrow">LOCAL BY DESIGN</span><h2>Your recordings<br>stay yours.</h2></div>
+        <div><div class="source-privacy-heading"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg><strong>No uploads. Local processing.</strong></div><p>Your recordings and vehicle metadata are read and processed locally in your browser. They are never uploaded to BimmerVision or stored on our servers. Your original files stay on your device.</p><p class="source-privacy-map">Online maps load OpenStreetMap tiles; those requests can reveal the map area you view. Your recording files are not sent to the map provider.</p></div>
+      </section>
+      <aside class="source-work-status" aria-label="Connection and recording status"><p id="sourceProgress" class="source-progress" role="status" aria-live="polite"></p><p id="sourceError" class="source-error" role="alert" hidden></p><div><button id="cancelSourceWork" type="button" class="source-secondary" hidden>Cancel</button><button id="returnToRecordingsBtn" type="button" class="source-secondary" hidden>Return to recordings</button></div></aside>
+      <footer class="source-footer"><div class="home-footer-identity"><span>Made for the moments between destinations.</span><a id="footerAppVersion" href="https://github.com/Hexphase/BimmerVision/releases" target="_blank" rel="noopener noreferrer">BimmerVision</a></div><div><a class="source-get-app" href="https://github.com/Hexphase/BimmerVision">Don't Have BimmerVision?</a><a href="https://github.com/Hexphase/BimmerVision-Web" target="_blank" rel="noopener noreferrer">About BimmerVision Web</a></div></footer>
     </div>
   </main>
   <div class="app-shell" hidden inert>
     <!-- Top Bar with Official Logo, Wordmark & Navigation Tabs -->
-    <header class="app-header">
-      <div class="header-left">
+    <header class="app-header"><div class="header-left">
         <div class="brand-cluster" title="BimmerVision">
           <img class="brand-wordmark" src="assets/bimmervision-wordmark.png" alt="BimmerVision">
         </div>
-      </div>
-
-      <!-- Navigation Tabs: 'Recordings' and 'Playback' -->
-      <nav class="nav-tabs" aria-label="Main navigation">
-        <button id="tabRecordings" class="nav-tab active">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
-          </svg>
-          Recordings
-        </button>
-        <button id="tabPlayback" class="nav-tab disabled" disabled title="Select a drive first">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12zm-11-2l6-4.5-6-4.5v9z"/>
-          </svg>
-          Playback
-        </button>
-      </nav>
-
-      <div class="header-right">
+      </div><div class="header-context"><button id="playbackBackBtn" class="back-link" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg><span>All drives</span></button><div class="playback-context"><h1 id="playbackTitle">Drive playback</h1><p><span id="playbackClipLabel"></span><span id="playbackStatus" role="status" aria-live="polite">Choose a recording</span><button id="playbackRetryBtn" class="back-link" type="button" hidden>Retry recording</button></p></div></div><div class="header-actions"><button id="quickExportBtn" type="button" class="header-export">Export</button><details class="app-menu"><summary aria-label="Settings and playback options"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.6 2.2-2 .9-2-.6-2 3.5 1.5 1.6v2.3L2.4 15l2 3.5 2-.6 2 .9L9 21h4l.6-2.2 2-.9 2 .6 2-3.5-1.5-1.6v-2.3l1.5-1.6-2-3.5-2 .6-2-.9L13 3Z"/><circle cx="11" cy="12" r="3"/></svg></summary><div class="app-menu-content"><div class="playback-tools"><div class="recording-actions" role="group" aria-label="Recording actions">
+            <button id="playbackLockBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Lock recording to prevent deletion">
+                  <span id="playbackLockIcon" style="display: flex; align-items: center;">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="currentColor" fill-opacity="0.15"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  </span>
+                  <span id="playbackLockLabel">Lock</span>
+                </button>
+            <button id="playbackDeleteBtn" class="export-btn" style="background: rgba(238, 36, 64, 0.15); border: 1px solid rgba(238, 36, 64, 0.35); color: #EE2440; display: flex; align-items: center; gap: 6px;" title="Delete this recording">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  <span>Delete</span>
+                </button>
+            <button id="openExportBtn" class="export-btn" title="Save a video to your device">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                  </svg>
+                  <span>Export</span>
+                </button>
+          </div><div class="camera-review-action"><button id="openCalibrateBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Confirm camera alignment (Front/Rear & Left/Right)">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="12" y1="3" x2="12" y2="17"></line>
+                    <polyline points="8 21 12 17 16 21"></polyline>
+                  </svg>
+                  <span>Cameras</span>
+                </button><span>Assignments saved per recording</span></div></div>
         <button id="changeSourceBtn" class="unit-toggle-pill" type="button">Change source</button>
         <label class="advanced-toggle-label" title="Show or hide hardware video decoder telemetry">
           <input type="checkbox" id="advancedDetailsToggle">
@@ -73,8 +122,7 @@
           <span class="status-dot"></span>
           <span id="connStatus">Choose a source</span>
         </div>
-      </div>
-    </header>
+      </div></details></div></header>
 
     <aside id="releaseNotice" class="release-notice" role="status" hidden>
       <span id="releaseNoticeText"></span>
@@ -91,7 +139,7 @@
       <div class="recordings-grid">
         <!-- Left: Drives List -->
         <aside class="drives-sidebar">
-          <div class="library-heading"><div><span class="library-eyebrow">DRIVE LIBRARY</span><h1>Your drives</h1><p id="librarySummary">Reading your recordings…</p></div><button id="libraryRefreshBtn" class="library-refresh" type="button" aria-label="Refresh recordings">↻</button></div>
+          <div class="library-heading"><div><span class="library-eyebrow">DRIVE LIBRARY</span><h1>Your drives</h1><p class="library-description">Play a full drive, review its route, or expand it to choose a clip.</p><p id="librarySummary">Reading your recordings…</p></div><button id="libraryRefreshBtn" class="library-refresh" type="button" aria-label="Refresh recordings" title="Refresh recordings"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 6a8 8 0 0 1 13 3M18 18a8 8 0 0 1-13-3"/></svg></button></div>
           <div class="library-list-caption"><span>RECENT DRIVES</span><span id="driveCount">Scanning…</span></div>
           <div id="driveList" class="drive-cards-list">
             <!-- Dynamically populated from DriveGrouper -->
@@ -100,7 +148,7 @@
 
         <!-- Right: Selected Drive Overview & OpenStreetMap -->
         <main class="drive-overview-stage">
-          <button id="backToDrives" class="back-link" type="button">← All drives</button>
+          <button id="backToDrives" class="back-link" type="button" aria-label="All drives" title="All drives"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 5-7 7 7 7M3 12h18"/></svg><span>All drives</span></button>
           <div id="overviewPlaceholder" class="overview-placeholder"><span class="library-eyebrow">YOUR RECORDINGS, IN FOCUS</span><h2>Every drive.<br>Every angle.</h2><p>Choose a drive to review its recordings, route and details.</p></div>
           <div class="overview-header-row">
             <div>
@@ -112,17 +160,17 @@
                 <span id="overviewLockIcon" style="display: flex; align-items: center;">
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="currentColor" fill-opacity="0.15"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                 </span>
-                <span id="overviewLockLabel">Lock Drive</span>
+                <span id="overviewLockLabel" class="drive-action-label">Lock Drive</span>
               </button>
               <button id="overviewDeleteBtn" class="overview-play-btn" style="background: rgba(238, 36, 64, 0.15); border: 1px solid rgba(238, 36, 64, 0.35); color: #EE2440; display: flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 13px;" disabled title="Delete this entire drive">
                 <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                <span>Delete Drive</span>
+                <span class="drive-action-label">Delete Drive</span>
               </button>
-              <button id="overviewPlayBtn" class="overview-play-btn" disabled>
+              <button id="overviewPlayBtn" class="overview-play-btn" aria-label="Play drive" title="Play drive" disabled>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                   <polygon points="6,4 19,12 6,20"></polygon>
                 </svg>
-                Play Drive
+                <span class="drive-action-label">Play Drive</span>
               </button>
             </div>
           </div>
@@ -194,65 +242,12 @@
 
     <!-- TAB 2: PLAYBACK VIEW (Player, Cockpit HUD, Sedan Camera Selector, Live Map) -->
     <section id="viewPlayback" class="tab-view">
-      <div class="playback-heading"><button id="playbackBackBtn" class="back-link" type="button">← Your drives</button><div><h1 id="playbackTitle">Drive playback</h1><p><span id="playbackClipLabel"></span><span id="playbackStatus" role="status" aria-live="polite">Choose a recording</span></p></div><button id="playbackRetryBtn" class="back-link" type="button" hidden>Retry recording</button></div>
+
       <div class="playback-grid">
-        <!-- Sidebar Panel: Corrected Sedan Camera Selector + Live Map -->
-        <aside class="playback-sidebar">
-          <!-- Interactive Top-Down Sedan Camera Selector -->
-          <section class="panel-card sedan-panel-card">
-            <div id="sedanSelectorContainer">
-              <!-- Dynamically populated by SedanCameraSelector -->
-            </div>
-          </section>
-
-          <div class="recording-actions" role="group" aria-label="Recording actions">
-            <button id="playbackLockBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Lock recording to prevent deletion">
-                  <span id="playbackLockIcon" style="display: flex; align-items: center;">
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="currentColor" fill-opacity="0.15"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  </span>
-                  <span id="playbackLockLabel">Lock</span>
-                </button>
-            <button id="playbackDeleteBtn" class="export-btn" style="background: rgba(238, 36, 64, 0.15); border: 1px solid rgba(238, 36, 64, 0.35); color: #EE2440; display: flex; align-items: center; gap: 6px;" title="Delete this recording">
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                  <span>Delete</span>
-                </button>
-            <button id="openExportBtn" class="export-btn" title="Save a video to your device">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
-                  </svg>
-                  <span>Export</span>
-                </button>
-          </div>
-          <div class="camera-review-action"><button id="openCalibrateBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Confirm camera alignment (Front/Rear & Left/Right)">
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="12" y1="3" x2="12" y2="17"></line>
-                    <polyline points="8 21 12 17 16 21"></polyline>
-                  </svg>
-                  <span>Cameras</span>
-                </button><span>Assignments saved per recording</span></div>
-
-          <!-- Live Playback Tracking Map -->
-          <section class="panel-card live-map-panel">
-            <div class="section-header">
-              <span class="section-title">GPS TRACKING</span>
-            </div>
-            <div class="live-map-box">
-              <canvas id="playbackMapCanvas" width="320" height="200"></canvas>
-            </div>
-          </section>
-        </aside>
-
-        <!-- Main Stage: Video Viewport & Cockpit HUD -->
-        <main class="playback-stage">
-          <!-- Video Player Stage (Bordered in Tesla Screen Style) -->
-          <div id="playerStage" class="player-stage">
-            <div class="canvas-viewport">
+<main id="playerStage" class="player-stage playback-stage" aria-label="Playback cameras"><div class="canvas-viewport">
               <canvas id="videoCanvas" width="1280" height="960"></canvas>
-            </div>
-
-            <!-- Cockpit Instrument Bar (Speed & Limit Left | Blinkers & Steering Center | Pedals Right) -->
-            <div class="cockpit-hud">
+            </div></main>
+<div class="cockpit-hud">
               <!-- Left: Speedometer & Speed Limit Badge -->
               <div class="hud-cluster hud-left">
                 <div id="speedToggle" class="hud-speed-group" title="Tap to switch MPH / KM/H">
@@ -260,9 +255,9 @@
                   <span id="hudSpeedUnit" class="hud-speed-unit">MPH</span>
                 </div>
                 <div class="hud-car-limit"><div class="hud-limit-sign" title="Car-detected speed limit">
-                  <span class="hud-limit-label">SPEED</span>
+                  <span class="hud-limit-label">Limit</span>
                   <span id="hudLimitVal" class="hud-limit-text">—</span>
-                </div><span class="hud-limit-source">Car-detected<br>speed limit</span></div>
+                </div></div>
               </div>
 
               <!-- Center: Turn Left Blinker, BMW M-Sport Steering Wheel, Turn Right Blinker -->
@@ -292,15 +287,7 @@
                   <!-- Brake Pedal (Wide Bevel Pad with Top Hanger Arm) -->
                   <div id="brakePedalCard" class="pedal-card" title="Brake Pedal State">
                     <div class="pedal-brake">
-                      <svg viewBox="0 0 48 48" width="38" height="38">
-                        <!-- Top Hanger Arm -->
-                        <rect class="brake-arm" x="21" y="3" width="6" height="12" fill="rgba(120, 130, 150, 0.6)"></rect>
-                        <!-- Wide Beveled Brake Pad -->
-                        <rect class="brake-pad" x="7" y="14" width="34" height="22" rx="3" ry="3" fill="rgba(35, 38, 48, 0.7)" stroke="rgba(160, 170, 195, 0.5)" stroke-width="2"></rect>
-                        <!-- Anti-slip horizontal traction ribs -->
-                        <line class="brake-rib" x1="13" y1="21" x2="35" y2="21" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
-                        <line class="brake-rib" x1="13" y1="28" x2="35" y2="28" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
-                      </svg>
+                      <svg viewBox="0 0 64 64" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 9v10"/><rect x="12" y="19" width="40" height="26" rx="5"/><path d="M21 27h22M21 36h22"/></svg>
                     </div>
                     <span class="pedal-label">BRAKE</span>
                   </div>
@@ -308,24 +295,14 @@
                   <!-- Accelerator Pedal (Upright Organ Pedal with Floor Hinge) -->
                   <div id="gasPedalCard" class="pedal-card" title="Accelerator Pedal State">
                     <div class="pedal-gas">
-                      <svg viewBox="0 0 48 48" width="38" height="38">
-                        <!-- Upright Organ Pedal Pad -->
-                        <rect class="gas-pad" x="14" y="4" width="20" height="36" rx="3" ry="3" fill="rgba(35, 38, 48, 0.7)" stroke="rgba(160, 170, 195, 0.5)" stroke-width="2"></rect>
-                        <!-- Floor Hinge Pivot Base -->
-                        <rect class="gas-hinge" x="10" y="40" width="28" height="5" rx="1.5" fill="rgba(120, 130, 150, 0.6)"></rect>
-                        <!-- Vertical anti-slip traction ribs -->
-                        <line class="gas-rib" x1="20" y1="10" x2="20" y2="34" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
-                        <line class="gas-rib" x1="28" y1="10" x2="28" y2="34" stroke="rgba(160, 170, 195, 0.7)" stroke-width="1.5" stroke-linecap="round"></line>
-                      </svg>
+                      <svg viewBox="0 0 64 64" width="38" height="38" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="23" y="9" width="20" height="42" rx="5"/><path d="M29 19v22M37 19v22M19 55h28"/></svg>
                     </div>
                     <span class="pedal-label">GAS</span>
                   </div>
                 </div>
               </div>
             </div>
-
-            <!-- Transport Scrubber & Playback Controls -->
-            <div class="transport-panel">
+<div class="transport-panel"><div class="dock-clock"><span id="dockElapsed">0:00</span><span id="dockRecordingLabel" class="dock-recording-label"></span><span id="dockDuration">0:00</span></div>
               <div id="driveTimeline" class="drive-timeline"></div>
               <div id="playbackProgress" class="playback-buffering" hidden><span class="inline-spinner"></span>Preparing video…</div>
               <div class="scrubber-bar-row" hidden>
@@ -335,8 +312,8 @@
 
               <div class="transport-action-row">
                 <div class="playback-controls">
-                  <!-- Step Back 1s -->
-                  <button id="skipBackBtn" class="control-btn" title="Step backward (Left arrow)">
+                  <!-- Previous recording in this drive -->
+                  <button id="skipBackBtn" data-label="Previous" class="control-btn" title="Previous recording in this drive" aria-label="Previous recording" disabled>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                       <polygon points="11,18 2,12 11,6"></polygon>
                       <polygon points="21,18 12,12 21,6"></polygon>
@@ -344,14 +321,14 @@
                   </button>
 
                   <!-- Play / Pause -->
-                  <button id="playPauseBtn" class="control-btn play-btn" title="Play / Pause (Spacebar)">
+                  <button id="playPauseBtn" aria-label="Play" class="control-btn play-btn" title="Play / Pause (Spacebar)">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                       <polygon points="6,4 19,12 6,20"></polygon>
                     </svg>
                   </button>
 
-                  <!-- Step Forward 1s -->
-                  <button id="skipFwdBtn" class="control-btn" title="Step forward (Right arrow)">
+                  <!-- Next recording in this drive -->
+                  <button id="skipFwdBtn" data-label="Next" class="control-btn" title="Next recording in this drive" aria-label="Next recording" disabled>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                       <polygon points="13,6 22,12 13,18"></polygon>
                       <polygon points="3,6 12,12 3,18"></polygon>
@@ -372,11 +349,36 @@
 
               </div>
             </div>
-          </div>
-        </main>
-      </div>
+<div class="playback-vision-pair"><section id="drivingViewPanel" class="panel-card driving-panel" data-state="empty" aria-label="Driving visualization">
+            <div class="section-header">
+              <span class="section-title">DRIVING VIEW</span>
+              <span class="driving-status">RECORDED</span>
+              <button class="driving-angle" type="button" aria-label="Top Down View" aria-pressed="false">Top Down View</button>
+            </div>
+            <div class="driving-stage">
+              <div class="driving-message" role="status">Open a recording to build its driving view.</div>
+              <span class="driving-distance"></span>
+              <canvas class="driving-signs" role="img" hidden></canvas>
+            </div>
+            <div class="driving-detail"></div>
+          </section><section class="panel-card sedan-panel-card">
+            <div id="sedanSelectorContainer">
+              <!-- Dynamically populated by SedanCameraSelector -->
+            </div>
+          </section></div>
+<section class="panel-card live-map-panel">
+            <div class="section-header">
+              <span class="section-title">GPS TRACKING</span>
+            </div>
+            <div class="live-map-box">
+              <canvas id="playbackMapCanvas" width="320" height="200"></canvas>
+            </div>
+          </section>
+</div>
     </section>
   </div>
+
+
 
   <!-- iOS & Desktop Export Sheet Modal -->
   <div id="exportModal" class="modal-backdrop">
@@ -393,7 +395,7 @@
             <div class="export-preview-topbar">
               <div class="export-preview-label">
                 <span class="preview-dot"></span>
-                <span>Export Preview (Mid-Recording)</span>
+                <span>Export Preview (Current Frame)</span>
               </div>
               <span id="exportPreviewTimestamp" class="export-preview-time">00:00.00</span>
             </div>
@@ -477,6 +479,12 @@
                 <span class="meta-toggle-check"></span>
                 <span class="meta-toggle-title">Route Map</span>
               </label>
+              <label class="meta-toggle-item" title="Include Driving view below the map, synchronized with exported video">
+                <input id="exportToggleDriving" type="checkbox">
+                <span class="meta-toggle-check"></span>
+                <span class="meta-toggle-title">Driving View</span>
+              </label>
+              <p id="exportDrivingNote" class="export-driving-note" role="status">Driving view uses the recording's lane and traffic metadata.</p>
             </div>
             <div class="export-brand-hint">
               <span>BimmerVision branding is displayed whenever any cockpit metadata is enabled.</span>
@@ -614,7 +622,7 @@
 
         <div class="settings-section" style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px;">
           <h4 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--tesla-muted); margin: 0 0 10px 0;">Software Versions</h4>
-          <p class="source-detail">BimmerVision Web 0.2.0 · runs on your device</p>
+          <p class="source-detail">BimmerVision Web 0.2.37 · runs on your device</p>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; margin-bottom: 8px;">
             <span style="font-weight: 500; font-size: 13px;">BimmerVision version</span>
             <span style="background: rgba(61, 168, 242, 0.15); color: #3da8f2; padding: 3px 8px; border-radius: 6px; font-weight: 600; font-family: monospace; font-size: 13px;" id="installedCarVersion">—</span>
@@ -655,28 +663,37 @@
   </aside>
 
   <!-- Scripts -->
-  <script src="source-manager.js?v=web-020"></script>
+  <script src="source-manager.js?v=lookahead-1"></script>
+  <script src="app-version-data.js?v=idrive-1"></script>
+  <script src="app-version.js?v=idrive-1"></script>
+  <script src="recording-cache.js?v=lookahead-1"></script>
   <script src="raw-download.js?v=web-020"></script>
   <script src="raw-zip.js?v=web-020"></script>
-  <script src="local-source.js?v=web-020"></script>
+  <script src="local-source.js?v=directory-picker-4"></script>
   <script src="remote-source.js?v=web-020"></script>
   <script src="vendor/jsQR.js?v=1"></script>
   <script src="qr-scanner.js?v=web-020"></script>
-  <script src="source-controller.js?v=web-020"></script>
+  <script src="source-controller.js?v=directory-picker-3"></script>
   <script src="mp4-muxer.js?v=web-020"></script>
-  <script src="bvr-parser.js?v=web-020"></script>
+  <script src="traffic-signs.js?v=signs-1"></script>
+  <script src="perception-data.js?v=signs-1"></script>
+  <script src="vehicle-motion.js?v=vision-1"></script>
+  <script src="driving-view.js?v=signs-1"></script>
+  <script src="bvr-parser.js?v=vision-1"></script>
   <script src="rtp-h264.js?v=web-020"></script>
   <script src="drive-grouper.js?v=web-020"></script>
-  <script src="dark-osm-map.js?v=web-020"></script>
-  <script src="sedan-selector.js?v=web-020"></script>
+  <script src="dark-osm-map.js?v=export-2"></script>
+  <script src="sedan-selector.js?v=mirror-cameras-12"></script>
   <script src="drive-timeline.js?v=web-020"></script>
   <script src="speed-limit-client.js?v=web-020"></script>
-  <script src="player.js?v=web-020"></script>
-  <script src="exporter.js?v=web-020"></script>
+  <script src="player.js?v=vision-1"></script>
+  <script src="exporter.js?v=export-2"></script>
   <script src="camera-store.js?v=web-020"></script>
   <script src="release-checker.js?v=web-020"></script>
   <script src="catalog-refresh.js?v=web-020"></script>
   <script src="recording-notice.js?v=web-020"></script>
-  <script src="app.js?v=web-020"></script>
+  <script src="playback-layout.js?v=lookahead-7"></script>
+  <script src="recording-navigation.js?v=workspace-1"></script>
+  <script src="app.js?v=idrive-version-10"></script>
 </body>
 </html>
