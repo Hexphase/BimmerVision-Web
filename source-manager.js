@@ -17,11 +17,11 @@ class SourceManager {
   const source=this.source;if(!source)return json({error:'Choose a USB drive or connect to your car first.'},503);
   if(source.kind==='usb'){
    if(path==='/api/v1/capabilities')return json({nativePreview:false,readOnly:true,localFiles:true});
-   if(path==='/api/v1/version')return json({version:'0.2.38',repository:'Hexphase/BimmerVision-Web',hostedViewer:true});
+   if(path==='/api/v1/version')return json({version:'0.2.39',repository:'Hexphase/BimmerVision-Web',hostedViewer:true});
   }
   return this.recordingCache ? this.recordingCache.fetch(source,path,options) : source.fetch(path,options);
  }
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={SourceManager};
-else{root.BVSourceManager=new SourceManager({nativeFetch:root.fetch.bind(root)});root.BV_WEB_VERSION='0.2.38';}
+else{root.BVSourceManager=new SourceManager({nativeFetch:root.fetch.bind(root)});root.BV_WEB_VERSION='0.2.39';}
 })(typeof globalThis!=='undefined'?globalThis:this);

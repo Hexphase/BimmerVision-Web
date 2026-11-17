@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="mobile.css?v=web-020">
   <link rel="stylesheet" href="hosted.css?v=privacy-1">
   <link rel="stylesheet" href="driving-view.css?v=signs-1">
-  <link rel="stylesheet" href="playback-layout.css?v=header-controls-0238">
+  <link rel="stylesheet" href="playback-layout.css?v=export-buttons-0239">
   <link rel="stylesheet" href="recordings-layout.css?v=descriptive-3">
   <link rel="stylesheet" href="homepage.css?v=home-version-7">
 </head>
@@ -82,7 +82,7 @@
         <div class="brand-cluster" title="BimmerVision">
           <img class="brand-wordmark" src="assets/bimmervision-wordmark.png" alt="BimmerVision">
         </div>
-      </div><div class="header-context"><button id="playbackBackBtn" class="back-link" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg><span>All drives</span></button><div class="playback-context"><h1 id="playbackTitle">Drive playback</h1><p><span id="playbackClipLabel"></span><span id="playbackStatus" role="status" aria-live="polite">Choose a recording</span><button id="playbackRetryBtn" class="back-link" type="button" hidden>Retry recording</button></p></div></div><div class="header-actions"><button id="quickExportBtn" type="button" class="header-export">Export</button><details class="app-menu"><summary aria-label="Settings and playback options"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.6 2.2-2 .9-2-.6-2 3.5 1.5 1.6v2.3L2.4 15l2 3.5 2-.6 2 .9L9 21h4l.6-2.2 2-.9 2 .6 2-3.5-1.5-1.6v-2.3l1.5-1.6-2-3.5-2 .6-2-.9L13 3Z"/><circle cx="11" cy="12" r="3"/></svg></summary><div class="app-menu-content"><div class="playback-tools"><div class="recording-actions" role="group" aria-label="Recording actions">
+      </div><div class="header-context"><button id="playbackBackBtn" class="back-link" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg><span>All drives</span></button><div class="playback-context"><h1 id="playbackTitle">Drive playback</h1><p><span id="playbackClipLabel"></span><span id="playbackStatus" role="status" aria-live="polite">Choose a recording</span><button id="playbackRetryBtn" class="back-link" type="button" hidden>Retry recording</button></p></div></div><div class="header-actions"><button id="quickExportBtn" type="button" class="header-export" aria-label="Export video" title="Export video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Export</span></button><details class="app-menu"><summary aria-label="Settings and playback options"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.6 2.2-2 .9-2-.6-2 3.5 1.5 1.6v2.3L2.4 15l2 3.5 2-.6 2 .9L9 21h4l.6-2.2 2-.9 2 .6 2-3.5-1.5-1.6v-2.3l1.5-1.6-2-3.5-2 .6-2-.9L13 3Z"/><circle cx="11" cy="12" r="3"/></svg></summary><div class="app-menu-content"><div class="playback-tools"><div class="recording-actions" role="group" aria-label="Recording actions">
             <button id="playbackLockBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Lock recording to prevent deletion">
                   <span id="playbackLockIcon" style="display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="currentColor" fill-opacity="0.15"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -622,7 +622,7 @@
 
         <div class="settings-section" style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px;">
           <h4 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--tesla-muted); margin: 0 0 10px 0;">Software Versions</h4>
-          <p class="source-detail">BimmerVision Web 0.2.38 · runs on your device</p>
+          <p class="source-detail">BimmerVision Web 0.2.39 · runs on your device</p>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; margin-bottom: 8px;">
             <span style="font-weight: 500; font-size: 13px;">BimmerVision version</span>
             <span style="background: rgba(61, 168, 242, 0.15); color: #3da8f2; padding: 3px 8px; border-radius: 6px; font-weight: 600; font-family: monospace; font-size: 13px;" id="installedCarVersion">—</span>
@@ -663,8 +663,8 @@
   </aside>
 
   <!-- Scripts -->
-  <script src="source-manager.js?v=header-controls-0238"></script>
-  <script src="app-version-data.js?v=idrive-0238"></script>
+  <script src="source-manager.js?v=export-buttons-0239"></script>
+  <script src="app-version-data.js?v=idrive-0239"></script>
   <script src="app-version.js?v=idrive-1"></script>
   <script src="recording-cache.js?v=lookahead-1"></script>
   <script src="raw-download.js?v=web-020"></script>
