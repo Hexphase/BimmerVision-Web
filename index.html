@@ -11,7 +11,7 @@
   <link rel="icon" type="image/x-icon" href="assets/bimmervision.ico">
   <link rel="stylesheet" href="style.css?v=web-020">
   <link rel="stylesheet" href="mobile.css?v=web-020">
-  <link rel="stylesheet" href="hosted.css?v=privacy-1">
+  <link rel="stylesheet" href="hosted.css?v=player-lock-backup-1">
   <link rel="stylesheet" href="driving-view.css?v=signs-1">
   <link rel="stylesheet" href="playback-layout.css?v=export-buttons-0239">
   <link rel="stylesheet" href="recordings-layout.css?v=descriptive-3">
@@ -51,7 +51,7 @@
         <span class="source-eyebrow">CONNECT YOUR RECORDING DRIVE</span><h2 id="usbInstructionsTitle">Open your USB recordings.</h2><p id="usbInstructionsText">Get your recording drive ready, then select its BimmerVision folder.</p>
         <ol id="usbInstructionSteps"><li>Stop recording in BimmerVision, then safely remove the USB drive from your BMW.</li><li>Connect the USB drive to this computer.</li><li>Press <strong>Select Drive</strong> below, navigate to your USB drive, and select the <strong>BimmerVision</strong> folder.</li></ol>
         <p id="usbPickerStatus" role="status" aria-live="polite"></p>
-        <button id="selectUsbDriveBtn" type="button" class="source-primary" autofocus>Select Drive</button><p class="usb-instructions-privacy">Your recordings are processed locally and never uploaded.</p>
+        <button id="selectUsbDriveBtn" type="button" class="source-primary" autofocus>Select Drive</button><p class="usb-instructions-privacy">Local playback stays on this device. Upload only when you choose Back up to Drive. Locking requires a browser that supports writing to USB.</p>
       </dialog>
 
       <section id="carConnection" class="home-connect" aria-labelledby="carSourceTitle">
@@ -136,6 +136,7 @@
       <button id="dismissReleaseNotice" type="button" aria-label="Dismiss update notice">×</button>
     </aside>
 
+    <p id="sourceAccessNotice" class="source-detail" role="status" hidden></p>
     <aside id="recordingDownloadNotice" class="recording-notice" role="status" hidden></aside>
 
     <!-- TAB 1: RECORDINGS VIEW (Drives Library & Full Drive Overview with Route Map) -->
@@ -679,24 +680,24 @@
     <div class="source-actions"><button id="startDriveBackupBtn" type="button" class="source-primary" disabled>Back up this recording</button><button id="cancelDriveBackupBtn" type="button" class="source-secondary" hidden>Cancel upload</button></div>
   </dialog>
 
-  <script src="source-manager.js?v=export-buttons-0239"></script>
+  <script src="source-manager.js?v=player-lock-backup-1"></script>
   <script src="app-version-data.js?v=idrive-0239"></script>
   <script src="app-version.js?v=idrive-1"></script>
   <script src="recording-cache.js?v=lookahead-1"></script>
   <script src="raw-download.js?v=web-020"></script>
   <script src="raw-zip.js?v=web-020"></script>
-  <script src="local-source.js?v=directory-picker-4"></script>
+  <script src="local-source.js?v=player-lock-backup-1"></script>
   <script src="remote-source.js?v=web-020"></script>
-  <script src="car-handoff.js?v=phone-1"></script>
+  <script src="car-handoff.js?v=player-lock-backup-1"></script>
   <script src="vendor/jsQR.js?v=1"></script>
   <script src="qr-scanner.js?v=web-020"></script>
   <script src="google-drive-config.js?v=drive-1"></script>
   <script src="vendor/spark-md5-3.0.2.min.js"></script>
   <script src="google-drive-client.js?v=drive-1"></script>
   <script src="google-drive-source.js?v=drive-1"></script>
-  <script src="google-drive-backup.js?v=drive-1"></script>
+  <script src="google-drive-backup.js?v=player-lock-backup-1"></script>
   <script src="google-drive-phone.js?v=drive-1"></script>
-  <script src="google-drive-backup-ui.js?v=drive-1"></script>
+  <script src="google-drive-backup-ui.js?v=player-lock-backup-1"></script>
   <script src="source-controller.js?v=directory-picker-3"></script>
   <script src="mp4-muxer.js?v=web-020"></script>
   <script src="traffic-signs.js?v=signs-1"></script>
@@ -718,6 +719,6 @@
   <script src="recording-notice.js?v=web-020"></script>
   <script src="playback-layout.js?v=lookahead-7"></script>
   <script src="recording-navigation.js?v=workspace-1"></script>
-  <script src="app.js?v=idrive-version-10"></script>
+  <script src="app.js?v=player-lock-backup-1"></script>
 </body>
 </html>

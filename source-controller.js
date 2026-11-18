@@ -16,7 +16,13 @@ document.addEventListener('DOMContentLoaded',()=>{
  function startWork(text){stopWork();work=new AbortController();buttons.forEach(b=>b.disabled=true);error.hidden=true;cancel.hidden=false;message(text);return {token:epoch,signal:work.signal};}
  function show(){closeUsb();stopWork();window.player?.pause();shell.hidden=true;shell.inert=true;screen.hidden=false;back.hidden=!manager.source;document.getElementById('openUsbBtn').focus();}
  function hide(){closeUsb();stopWork();screen.hidden=true;shell.hidden=false;shell.inert=false;const button=document.getElementById('changeSourceBtn'),menu=button.closest?.('details');(menu&&!menu.open?menu.querySelector('summary'):button).focus();}
- function chosen(source){work=null;manager.setSource(source);document.body.dataset.sourceReadonly=String(source.readOnly===true);hide();source.indexing?.then(()=>{if(manager.source===source)window.dispatchEvent(new Event('bimmervision:library-updated'));}).catch(()=>{});}
+ function updateSourceAccess(source){
+  document.body.dataset.sourceReadonly=String(source.readOnly===true);
+  document.body.dataset.sourceCanDelete=String(source.kind==='car'&&source.canDelete!==false);
+  const notice=document.getElementById('sourceAccessNotice');notice.hidden=source.kind!=='usb';
+  if(source.kind==='usb')notice.textContent=source.canLock?'USB lock changes are saved to the drive after you allow write access. Video files stay unchanged.':'This browser opened USB recordings read-only. Back up to Drive is available; use Chrome or Edge with the native folder picker, or connect to the car, to save locks.';
+ }
+ function chosen(source){work=null;manager.setSource(source);updateSourceAccess(source);hide();source.indexing?.then(()=>{if(manager.source===source)window.dispatchEvent(new Event('bimmervision:library-updated'));}).catch(()=>{});}
  function report(value){if(typeof value==='string')message(value);else if(value){const n=value.completed??value.scanned??0,total=value.total;message(value.message||`Reading recordings${total?` · ${n} of ${total}`:n?` · ${n} checked`:''}…`);}}
  const driveStatus=document.getElementById('googleDriveStatus'),driveConnect=document.getElementById('connectGoogleDriveBtn'),drivePrepare=document.getElementById('prepareGoogleDriveBtn'),driveDisconnect=document.getElementById('disconnectGoogleDriveBtn'),driveChange=document.getElementById('changeGoogleDriveAccountBtn');
  drivePrepare.addEventListener('click',async()=>{const job=startWork('Loading Google sign-in…');try{if(!window.BV_GOOGLE_DRIVE_CONFIG?.clientId)throw Error('Google Drive connection is not configured yet.');await BVGoogleDriveClient.prepare();if(job.token!==epoch)return;stopWork();drivePrepare.hidden=true;driveConnect.hidden=false;driveStatus.textContent='Google sign-in is ready. Choose Connect Google Drive to select your account.';driveConnect.focus();}catch(e){if(job.token===epoch){stopWork();failure(e);}}});
@@ -76,9 +82,9 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.getElementById('stopQrBtn').addEventListener('click',stopScanner);
  window.addEventListener('pagehide',event=>{stopWork();if(!event.persisted){manager.source?.close();account.clear();}});
  function updateDriveStatus(){driveDisconnect.hidden=!account.client;driveChange.hidden=!account.client;driveStatus.textContent=account.client?'Connected · '+(account.user?.emailAddress||account.user?.displayName||'Google Drive'):'Google Drive is disconnected.';}
- account.subscribe(updateDriveStatus);manager.subscribe(source=>{document.body.dataset.sourceReadonly=String(source.readOnly===true);if(source.kind!=='car')document.getElementById('phoneBackupInstructions').hidden=true;updateDriveStatus();});
+ account.subscribe(updateDriveStatus);manager.subscribe(source=>{updateSourceAccess(source);if(source.kind!=='car')document.getElementById('phoneBackupInstructions').hidden=true;updateDriveStatus();});
  let handoff;try{handoff=BVCarHandoff.consume(location,history);}catch(e){failure(e);return;}
- if(handoff){address.value=handoff.address;code.value=handoff.code;connect({fragmentHandoff:true}).then(()=>{code.value='';if(manager.source?.kind==='car'){const instructions=document.getElementById('phoneBackupInstructions');instructions.hidden=false;instructions.textContent='Phone backup is ready. Open a drive’s clips, choose Back up to Drive on a recording, then connect the same Google account as the car and confirm phone internet use.';}});return;}
+ if(handoff){address.value=handoff.address;code.value=handoff.code;connect({fragmentHandoff:true}).then(()=>{code.value='';if(manager.source?.kind==='car'){const instructions=document.getElementById('phoneBackupInstructions');instructions.hidden=false;instructions.textContent='Phone backup is ready. Open a drive’s clips, choose Back up to Drive on a recording, then connect the same Google account as the car and confirm phone internet use.';if(handoff.clipId)window.BVGoogleDriveBackupUI?.open(handoff.clipId);}});return;}
  const params=new URLSearchParams(location.search);const supplied=params.get('car')||params.get('address');
  if(supplied){try{fillQr(supplied);if(params.get('code'))code.value=params.get('code');}catch(e){failure(e);}history.replaceState({},'',location.pathname+location.hash);}
 });

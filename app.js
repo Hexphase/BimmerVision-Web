@@ -393,7 +393,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   body: JSON.stringify({ locked: target })
                 });
                 seg.clip.locked = target;
-              } catch (_) {}
+              } catch (error) { alert('Could not save lock: '+error.message); break; }
             }
             await loadLibrary();
           });
@@ -679,7 +679,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             body: JSON.stringify({ locked: target })
           });
           seg.clip.locked = target;
-        } catch (_) {}
+        } catch (error) { alert('Could not save lock: '+error.message); break; }
       }
       await loadLibrary();
     });

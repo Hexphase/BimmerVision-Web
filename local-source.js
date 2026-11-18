@@ -1,4 +1,4 @@
-/* Browser-only, read-only recording source. No filesystem write APIs are used. */
+/* Local playback; native directory handles may explicitly save lock metadata only. */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -89,16 +89,17 @@
     check(signal);
     const groups = new Map(), warnings = [], recordings = new Map();
     let discoveryCount=0;
-    for (const {path, file} of entries) {
+    for (const {path, file, handle} of entries) {
       if(++discoveryCount%200===0){await yieldUI();check(signal);}
       const parts = safeParts(path);
       if (!parts || parts.length < 2 || !UUID.test(parts[parts.length - 2])) continue;
       const dir = parts.slice(0, -1).join('/'), filename = parts[parts.length - 1];
       if (!['manifest.json', 'capture.bvr', 'mapping.json'].includes(filename)) continue;
-      if (!groups.has(dir)) groups.set(dir, {id: parts[parts.length - 2], files: new Map(), ambiguous: false});
+      if (!groups.has(dir)) groups.set(dir, {id: parts[parts.length - 2], files: new Map(), handles: new Map(), ambiguous: false});
       const group = groups.get(dir);
       if (group.files.has(filename)) group.ambiguous = true;
       group.files.set(filename, file);
+      if(handle)group.handles.set(filename,handle);
     }
     const ids = new Map();
     for (const group of groups.values()) ids.set(group.id.toLowerCase(), (ids.get(group.id.toLowerCase()) || 0) + 1);
@@ -115,14 +116,47 @@
         const header = new Uint8Array(await capture.slice(0, 16).arrayBuffer());
         const dv = new DataView(header.buffer, header.byteOffset, header.byteLength);
         if (!magic(header, 'BVR1') || dv.getUint32(4, true) !== 1 || dv.getUint32(8, true) !== 16) throw Error('Invalid archive header');
-        recordings.set(manifest.id.toLowerCase(), {manifest, manifestFile:mf, capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
+        recordings.set(manifest.id.toLowerCase(), {manifest, manifestFile:mf, manifestHandle:group.handles.get('manifest.json'), captureHandle:group.handles.get('capture.bvr'), capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
       } catch (error) { warnings.push(`${group.id}: ${error.message}`); }
       onProgress({phase: 'catalog', completed: ++count, total: groups.size});
       if(count%20===0){await yieldUI();check(signal);}
     }
-    let closed = false;
+    let closed = false, lockQueue=Promise.resolve(), revision=0;
+    const listeners=new Set(),canLock=recordings.size>0&&[...recordings.values()].every(r=>typeof r.manifestHandle?.createWritable==='function'&&typeof r.manifestHandle?.requestPermission==='function'&&typeof r.captureHandle?.getFile==='function');
+    function live(requestSignal){check(signal);check(requestSignal);if(closed)throw abort();}
+    async function saveLock(record,locked,permission,requestSignal){
+      let writable,committed=false;
+      try{
+        live(requestSignal);
+        if(await permission!=='granted')return json({error:'Write permission is required to save a USB lock. Use Chrome or Edge, or lock the original through the connected car.'},403);
+        live(requestSignal);
+        const current=await record.manifestHandle.getFile(),text=await record.manifestFile.text();
+        if(current.size>MAX_JSON||await current.text()!==text)throw Error('USB recording metadata changed. Reopen the drive before locking.');
+        const capture=await record.captureHandle.getFile();
+        if(capture.size!==record.capture.size||capture.lastModified!==record.capture.lastModified)throw Error('USB recording changed. Reopen the drive before locking.');
+        live(requestSignal);
+        const value={...record.manifest,locked},bytes=JSON.stringify(value,null,2)+'\n';
+        writable=await record.manifestHandle.createWritable({keepExistingData:false});live(requestSignal);
+        await writable.write(bytes);live(requestSignal);
+        const beforeCommit=await record.manifestHandle.getFile();
+        if(beforeCommit.size>MAX_JSON||await beforeCommit.text()!==text)throw Error('USB metadata changed while saving. Reopen the drive before locking.');
+        live(requestSignal);
+        // The browser commits its temporary file only when this stream closes.
+        await writable.close();committed=true;
+        const saved=await record.manifestHandle.getFile();
+        if(await saved.text()!==bytes)throw Error('USB lock could not be verified. Reopen the drive to check its status.');
+        record.manifest=value;record.manifestFile=new Blob([bytes],{type:'application/json'});revision++;
+        for(const listener of listeners)listener();
+        return json({id:record.manifest.id,locked});
+      }catch(error){
+        if(error.name==='AbortError')throw error;
+        return json({error:committed?'USB lock was saved but verification failed. Reopen the drive to check its status.':error.message||'Could not save USB lock.'},409);
+      }finally{if(writable&&!committed)await writable.abort().catch(()=>{});}
+    }
     const source = {
-      kind: 'usb', name, readOnly: true, label: LABEL, warnings,
+      kind: 'usb', name, readOnly: !canLock, canLock, canDelete:false, label: canLock?'USB locking available; video stays unchanged':LABEL, warnings,
+      get revision(){return revision;},
+      subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
       getOriginalFiles(id) { check(signal);if(closed)throw abort();if(typeof id!=='string'||!UUID.test(id))throw Error('Invalid recording.');const record=recordings.get(id.toLowerCase());if(!record)throw Error('Recording unavailable.');const files=[{name:'capture.bvr',blob:record.capture}];if(record.mappingFile)files.push({name:'mapping.json',blob:record.mappingFile});files.push({name:'manifest.json',blob:record.manifestFile});return files; },
       close() { closed = true; recordings.forEach(r => { if (r.overview.routeStatus === 'indexing') r.overview.routeStatus = 'cancelled'; }); },
       async fetch(path, init = {}) {
@@ -132,9 +166,19 @@
         const method = String(init.method || (request && request.method) || 'GET').toUpperCase();
         let url;
         try { url = new URL(request ? request.url : path, 'https://usb.invalid'); } catch (_) { return json({error: 'Invalid path'}, 400); }
+        const lockMatch=/^\/api\/v1\/recordings\/([a-f0-9-]+)\/lock$/i.exec(url.pathname);
+        if(method==='POST'&&lockMatch&&canLock){
+          const record=recordings.get(lockMatch[1].toLowerCase());if(!record)return json({error:'Recording unavailable'},404);
+          let body;try{body=JSON.parse(init.body);}catch{return json({error:'Invalid lock request'},400);}
+          if(typeof body?.locked!=='boolean')return json({error:'Lock must be true or false'},400);
+          // Ask while still in the user's click gesture, before serialized I/O awaits.
+          const permission=Promise.resolve().then(()=>(options.permissionHandle||record.manifestHandle).requestPermission({mode:'readwrite'}));
+          permission.catch(()=>{});
+          const result=lockQueue.then(()=>saveLock(record,body.locked,permission,init.signal));lockQueue=result.catch(()=>{});return result;
+        }
         if (method === 'DELETE' || (method !== 'GET' && method !== 'HEAD' && !/\/mapping(?:\.json)?$/.test(url.pathname))) return json({error: 'USB view only. Connect to the car to lock or delete recordings. Original files are never changed.'}, 403);
         if (url.pathname === '/api/v1/recordings' && method === 'GET') return json({recordings: [...recordings.values()].map(r => ({...r.manifest, ...r.overview})), warnings});
-        if (url.pathname === '/api/v1/capabilities') return json({nativePreview: false, readOnly: true, mappingStorage: 'browser'});
+        if (url.pathname === '/api/v1/capabilities') return json({nativePreview: false, readOnly: !canLock, canLock, canDelete:false, mappingStorage: 'browser'});
         if (url.pathname === '/api/v1/version') return json({version: '0.2.8', repository: 'Hexphase/BimmerVision'});
         if (url.pathname === '/api/v1/speed-limit') return json(null);
         const match = /^\/api\/v1\/recordings\/([a-f0-9-]+)\/(manifest\.json|capture\.bvr|raw\.zip|mapping(?:\.json)?)$/i.exec(url.pathname);
@@ -194,11 +238,11 @@
         if (!safeParts(name)) continue;
         if (child.kind === 'directory') {
           if (depth === 0 || name === 'BimmerVision' || name === 'Library' || UUID.test(name)) await walk(child, prefix + name + '/', depth + 1);
-        } else if (['manifest.json', 'capture.bvr', 'mapping.json'].includes(name)) entries.push({path: prefix + name, file: await child.getFile()});
+        } else if (['manifest.json', 'capture.bvr', 'mapping.json'].includes(name)) entries.push({path: prefix + name, file: await child.getFile(), handle: child});
       }
     }
     await walk(handle, handle.name + '/', 0);
-    return create(entries, handle.name || 'USB recordings', options);
+    return create(entries, handle.name || 'USB recordings', {...options,permissionHandle:typeof handle.requestPermission==='function'?handle:null});
   }
   return {fromFiles, fromDirectoryHandle};
 });
