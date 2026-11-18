@@ -437,6 +437,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               <small style="display:block;color:var(--tesla-muted);font-size:11px;margin-top:2px;">${DriveTimeline.format(seg.clip.durationSeconds)} · ${formatBytes(seg.clip.bytes||0)}</small>
             </div>
             <div class="clip-row-actions" style="display:flex;align-items:center;gap:6px;">
+              ${['usb','car'].includes(librarySource.kind)?`<button class="clip-row-backup" type="button" data-backup-recording="${seg.clip.id}" aria-label="Back up Clip ${i+1} to your Google Drive">Back up to Drive</button>`:''}
               <a class="clip-row-raw" href="#" data-raw-recording="${seg.clip.id}" download aria-label="Download original Clip ${i+1} and metadata as ZIP" title="Download original BVR recording and metadata">${driveIcon("download")}<span>Original ZIP</span></a>
               <button class="btn-lock-clip" type="button" title="${seg.clip.locked ? 'Recording is locked. Tap to unlock.' : 'Lock recording to prevent deletion'}" style="display:flex;align-items:center;background:rgba(255,255,255,0.06);border:1px solid ${seg.clip.locked ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'};border-radius:6px;padding:4px 8px;cursor:pointer;color:${seg.clip.locked ? '#f59e0b' : 'var(--tesla-muted)'};transition:all 0.2s ease;">
                 ${getLockSvg(seg.clip.locked, 13)}
@@ -582,6 +583,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <span style="color: var(--tesla-muted); margin-left: 8px;">${DriveTimeline.format(seg.offset)} into drive · ${DriveTimeline.format(sDur)} · ${formatBytes(seg.clip.bytes || 0)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
+          ${['usb','car'].includes(window.BVSourceManager.source.kind)?`<button class="clip-row-backup" type="button" data-backup-recording="${seg.clip.id}" aria-label="Back up Clip ${sIdx+1} to your Google Drive">Back up to Drive</button>`:''}
           <button class="btn-lock-clip" type="button" title="${seg.clip.locked ? 'Recording is locked. Tap to unlock.' : 'Lock recording to prevent deletion'}" style="background:rgba(255,255,255,0.06);border:1px solid ${seg.clip.locked ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.12)'};border-radius:6px;padding:5px 8px;cursor:pointer;color:${seg.clip.locked ? '#f59e0b' : 'var(--tesla-muted)'};display:inline-flex;align-items:center;justify-content:center;">${getLockSvg(seg.clip.locked, 13)}</button>
           <button class="btn-delete-clip" type="button" title="Delete recording" style="background:rgba(238,36,64,0.1);border:1px solid rgba(238,36,64,0.3);border-radius:6px;padding:5px 8px;cursor:pointer;color:#EE2440;display:inline-flex;align-items:center;justify-content:center;">${getTrashSvg(13)}</button>
           <button class="unit-toggle-pill btn-play-clip" type="button" aria-label="Play recording ${sIdx+1}" title="Play recording" style="padding: 2px 8px;">${driveIcon("play")}<span>Play</span></button>

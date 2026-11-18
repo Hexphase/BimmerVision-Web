@@ -17,3 +17,4 @@ test('USB metadata is local and unsupported operations fail rather than uploadin
  const c=await (await m.fetch('/api/v1/capabilities')).json();assert.equal(c.nativePreview,false);assert.equal(c.readOnly,true);
  const v=await(await m.fetch('/api/v1/version')).json();assert.equal(v.version,require('../package.json').version);
 });
+test('late requests from replaced sources cannot return old account data',async()=>{let release;const manager=new SourceManager();manager.setSource({kind:'drive',fetch:()=>new Promise(resolve=>release=resolve)});const pending=manager.fetch('/api/v1/recordings');manager.setSource({kind:'usb',fetch:async()=>new Response('new')});release(new Response('old private data'));await assert.rejects(pending,{name:'AbortError'});});

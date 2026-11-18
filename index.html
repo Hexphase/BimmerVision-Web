@@ -32,7 +32,7 @@
           <p class="home-product-description">Continuous native 360° camera recording for your BMW.</p>
           <p class="home-lede">The recording app for your BMW’s own cameras. Replay your drives, explore the metadata, and keep the moments that matter.</p>
           <div class="home-app-cta"><span>Don’t have BimmerVision?</span><a class="source-get-app source-primary" href="https://github.com/Hexphase/BimmerVision">Get it here<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div>
-          <a class="home-privacy-link" href="#recordingPrivacy"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg>No uploads. Local processing.</a>
+          <a class="home-privacy-link" href="#recordingPrivacy"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg>Local playback. Optional Drive backup.</a>
         </div>
         <figure class="home-visual" aria-label="Illustration of the driving visualization">
           <div class="home-visual-heading"><span class="home-live-mark"></span>YOUR DRIVE, RECONSTRUCTED<span class="home-visual-mode">360°</span></div>
@@ -43,7 +43,7 @@
 
       <section id="usbConnection" class="home-connect home-usb" aria-labelledby="usbSourceTitle">
         <div class="home-connect-copy"><span class="source-eyebrow">01 / USB PLAYBACK</span><h2 id="usbSourceTitle">Connect your<br>USB drive.</h2><p>Open the recordings saved by your BMW. Bring the drive to this computer and choose your BimmerVision folder.</p></div>
-        <div class="home-usb-action"><svg class="home-usb-symbol" viewBox="0 0 48 48" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12" y="17" width="24" height="25" rx="3"/><path d="M17 17V6h14v11M22 10v3m4-3v3"/></svg><h3>Your recordings, on this device.</h3><p>A quick walkthrough will help you connect and select your recording drive.</p><button id="openUsbBtn" type="button" class="source-primary">Connect USB drive<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6 6 6-6 6M3 12h17"/></svg></button><input id="usbFolderInput" type="file" webkitdirectory multiple hidden><span class="home-usb-private">Local playback. Your recordings are never uploaded.</span></div>
+        <div class="home-usb-action"><svg class="home-usb-symbol" viewBox="0 0 48 48" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12" y="17" width="24" height="25" rx="3"/><path d="M17 17V6h14v11M22 10v3m4-3v3"/></svg><h3>Your recordings, on this device.</h3><p>A quick walkthrough will help you connect and select your recording drive.</p><button id="openUsbBtn" type="button" class="source-primary">Connect USB drive<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6 6 6-6 6M3 12h17"/></svg></button><input id="usbFolderInput" type="file" webkitdirectory multiple hidden><span class="home-usb-private">Local playback. Upload only when you choose Back up to Drive.</span></div>
       </section>
 
       <dialog id="usbInstructions" class="usb-instructions" aria-labelledby="usbInstructionsTitle" aria-describedby="usbInstructionsText usbInstructionSteps">
@@ -68,15 +68,21 @@
         </div>
       </section>
 
+      <section id="googleDriveConnection" class="home-connect" aria-labelledby="googleDriveTitle">
+        <div class="home-connect-copy"><span class="source-eyebrow">03 / GOOGLE DRIVE PLAYBACK</span><h2 id="googleDriveTitle">Your library,<br>in Google Drive.</h2><p>Connect your own Google account to view recordings backed up by BimmerVision. Recording video stays in your Drive and plays in this browser.</p></div>
+        <div class="source-card home-connect-form"><h3>Connect Google Drive</h3><p class="source-detail">Continuing loads Google’s sign-in service. Google receives connection information when it loads. Then choose an account and grant access to BimmerVision files only.</p><div class="source-actions"><button id="prepareGoogleDriveBtn" type="button" class="source-primary">Continue with Google</button><button id="connectGoogleDriveBtn" type="button" class="source-primary" hidden>Connect Google Drive</button><button id="changeGoogleDriveAccountBtn" type="button" class="source-secondary" hidden>Change account</button><button id="disconnectGoogleDriveBtn" type="button" class="source-secondary" hidden>Disconnect</button></div><p id="googleDriveStatus" class="source-detail" role="status" aria-live="polite">Google Drive is disconnected.</p><p class="source-detail">View only. Locking and deleting cloud recordings are unavailable. Access lasts for this page session; reconnect if it expires. Switch to a USB source to back up a selected local recording.</p></div>
+      </section>
+
       <section id="recordingPrivacy" class="source-privacy home-privacy" aria-label="Recording privacy">
         <div><span class="source-eyebrow">LOCAL BY DESIGN</span><h2>Your recordings<br>stay yours.</h2></div>
-        <div><div class="source-privacy-heading"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg><strong>No uploads. Local processing.</strong></div><p>Your recordings and vehicle metadata are read and processed locally in your browser. They are never uploaded to BimmerVision or stored on our servers. Your original files stay on your device.</p><p class="source-privacy-map">Online maps load OpenStreetMap tiles; those requests can reveal the map area you view. Your recording files are not sent to the map provider.</p></div>
+        <div><div class="source-privacy-heading"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg><strong>Local playback. Optional Drive backup.</strong></div><p>Your recordings and vehicle metadata are read and processed locally in your browser. They are never uploaded to BimmerVision or stored on our servers. Google Drive backups happen only when you select a recording, connect your account, and confirm the upload. Your original files stay on your device or in your own Google Drive. Connecting Google Drive sends requests directly to Google after you choose to continue.</p><p class="source-privacy-map">Online maps load OpenStreetMap tiles; those requests can reveal the map area you view. Your recording files are not sent to the map provider.</p></div>
       </section>
       <aside class="source-work-status" aria-label="Connection and recording status"><p id="sourceProgress" class="source-progress" role="status" aria-live="polite"></p><p id="sourceError" class="source-error" role="alert" hidden></p><div><button id="cancelSourceWork" type="button" class="source-secondary" hidden>Cancel</button><button id="returnToRecordingsBtn" type="button" class="source-secondary" hidden>Return to recordings</button></div></aside>
       <footer class="source-footer"><div class="home-footer-identity"><span>Made for the moments between destinations.</span><a id="footerAppVersion" href="https://github.com/Hexphase/BimmerVision/releases" target="_blank" rel="noopener noreferrer">BimmerVision</a></div><div><a class="source-get-app" href="https://github.com/Hexphase/BimmerVision">Don't Have BimmerVision?</a><a href="https://github.com/Hexphase/BimmerVision-Web" target="_blank" rel="noopener noreferrer">About BimmerVision Web</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms</a></div></footer>
     </div>
   </main>
   <div class="app-shell" hidden inert>
+    <p id="phoneBackupInstructions" class="phone-backup-instructions" role="status" hidden></p>
     <!-- Top Bar with Official Logo, Wordmark & Navigation Tabs -->
     <header class="app-header"><div class="header-left">
         <div class="brand-cluster" title="BimmerVision">
@@ -663,6 +669,16 @@
   </aside>
 
   <!-- Scripts -->
+  <dialog id="driveBackupDialog" class="drive-backup-dialog" aria-labelledby="driveBackupTitle" aria-describedby="driveBackupPrivacy driveBackupWifiHelp">
+    <button id="closeDriveBackupBtn" type="button" class="usb-instructions-close" aria-label="Close Google Drive backup">×</button>
+    <span class="source-eyebrow">BACK UP SELECTED RECORDING</span><h2 id="driveBackupTitle">Keep the original in your Drive.</h2><p id="driveBackupClip" class="drive-backup-clip"></p>
+    <p id="driveBackupPrivacy">Upload this recording’s unchanged original files directly from your device to your own Google Drive. No recordings pass through BimmerVision servers.</p>
+    <p id="driveBackupAccount" role="status" aria-live="polite"></p><button id="driveBackupSignInBtn" type="button" class="source-secondary">Continue with Google</button><p class="source-detail">Continuing loads Google’s sign-in service and sends connection information to Google. Your sign-in stays in memory for this page session.</p>
+    <label class="drive-backup-wifi"><input id="driveBackupWifi" type="checkbox"> <span id="driveBackupWifiLabel">I confirm this device is connected to Wi-Fi for this upload.</span></label><p id="driveBackupWifiHelp" class="source-detail">This browser cannot verify Wi-Fi. Check your device’s network before confirming. Large recordings can use significant data.</p>
+    <progress id="driveBackupProgress" max="1" value="0" hidden></progress><p id="driveBackupProgressText" role="status" aria-live="polite"></p><p id="driveBackupError" class="source-error" role="alert" hidden></p>
+    <div class="source-actions"><button id="startDriveBackupBtn" type="button" class="source-primary" disabled>Back up this recording</button><button id="cancelDriveBackupBtn" type="button" class="source-secondary" hidden>Cancel upload</button></div>
+  </dialog>
+
   <script src="source-manager.js?v=export-buttons-0239"></script>
   <script src="app-version-data.js?v=idrive-0239"></script>
   <script src="app-version.js?v=idrive-1"></script>
@@ -671,8 +687,16 @@
   <script src="raw-zip.js?v=web-020"></script>
   <script src="local-source.js?v=directory-picker-4"></script>
   <script src="remote-source.js?v=web-020"></script>
+  <script src="car-handoff.js?v=phone-1"></script>
   <script src="vendor/jsQR.js?v=1"></script>
   <script src="qr-scanner.js?v=web-020"></script>
+  <script src="google-drive-config.js?v=drive-1"></script>
+  <script src="vendor/spark-md5-3.0.2.min.js"></script>
+  <script src="google-drive-client.js?v=drive-1"></script>
+  <script src="google-drive-source.js?v=drive-1"></script>
+  <script src="google-drive-backup.js?v=drive-1"></script>
+  <script src="google-drive-phone.js?v=drive-1"></script>
+  <script src="google-drive-backup-ui.js?v=drive-1"></script>
   <script src="source-controller.js?v=directory-picker-3"></script>
   <script src="mp4-muxer.js?v=web-020"></script>
   <script src="traffic-signs.js?v=signs-1"></script>

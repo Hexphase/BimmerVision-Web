@@ -123,6 +123,7 @@
     let closed = false;
     const source = {
       kind: 'usb', name, readOnly: true, label: LABEL, warnings,
+      getOriginalFiles(id) { check(signal);if(closed)throw abort();if(typeof id!=='string'||!UUID.test(id))throw Error('Invalid recording.');const record=recordings.get(id.toLowerCase());if(!record)throw Error('Recording unavailable.');const files=[{name:'capture.bvr',blob:record.capture}];if(record.mappingFile)files.push({name:'mapping.json',blob:record.mappingFile});files.push({name:'manifest.json',blob:record.manifestFile});return files; },
       close() { closed = true; recordings.forEach(r => { if (r.overview.routeStatus === 'indexing') r.overview.routeStatus = 'cancelled'; }); },
       async fetch(path, init = {}) {
         check(signal); check(init.signal);
