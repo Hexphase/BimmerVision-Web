@@ -39,5 +39,29 @@ async function backup({manager,account,clipIds,internetConfirmed=false,signal,on
   if(job){try{const response=await request('/api/v1/phone-backup/'+job.id+'/release',{leaseToken:job.leaseToken},{release:true});await response.body?.cancel();}catch{}}
  }
 }
-return {backup};
+async function backupDrive({manager,account,clipIds,internetConfirmed=false,signal,onProgress=()=>{}}={}){
+ if(internetConfirmed!==true)throw Error('Explicit consent is required to use this phone’s non-car internet connection.');
+ if(!Array.isArray(clipIds)||!clipIds.length||clipIds.length>1000||clipIds.some(id=>typeof id!=='string'||!UUID.test(id))||new Set(clipIds.map(id=>id.toLowerCase())).size!==clipIds.length)throw Error('Choose a drive with 1 to 1000 complete recordings.');
+ const ids=clipIds.slice(),source=manager?.source,client=account?.client,email=account?.user?.emailAddress,generation=manager?.generation,accountGeneration=account?.generation;
+ if(source?.kind!=='car'||!client||typeof email!=='string'||!email)throw Error('Connect the car and the same Google account used by its backup settings.');
+ const controller=new AbortController(),cancel=()=>controller.abort(aborted()),offSource=manager.subscribe(cancel),offAccount=account.subscribe(cancel);
+ signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
+ const check=()=>{if(controller.signal.aborted||manager.source!==source||manager.generation!==generation||account.client!==client||account.generation!==accountGeneration)throw aborted();};
+ try{
+  check();onProgress({phase:'queue',recordingsCompleted:0,recordingsTotal:ids.length,progressValue:0,progressMax:ids.length});
+  const response=await source.fetch('/api/v1/phone-backup/enqueue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clipIds:ids,accountEmail:email,consent:true}),signal:controller.signal});check();
+  const receipt=await response.json();check();if(!response.ok)throw Error(receipt.error||'Could not queue this drive on the car. Update the car app and retry.');
+  if(receipt.queued!==ids.length||receipt.pending!==true)throw Error('The car did not confirm the complete drive was queued. No phone upload started.');
+  let completed=0;
+  for(let offset=0;offset<ids.length;offset+=20){
+   check();const batch=ids.slice(offset,offset+20);
+   await backup({manager,account,clipIds:batch,internetConfirmed:true,signal:controller.signal,onProgress:p=>{
+    check();onProgress({...p,batchIndex:Math.floor(offset/20)+1,batchesTotal:Math.ceil(ids.length/20),recordingsCompleted:completed,recordingsTotal:ids.length,progressValue:completed+(p.total?Math.min(1,(p.bytes||0)/p.total)*batch.length:0),progressMax:ids.length});
+   }});check();completed+=batch.length;
+   onProgress({phase:'sent',recordingsCompleted:completed,recordingsTotal:ids.length,progressValue:completed,progressMax:ids.length});
+  }
+  return {pending:true,verified:false,wholeDrive:true,completed};
+ }finally{offSource();offAccount();signal?.removeEventListener('abort',cancel);}
+}
+return {backup,backupDrive};
 });

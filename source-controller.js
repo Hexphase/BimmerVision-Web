@@ -84,7 +84,20 @@ document.addEventListener('DOMContentLoaded',()=>{
  function updateDriveStatus(){driveDisconnect.hidden=!account.client;driveChange.hidden=!account.client;driveStatus.textContent=account.client?'Connected · '+(account.user?.emailAddress||account.user?.displayName||'Google Drive'):'Google Drive is disconnected.';}
  account.subscribe(updateDriveStatus);manager.subscribe(source=>{updateSourceAccess(source);if(source.kind!=='car')document.getElementById('phoneBackupInstructions').hidden=true;updateDriveStatus();});
  let handoff;try{handoff=BVCarHandoff.consume(location,history);}catch(e){failure(e);return;}
- if(handoff){address.value=handoff.address;code.value=handoff.code;connect({fragmentHandoff:true}).then(()=>{code.value='';if(manager.source?.kind==='car'){const instructions=document.getElementById('phoneBackupInstructions');instructions.hidden=false;instructions.textContent='Phone backup is ready. Open a drive’s clips, choose Back up to Drive on a recording, then connect the same Google account as the car and confirm phone internet use.';if(handoff.clipId)window.BVGoogleDriveBackupUI?.open(handoff.clipId);}});return;}
+ if(handoff){address.value=handoff.address;code.value=handoff.code;connect({fragmentHandoff:true}).then(async()=>{
+   code.value='';if(manager.source?.kind!=='car')return;
+   const instructions=document.getElementById('phoneBackupInstructions');instructions.hidden=false;instructions.textContent='Phone backup is ready. Choose a recording or entire drive, connect the same Google account as the car, and confirm phone internet use.';
+   if(handoff.clipId)window.BVGoogleDriveBackupUI?.open(handoff.clipId);
+   if(handoff.driveClipId){
+    const selectedSource=manager.source;
+    try{
+     const response=await selectedSource.fetch('/api/v1/recordings');if(!response.ok)throw Error('Could not read the selected drive.');const library=await response.json();if(manager.source!==selectedSource)return;
+     const drive=DriveGrouper.group((library.recordings||[]).filter(clip=>clip.complete===true)).find(drive=>drive.segments.some(segment=>segment.clip.id.toLowerCase()===handoff.driveClipId));
+     if(!drive)throw Error('This drive is no longer available. Select it again from Drive Overview.');
+     window.BVGoogleDriveBackupUI.openDrive(drive.segments.map(segment=>segment.clip.id),drive.title);
+    }catch(error){instructions.textContent=error.message;}
+   }
+  });return;}
  const params=new URLSearchParams(location.search);const supplied=params.get('car')||params.get('address');
  if(supplied){try{fillQr(supplied);if(params.get('code'))code.value=params.get('code');}catch(e){failure(e);}history.replaceState({},'',location.pathname+location.hash);}
 });

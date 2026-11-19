@@ -11,9 +11,9 @@
   <link rel="icon" type="image/x-icon" href="assets/bimmervision.ico">
   <link rel="stylesheet" href="style.css?v=web-020">
   <link rel="stylesheet" href="mobile.css?v=web-020">
-  <link rel="stylesheet" href="hosted.css?v=player-lock-backup-1">
+  <link rel="stylesheet" href="hosted.css?v=drive-backup-3">
   <link rel="stylesheet" href="driving-view.css?v=signs-1">
-  <link rel="stylesheet" href="playback-layout.css?v=playback-backup-1">
+  <link rel="stylesheet" href="playback-layout.css?v=drive-backup-3">
   <link rel="stylesheet" href="recordings-layout.css?v=descriptive-3">
   <link rel="stylesheet" href="homepage.css?v=home-version-7">
 </head>
@@ -238,7 +238,7 @@
 
           <!-- Segments / Recordings in this Drive -->
           <div class="drive-segments-box">
-            <span class="segments-header">RECORDINGS IN THIS DRIVE</span>
+            <div class="drive-segments-heading"><span class="segments-header">RECORDINGS IN THIS DRIVE</span><button id="overviewBackupBtn" class="clip-row-backup" type="button" disabled hidden>Back up entire drive</button></div>
             <div id="driveSegmentsList" class="segments-list">
               <!-- Dynamically populated -->
             </div>
@@ -311,7 +311,7 @@
                 </div>
               </div>
             </div>
-<div class="transport-panel"><div class="recording-backup-toolbar" hidden><button id="playbackBackupBtn" class="clip-row-backup" type="button" disabled hidden>Back up recording to Google Drive</button></div><div class="dock-clock"><span id="dockElapsed">0:00</span><span id="dockRecordingLabel" class="dock-recording-label"></span><span id="dockDuration">0:00</span></div>
+<div class="transport-panel"><div class="dock-clock"><span id="dockElapsed">0:00</span><span id="dockRecordingLabel" class="dock-recording-label"></span><span id="dockDuration">0:00</span></div>
               <div id="driveTimeline" class="drive-timeline"></div>
               <div id="playbackProgress" class="playback-buffering" hidden><span class="inline-spinner"></span>Preparing video…</div>
               <div class="scrubber-bar-row" hidden>
@@ -673,8 +673,7 @@
 
   <!-- Scripts -->
   <dialog id="driveBackupDialog" class="drive-backup-dialog" aria-labelledby="driveBackupTitle" aria-describedby="driveBackupPrivacy driveBackupWifiHelp">
-    <button id="closeDriveBackupBtn" type="button" class="usb-instructions-close" aria-label="Close Google Drive backup">×</button>
-    <span class="source-eyebrow">BACK UP SELECTED RECORDING</span><h2 id="driveBackupTitle">Keep the original in your Drive.</h2><p id="driveBackupClip" class="drive-backup-clip"></p>
+    <div class="drive-backup-heading"><span id="driveBackupEyebrow" class="source-eyebrow">BACK UP SELECTED RECORDING</span><button id="closeDriveBackupBtn" type="button" class="drive-backup-close" aria-label="Close Google Drive backup">×</button></div><h2 id="driveBackupTitle">Keep the original in your Drive.</h2><p id="driveBackupClip" class="drive-backup-clip"></p>
     <p id="driveBackupPrivacy">Upload this recording’s unchanged original files directly from your device to your own Google Drive. No recordings pass through BimmerVision servers.</p>
     <p id="driveBackupAccount" role="status" aria-live="polite"></p><button id="driveBackupSignInBtn" type="button" class="source-secondary">Continue with Google</button><p class="source-detail">Continuing loads Google’s sign-in service and sends connection information to Google. Your sign-in stays in memory for this page session.</p>
     <label class="drive-backup-wifi"><input id="driveBackupWifi" type="checkbox"> <span id="driveBackupWifiLabel">I confirm this device is connected to Wi-Fi for this upload.</span></label><p id="driveBackupWifiHelp" class="source-detail">This browser cannot verify Wi-Fi. Check your device’s network before confirming. Large recordings can use significant data.</p>
@@ -690,17 +689,17 @@
   <script src="raw-zip.js?v=web-020"></script>
   <script src="local-source.js?v=player-lock-backup-1"></script>
   <script src="remote-source.js?v=web-020"></script>
-  <script src="car-handoff.js?v=player-lock-backup-1"></script>
+  <script src="car-handoff.js?v=drive-backup-3"></script>
   <script src="vendor/jsQR.js?v=1"></script>
   <script src="qr-scanner.js?v=web-020"></script>
   <script src="google-drive-config.js?v=drive-1"></script>
   <script src="vendor/spark-md5-3.0.2.min.js"></script>
   <script src="google-drive-client.js?v=drive-1"></script>
   <script src="google-drive-source.js?v=drive-1"></script>
-  <script src="google-drive-backup.js?v=player-lock-backup-1"></script>
-  <script src="google-drive-phone.js?v=drive-1"></script>
-  <script src="google-drive-backup-ui.js?v=player-lock-backup-2"></script>
-  <script src="source-controller.js?v=playback-backup-1"></script>
+  <script src="google-drive-backup.js?v=drive-backup-3"></script>
+  <script src="google-drive-phone.js?v=drive-backup-3"></script>
+  <script src="google-drive-backup-ui.js?v=drive-backup-3"></script>
+  <script src="source-controller.js?v=drive-backup-3"></script>
   <script src="mp4-muxer.js?v=web-020"></script>
   <script src="traffic-signs.js?v=signs-1"></script>
   <script src="perception-data.js?v=signs-1"></script>
@@ -721,7 +720,7 @@
   <script src="recording-notice.js?v=web-020"></script>
   <script src="playback-layout.js?v=lookahead-7"></script>
   <script src="recording-navigation.js?v=workspace-1"></script>
-  <script src="recording-backup-action.js?v=playback-backup-1"></script>
-  <script src="app.js?v=playback-backup-1"></script>
+  <script src="recording-backup-action.js?v=drive-backup-3"></script>
+  <script src="app.js?v=drive-backup-3"></script>
 </body>
 </html>

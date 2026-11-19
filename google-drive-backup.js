@@ -52,5 +52,26 @@ async function backupRecording({manager,account,clipId,wifiConfirmed=false,signa
   report({phase:'complete',bytes:total});return {skipped:false,parent};
  }finally{unSource();unAccount();unMutation?.();signal?.removeEventListener('abort',cancel);}
 }
-return {DriveAccount,backupRecording};
+async function backupDrive({manager,account,clipIds,wifiConfirmed=false,signal,onProgress=()=>{}}={}){
+ const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+ if(!Array.isArray(clipIds)||!clipIds.length||clipIds.length>1000||clipIds.some(id=>typeof id!=='string'||!uuid.test(id))||new Set(clipIds.map(id=>id.toLowerCase())).size!==clipIds.length)throw Error('Choose a drive with 1 to 1000 complete recordings.');
+ if(!wifiConfirmed)throw Error('Confirm this device is connected to Wi-Fi before each upload.');
+ const ids=clipIds.slice(),source=manager?.source,client=account?.client,generation=manager?.generation,accountGeneration=account?.generation;
+ if(source?.kind!=='usb'||!client)throw Error('Select local recordings and connect Google Drive first.');
+ const controller=new AbortController(),cancel=()=>controller.abort(abort()),offSource=manager.subscribe(cancel),offAccount=account.subscribe(cancel),offMutation=source.subscribe?.(cancel);
+ signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
+ const check=()=>{if(controller.signal.aborted||source!==manager.source||manager.generation!==generation||client!==account.client||account.generation!==accountGeneration)throw abort();};
+ try{
+  check();const sizes=ids.map(id=>source.getOriginalFiles(id).reduce((n,f)=>n+f.blob.size,0)),total=sizes.reduce((a,b)=>a+b,0);let bytes=0,completed=0,skipped=0,localLockOnly=0;
+  if(!Number.isSafeInteger(total)||total<1)throw Error('Invalid drive size.');
+  for(let index=0;index<ids.length;index++){
+   check();const result=await backupRecording({manager,account,clipId:ids[index],wifiConfirmed:true,signal:controller.signal,onProgress:p=>{
+    check();onProgress({...p,bytes:bytes+(p.phase==='hash'?0:p.bytes||0),total,remaining:Math.max(0,total-bytes-(p.phase==='hash'?0:p.bytes||0)),recordingIndex:index+1,recordingsTotal:ids.length,recordingsCompleted:completed});
+   }});check();bytes+=sizes[index];completed++;if(result.skipped)skipped++;if(result.localLockOnly)localLockOnly++;
+   onProgress({phase:'upload',bytes,total,remaining:Math.max(0,total-bytes),recordingIndex:index+1,recordingsTotal:ids.length,recordingsCompleted:completed});
+  }
+  onProgress({phase:'complete',bytes:total,total,remaining:0,recordingsTotal:ids.length,recordingsCompleted:completed});return {wholeDrive:true,completed,skipped,localLockOnly};
+ }finally{offSource();offAccount();offMutation?.();signal?.removeEventListener('abort',cancel);}
+}
+return {DriveAccount,backupRecording,backupDrive};
 });

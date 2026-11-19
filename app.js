@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const metricAvgSpeed = document.getElementById("metricAvgSpeed");
   const metricMaxSteering = document.getElementById("metricMaxSteering");
   const metricBrakeEvents = document.getElementById("metricBrakeEvents");
+  const overviewBackupBtn = document.getElementById("overviewBackupBtn");
   const driveSegmentsList = document.getElementById("driveSegmentsList");
 
   // Playback & HUD Elements
@@ -325,6 +326,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       overviewSubtitle.textContent = "No recordings found.";
       document.getElementById('librarySummary').textContent='0 drives · 0 recordings';
       selectedDrive=null;overviewPlayBtn.disabled=true;
+      window.BVRecordingBackupAction.update(overviewBackupBtn,null,window.BVSourceManager.source?.kind);
       document.getElementById('overviewPlaceholder').hidden=false;
       return;
     }
@@ -501,7 +503,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         section.appendChild(card);
       });driveListEl.appendChild(section);
     });
-    if(selectedDrive){const refreshed=detectedDrives.find(d=>d.id===selectedDrive.id);if(refreshed)selectDrive(refreshed,[...document.querySelectorAll(".drive-card")].find(card=>card.dataset.id===refreshed.id));}
+    if(selectedDrive){const refreshed=detectedDrives.find(d=>d.id===selectedDrive.id);if(refreshed)selectDrive(refreshed,[...document.querySelectorAll(".drive-card")].find(card=>card.dataset.id===refreshed.id));else {selectedDrive=null;window.BVRecordingBackupAction.update(overviewBackupBtn,null,window.BVSourceManager.source?.kind);}}
     if(activeDrive){const refreshed=detectedDrives.find(d=>d.id===activeDrive.id);if(refreshed){activeDrive=refreshed;timeline.setDrive(refreshed);timeline.update(activeClip?.id,player.currentTime);recordingNavigation.update();}}
   } catch (err) {
     if(quiet)return;
@@ -517,7 +519,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.BVSourceManager.subscribe(()=>{
     loadToken++;player.cancelLoad();hideLoadingModal();
     activeClip=null;activeDrive=null;selectedDrive=null;detectedDrives=[];librarySignature=null;
-    window.BVRecordingBackupAction.update(document.getElementById('playbackBackupBtn'),null,window.BVSourceManager.source?.kind);
+    window.BVRecordingBackupAction.update(overviewBackupBtn,null,window.BVSourceManager.source?.kind);
     recordingNavigation.update(false);
     document.getElementById('exportModal').classList.remove('open');document.getElementById('identifyModal').classList.remove('open');
     switchTab('recordings');loadLibrary();checkForUpdates(true);
@@ -532,6 +534,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (cardEl) cardEl.classList.add("active");
 
     selectedDrive = drive;
+    window.BVRecordingBackupAction.update(overviewBackupBtn,drive,window.BVSourceManager.source?.kind);
     overviewPlayBtn.disabled=false;
     document.getElementById('overviewPlaceholder').hidden=true;
 
@@ -704,6 +707,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
       selectedDrive = null;
+      window.BVRecordingBackupAction.update(overviewBackupBtn,null,window.BVSourceManager.source?.kind);
       await loadLibrary();
     });
   }
@@ -714,7 +718,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const playbackDeleteBtn = document.getElementById('playbackDeleteBtn');
 
   function updatePlaybackLockUI() {
-    window.BVRecordingBackupAction.update(document.getElementById('playbackBackupBtn'),activeClip,window.BVSourceManager.source?.kind);
     if (!playbackLockBtn || !activeClip) return;
     const isLocked = Boolean(activeClip.locked);
     if (playbackLockLabel) playbackLockLabel.textContent = isLocked ? 'Locked' : 'Lock';
