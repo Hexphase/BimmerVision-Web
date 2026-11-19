@@ -1,0 +1,9 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {update}=require('../recording-backup-action');
+const id='12345678-1234-1234-1234-123456789abc';
+function button(){return {hidden:true,disabled:true,dataset:{},setAttribute(k,v){this[k]=v;}};}
+test('playback upload selects only a complete recording on USB or car',()=>{for(const kind of ['usb','car']){const b=button();update(b,{id,complete:true},kind);assert.equal(b.hidden,false);assert.equal(b.disabled,false);assert.equal(b.dataset.backupRecording,id);assert.equal(b['aria-label'],'Back up recording to Google Drive');}});
+test('cloud, unfinished, invalid and cleared playback selections cannot upload stale clips',()=>{const b=button();for(const [clip,kind] of [[{id,complete:true},'drive'],[{id,complete:false},'usb'],[{id:'../bad',complete:true},'car'],[null,'car']]){b.dataset.backupRecording=id;update(b,clip,kind);assert.equal(b.hidden,true);assert.equal(b.disabled,true);assert.equal(b.dataset.backupRecording,undefined);}});
+test('both playback view and clip lists expose the explicit Google Drive backup action',()=>{const html=fs.readFileSync(require.resolve('../index.html'),'utf8'),app=fs.readFileSync(require.resolve('../app.js'),'utf8');assert.match(html,/<section id="viewPlayback"[\s\S]*id="playbackBackupBtn"/);assert.match(html,/recording-backup-action\.js/);assert.match(app,/BVRecordingBackupAction\.update\(/);assert.match(app,/Back up recording to Google Drive/);});
+test('playback backup action stays inside transport flow below the pinned mobile video',()=>{const html=fs.readFileSync(require.resolve('../index.html'),'utf8'),app=fs.readFileSync(require.resolve('../app.js'),'utf8');assert.match(html,/<div class="transport-panel">[\s\S]*?id="playbackBackupBtn"[\s\S]*?id="driveTimeline"/);assert.match(app,/activeClip = null;\s*updatePlaybackLockUI\(\);/);});

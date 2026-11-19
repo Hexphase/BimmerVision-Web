@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="mobile.css?v=web-020">
   <link rel="stylesheet" href="hosted.css?v=player-lock-backup-1">
   <link rel="stylesheet" href="driving-view.css?v=signs-1">
-  <link rel="stylesheet" href="playback-layout.css?v=export-buttons-0239">
+  <link rel="stylesheet" href="playback-layout.css?v=playback-backup-1">
   <link rel="stylesheet" href="recordings-layout.css?v=descriptive-3">
   <link rel="stylesheet" href="homepage.css?v=home-version-7">
 </head>
@@ -250,6 +250,8 @@
     <!-- TAB 2: PLAYBACK VIEW (Player, Cockpit HUD, Sedan Camera Selector, Live Map) -->
     <section id="viewPlayback" class="tab-view">
 
+
+
       <div class="playback-grid">
 <main id="playerStage" class="player-stage playback-stage" aria-label="Playback cameras"><div class="canvas-viewport">
               <canvas id="videoCanvas" width="1280" height="960"></canvas>
@@ -309,7 +311,7 @@
                 </div>
               </div>
             </div>
-<div class="transport-panel"><div class="dock-clock"><span id="dockElapsed">0:00</span><span id="dockRecordingLabel" class="dock-recording-label"></span><span id="dockDuration">0:00</span></div>
+<div class="transport-panel"><div class="recording-backup-toolbar" hidden><button id="playbackBackupBtn" class="clip-row-backup" type="button" disabled hidden>Back up recording to Google Drive</button></div><div class="dock-clock"><span id="dockElapsed">0:00</span><span id="dockRecordingLabel" class="dock-recording-label"></span><span id="dockDuration">0:00</span></div>
               <div id="driveTimeline" class="drive-timeline"></div>
               <div id="playbackProgress" class="playback-buffering" hidden><span class="inline-spinner"></span>Preparing video…</div>
               <div class="scrubber-bar-row" hidden>
@@ -698,7 +700,7 @@
   <script src="google-drive-backup.js?v=player-lock-backup-1"></script>
   <script src="google-drive-phone.js?v=drive-1"></script>
   <script src="google-drive-backup-ui.js?v=player-lock-backup-2"></script>
-  <script src="source-controller.js?v=directory-picker-3"></script>
+  <script src="source-controller.js?v=playback-backup-1"></script>
   <script src="mp4-muxer.js?v=web-020"></script>
   <script src="traffic-signs.js?v=signs-1"></script>
   <script src="perception-data.js?v=signs-1"></script>
@@ -719,6 +721,7 @@
   <script src="recording-notice.js?v=web-020"></script>
   <script src="playback-layout.js?v=lookahead-7"></script>
   <script src="recording-navigation.js?v=workspace-1"></script>
-  <script src="app.js?v=player-lock-backup-1"></script>
+  <script src="recording-backup-action.js?v=playback-backup-1"></script>
+  <script src="app.js?v=playback-backup-1"></script>
 </body>
 </html>
