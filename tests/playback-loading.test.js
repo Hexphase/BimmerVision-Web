@@ -13,3 +13,12 @@ test('cached recording replay yields by elapsed work instead of delaying every c
  assert.equal(bytes.length,128);assert.equal(h.p.loadedByteOffset,128);
  assert(h.yields<=8,'128 ready chunks should need at most eight paint yields, observed '+h.yields);
 });
+
+test('recording download measures processing separately from receive waits',async()=>{
+ const h=harness();await h.p._downloadRecording('/capture',h.signal,()=>h.tick());
+ assert.equal(h.p.downloadStats.processingMs,128);
+ assert.equal(h.p.downloadStats.receiveWaitMs,0);
+ assert.equal(h.p.downloadStats.bytes,128);
+ assert.equal(h.p.downloadStats.elapsedMs,128);
+ assert.equal(h.p.downloadStats.bytesPerSecond,1000);
+});

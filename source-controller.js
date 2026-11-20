@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  if(handoff){address.value=handoff.address;code.value=handoff.code;connect({fragmentHandoff:true}).then(async()=>{
    code.value='';if(manager.source?.kind!=='car')return;
    const instructions=document.getElementById('phoneBackupInstructions');instructions.hidden=false;instructions.textContent='Phone backup is ready. Choose a recording or entire drive, connect the same Google account as the car, and confirm phone internet use.';
-   if(handoff.queue)await window.BVRemoteBackupPage?.open([],{queued:true});
+   if(handoff.queue)await window.BVRemoteBackupPage?.open(manager.source.backupClipIds||[]);
    if(handoff.clipId)window.BVGoogleDriveBackupUI?.open(handoff.clipId);
    if(handoff.driveClipId){
     const selectedSource=manager.source;

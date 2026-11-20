@@ -127,7 +127,7 @@ class BimmerVisionPlayer {
   _setState(state, message = '') {
     if (this.manifest && !this.streamComplete && state !== 'error' && state !== 'idle' && state !== 'loading') return;
     this.playbackState = state;
-    if (this.onStateChange) this.onStateChange({state, message, time: this.currentTime, duration: this.duration, loaded: this.loadedByteOffset, total: this.totalBytes});
+    if (this.onStateChange) this.onStateChange({state, message, time: this.currentTime, duration: this.duration, loaded: this.loadedByteOffset, total: this.totalBytes, download: this.downloadStats ? {...this.downloadStats} : null});
   }
 
   _fail(error) {
@@ -205,7 +205,10 @@ class BimmerVisionPlayer {
   }
 
   async _downloadRecording(url, signal, onChunk, expectedBytes = 0) {
+    const startedAt=performance.now();
+    const stats=this.downloadStats={bytes:0,elapsedMs:0,receiveWaitMs:0,processingMs:0,bytesPerSecond:0};
     const response=await this._loadOperation(bvFetch(url,{signal}),signal);
+    stats.receiveWaitMs=performance.now()-startedAt;
     if (!response.ok) throw new Error('Recording download unavailable: HTTP '+response.status);
     this.totalBytes=Number(response.headers.get('Content-Length')) || expectedBytes || 0;
     this.loadedByteOffset=0;
@@ -216,16 +219,24 @@ class BimmerVisionPlayer {
     let yieldedAt=performance.now();
     try {
       while (true) {
+        const receivingAt=performance.now();
         const {done,value}=await this._loadOperation(reader.read(),signal);
+        stats.receiveWaitMs+=performance.now()-receivingAt;
         if (signal.aborted) throw new DOMException('Cancelled','AbortError');
         if (done) break;
         this.loadedByteOffset+=value.byteLength;
+        const processingAt=performance.now();
         onChunk(value);
+        stats.processingMs+=performance.now()-processingAt;
+        stats.bytes=this.loadedByteOffset;stats.elapsedMs=performance.now()-startedAt;
+        stats.bytesPerSecond=stats.elapsedMs>0?stats.bytes*1000/stats.elapsedMs:0;
         this._setState('loading',loadingText);
         // Cached streams can contain thousands of immediately ready chunks.
         // Yield once per paint budget, rather than imposing a timer per chunk.
         if(performance.now()-yieldedAt>=16){await new Promise(resolve=>setTimeout(resolve,0));yieldedAt=performance.now();}
       }
+      stats.elapsedMs=performance.now()-startedAt;
+      stats.bytesPerSecond=stats.elapsedMs>0?stats.bytes*1000/stats.elapsedMs:0;
       if (this.totalBytes && this.loadedByteOffset !== this.totalBytes) throw new Error('The recording download was incomplete. Check the connection and retry.');
     } finally {
       // cancel() also releases an outstanding read on custom/non-fetch streams.
@@ -264,7 +275,7 @@ class BimmerVisionPlayer {
     const epoch = this._clipEpoch;
     const controller = new AbortController(); this._activeStreamAbort = controller;
     const signal = controller.signal;
-    this.loadError = null; this.streamComplete = false;
+    this.loadError = null; this.streamComplete = false; this.downloadStats=null;
     this.currentTime = 0; this.currentAuIndex = 0; this.nextDecodeIdx = 0;
     this.loadedByteOffset = 0; this.totalBytes = 0; this.accessUnits = [];
     this.bvrUrl = bvrUrl;
@@ -283,16 +294,19 @@ class BimmerVisionPlayer {
     this.assembler = new RtpH264Assembler({startMonotonicUs: manifest.startMonotonicUs, recoveryInfo: manifest.recoveryInfo});
     const assembler = this.assembler;
     let released=0;
+    const pairLookup=new Map();
     const parser = new StreamingBvrParser({onVideoRecord: r => {
-      assembler.process([r], parser.cameraPairEvents);
+      assembler.process([r], pairLookup);
       while(released<assembler.accessUnits.length) assembler.accessUnits[released++].data=null;
+    },onCameraPair: event => {
+      if(event.rtpTimestamp!==undefined) pairLookup.set(event.rtpTimestamp,event.pair);
     }});
     this.parser = parser; this.accessUnits = assembler.accessUnits;
     this.streamPromise = this._downloadRecording(bvrUrl,signal,value=>{
       parser.append(value);
     },manifest.bytes).then(()=>{
       if(signal.aborted || epoch!==this._clipEpoch) throw new DOMException('Cancelled','AbortError');
-      assembler.flush(parser.cameraPairEvents);
+      assembler.flush(pairLookup);
       while(released<assembler.accessUnits.length) assembler.accessUnits[released++].data=null;
       if (!this.accessUnits.length) throw new Error('No usable video frames in this recording.');
       this.streamComplete=true;

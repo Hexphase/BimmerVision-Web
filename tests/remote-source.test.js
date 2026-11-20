@@ -18,3 +18,19 @@ test('expired saved session requires a fresh code and clears only that car sessi
 test('loopback hosts are restricted to local development pages',()=>{const original=Object.getOwnPropertyDescriptor(globalThis,'location');try{Object.defineProperty(globalThis,'location',{configurable:true,value:{hostname:'hexphase.github.io'}});assert.throws(()=>Remote.parseInput('localhost'),/development|private/);assert.throws(()=>Remote.parseInput('127.0.0.1'),/development|private/);Object.defineProperty(globalThis,'location',{configurable:true,value:{hostname:'localhost'}});assert.equal(Remote.parseInput('127.0.0.1').baseUrl,'http://127.0.0.1:8765');}finally{if(original)Object.defineProperty(globalThis,'location',original);else delete globalThis.location;}});
 
 test('all bearer requests omit cookie CSRF headers for the restricted car CORS policy',async()=>{const calls=[];global.fetch=async(url,opts)=>{calls.push({url,opts});return Response.json(url.endsWith('/pair')?{token:'bearer-secret',csrf:'csrf-secret'}:[]);};const car=await Remote.connect('10.0.0.2',{code:'12345678'});for(const [path,options] of [['/api/v1/recordings',{}],['/api/v1/version',{}],['/api/v1/capabilities',{}],['/api/v1/recordings/clip/lock',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}]])await (await car.fetch(path,options)).json();car.close();const resumed=await Remote.connect('10.0.0.2');resumed.close();for(const call of calls.filter(call=>!call.url.endsWith('/pair'))){assert.equal(call.opts.headers.get('Authorization'),'Bearer bearer-secret');assert.equal(call.opts.headers.get('X-CSRF-Token'),null);assert.equal(call.opts.headers.get('X-BV-CSRF'),null);assert.equal(call.opts.credentials,'omit');}const next=await Remote.connect('10.0.0.2');for(const header of ['X-CSRF-Token','X-BV-CSRF'])await assert.rejects(()=>next.fetch('/api/v1/version',{headers:{[header]:'injected'}}),/credentials/);next.close();});
+
+test('explicit fresh pairing bypasses a valid saved session and carries authenticated selected IDs',async()=>{
+ const calls=[],ids=['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'];
+ global.sessionStorage.setItem('bimmervision.car.session:http://10.0.0.2:8765',JSON.stringify({token:'saved',csrf:'saved'}));
+ global.fetch=async(url,options)=>{calls.push({url,options});return Response.json({token:'new',csrf:'new',backupClipIds:ids});};
+ const source=await Remote.connect('10.0.0.2',{code:'12345678'});
+ assert.equal(calls.length,1);assert.match(calls[0].url,/pair$/);assert.deepEqual(source.backupClipIds,ids);assert(Object.isFrozen(source.backupClipIds));source.close();
+});
+test('pair response rejects malformed or duplicate handoff selection before saving credentials',async()=>{
+ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ for(const ids of [[],[id,id.toUpperCase()],['bad'],Array(1001).fill(id),'bad']){
+  global.fetch=async()=>Response.json({token:'new',csrf:'new',backupClipIds:ids});
+  await assert.rejects(()=>Remote.connect('10.0.0.2',{code:'12345678'}),/Invalid backup selection/);
+  assert.equal(global.sessionStorage.getItem('bimmervision.car.session:http://10.0.0.2:8765'),null);
+ }
+});

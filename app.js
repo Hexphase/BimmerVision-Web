@@ -201,13 +201,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById('dockDuration').textContent=DriveTimeline.format(player.duration);
   };
   player.onCameraViewChange = view => { if(openCalibrateBtn) openCalibrateBtn.disabled=!!view?.single; };
-  player.onStateChange = ({state,message,loaded,total}) => {
+  player.onStateChange = ({state,message,loaded,total,download}) => {
     recordingNavigation.update(state==='loading');
     const status = document.getElementById('playbackStatus');
     status.textContent = message || ({playing:'Playing',paused:'Paused',loading:'Preparing video…',buffering:'Buffering…',ended:'Drive complete',idle:'Choose a recording',error:'Playback unavailable'}[state] || state);
     status.dataset.state=state;
     document.getElementById('playbackProgress').hidden=state!=='buffering';
-    if (state === 'loading') { if(message)loadingModalStatus.textContent=message;const verb=window.BVSourceManager.readOnly?'read':'received';document.getElementById('loadingProgress').textContent=total ? `${Math.min(100,Math.round(loaded/total*100))}% ${verb}` : loaded ? `${formatBytes(loaded)} ${verb}` : 'Waiting for recording data…'; }
+    if (state === 'loading') { if(message)loadingModalStatus.textContent=message;const verb=window.BVSourceManager.readOnly?'read':'received';const received=total ? `${Math.min(100,Math.round(loaded/total*100))}% ${verb}` : loaded ? `${formatBytes(loaded)} ${verb}` : 'Waiting for recording data…';const rate=download?.elapsedMs>=500&&download.bytesPerSecond>0?' · '+formatBytes(download.bytesPerSecond)+'/s':'';const timing=window.showAdvancedDetails===true&&download?' · Receive wait '+(download.receiveWaitMs/1000).toFixed(1)+'s · Video processing '+(download.processingMs/1000).toFixed(1)+'s':'';document.getElementById('loadingProgress').textContent=received+rate+timing; }
     hudElements.playBtn.disabled=!player.streamComplete||state==='loading'||state==='error';
     if(state==='error' && !videoLoadingModal.style.display.includes('flex')) document.getElementById('playbackRetryBtn').hidden=false;
   };

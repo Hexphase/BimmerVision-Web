@@ -30,7 +30,8 @@ class RemoteSource{
     const progress=text=>{if(onProgress)onProgress(text);};
     try{
       if(signal?.aborted)throw abortError();
-      let saved;try{saved=JSON.parse(storage('getItem',source.baseUrl)||'null');}catch{}
+      const explicitCode=String(code||parsed.code||'').trim();
+      let saved;if(!explicitCode)try{saved=JSON.parse(storage('getItem',source.baseUrl)||'null');}catch{}
       if(saved&&typeof saved.token==='string'&&saved.token.length<=4096&&saved.token){
         source._token=saved.token;source._csrf=typeof saved.csrf==='string'?saved.csrf:'';progress('Checking saved car session…');
         const response=await source.fetch('/api/v1/recordings',{signal,timeoutMs:15000});
@@ -46,6 +47,11 @@ class RemoteSource{
       const text=await response.text();if(text.length>65536)throw new Error('Invalid pairing response.');
       let data;try{data=JSON.parse(text);}catch{throw new Error('Invalid pairing response. Update the car app to 0.2.8 or newer.');}
       if(!data||typeof data.token!=='string'||!data.token||data.token.length>4096||/[\r\n]/.test(data.token)||typeof data.csrf!=='string'||data.csrf.length>4096||/[\r\n]/.test(data.csrf))throw new Error('Invalid pairing response.');
+      if(data.backupClipIds!==undefined){
+        const ids=data.backupClipIds,uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+        if(!Array.isArray(ids)||!ids.length||ids.length>1000||ids.some(id=>typeof id!=='string'||!uuid.test(id))||new Set(ids.map(id=>id.toLowerCase())).size!==ids.length)throw new Error('Invalid backup selection in pairing response.');
+        source.backupClipIds=Object.freeze(ids.map(id=>id.toLowerCase()));
+      }
       if(signal?.aborted||source._closed)throw abortError();
       source._token=data.token;source._csrf=data.csrf;storage('setItem',source.baseUrl,JSON.stringify({token:data.token,csrf:data.csrf}));return source;
     }catch(error){source.close();throw error;}

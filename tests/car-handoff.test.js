@@ -6,3 +6,8 @@ test('invalid public car origins and malformed codes are cleared and rejected',(
 test('phone handoff never starts Google sign-in on an unregistered private origin',()=>{const value=use('#car=http%3A%2F%2F192.168.1.12&code=12345678&backup=1','http://192.168.1.12:8765');assert.throws(value.result,/hosted/);assert.deepEqual(value.writes,['/']);});
 test('selected clip handoff validates UUID and clears credentials even when rejected',()=>{const clip='12345678-1234-1234-1234-123456789abc',base='#car='+encodeURIComponent('http://192.168.1.12:8765')+'&code=12345678&backup=1';assert.equal(use(base+'&clip='+clip).result().clipId,clip);for(const value of ['bad','../secret',clip+'&clip='+clip]){const input=use(base+'&clip='+value);assert.throws(input.result);assert.deepEqual(input.writes,['/']);}});
 test('entire drive handoff accepts only one UUID anchor and never a clip plus drive',()=>{const id='12345678-1234-1234-1234-123456789abc',base='#car='+encodeURIComponent('http://192.168.1.12:8765')+'&code=12345678&backup=1';assert.equal(use(base+'&drive='+id).result().driveClipId,id);for(const tail of ['&drive=bad','&drive='+id+'&drive='+id,'&drive='+id+'&clip='+id]){const value=use(base+tail);assert.throws(value.result);assert.deepEqual(value.writes,['/']);}});
+test('queue handoff accepts a code-only marker and rejects URL selections or mixed anchors',()=>{
+ const base='#car='+encodeURIComponent('http://192.168.1.12:8765')+'&code=12345678&backup=1';
+ const value=use(base+'&queue=1');assert.equal(value.result().queue,true);assert.deepEqual(value.writes,['/']);
+ for(const tail of ['&queue=2','&queue=1&queue=1','&queue=1&clip=12345678-1234-1234-1234-123456789abc','&queue=1&clipIds=bad'])assert.throws(use(base+tail).result);
+});

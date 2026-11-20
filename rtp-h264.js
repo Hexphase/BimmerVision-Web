@@ -97,11 +97,12 @@ class RtpH264Assembler {
    * Process all RTP video packets and correlate with camera pair metadata
    */
   process(videoRecords, cameraPairEvents = []) {
-    // Build map of camera pair metadata by rtpTimestamp
-    const pairMap = new Map();
-    for (const cp of cameraPairEvents) {
-      if (cp.rtpTimestamp !== undefined) {
-        pairMap.set(cp.rtpTimestamp, cp.pair);
+    // Streaming callers maintain this lookup as metadata arrives. Rebuilding
+    // the complete history for every RTP packet makes long clips quadratic.
+    const pairMap = typeof cameraPairEvents.get === 'function' ? cameraPairEvents : new Map();
+    if (pairMap !== cameraPairEvents) {
+      for (const cp of cameraPairEvents) {
+        if (cp.rtpTimestamp !== undefined) pairMap.set(cp.rtpTimestamp, cp.pair);
       }
     }
 
