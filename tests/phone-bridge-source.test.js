@@ -31,3 +31,4 @@ test('closed opener and oversized or credential-bearing replies fail without new
  const next=source.fetch('/api/v1/phone-backup');f.emit({bvBridge:1,type:'response',nonce:NONCE,id:2,status:200,headers:{'Content-Length':'0',Authorization:'secret'},body:new ArrayBuffer(0)});await assert.rejects(next,/Invalid response/);
  f.opener.closed=true;await assert.rejects(source.fetch('/api/v1/phone-backup'),/Keep the paired/);source.close();
 });
+test('return to car sends only an opener-bound completion and leaves an explicit retry when focus is blocked',async()=>{const f=fixture(),source=await f.connect();let focused=0,closed=0;f.opener.focus=()=>{focused++;throw Error('Focus blocked');};f.window.close=()=>{closed++;};assert.equal(source.returnToCar(),false);assert.equal(f.sent.at(-1).type,'complete');assert.equal(f.sent.at(-1).nonce,NONCE);assert.equal(focused,1);assert.equal(closed,1);source.close();source.returnToCar();assert.equal(focused,2);assert.equal(closed,2);});

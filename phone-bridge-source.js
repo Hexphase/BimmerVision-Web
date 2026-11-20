@@ -71,6 +71,17 @@ class PhoneBridgeSource{
    const {timeoutMs,...fields}=call;try{this.send('request',{id,...fields});}catch{finish(new Error('The paired car page could not be reached.'));}
   });
  }
+ returnToCar(){
+  if(!this.returnRequested){
+   if(this.closed||!this.connected||this.opener.closed)return false;
+   this.send('complete');this.returnRequested=true;
+  }
+  // Both calls can be blocked by mobile browser window policies. The dedicated
+  // page keeps a visible button so a fresh user gesture can repeat them.
+  try{this.opener.focus();}catch{}
+  try{this.window.close();}catch{}
+  return this.window.closed===true;
+ }
  close(reason='Phone backup disconnected.'){
   if(this.closed)return;this.reason=reason;try{this.send('close');}catch{}this.closed=true;clearTimeout(this.timer);clearInterval(this.monitor);this.window.removeEventListener('message',this.listener);this.window.removeEventListener('pagehide',this.unload);this.signal?.removeEventListener('abort',this.abort);
   for(const pending of [...this.pending.values()])pending.finish(new Error(reason));this.listeners.clear();if(!this.connected)this.reject?.(new Error(reason));

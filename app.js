@@ -313,7 +313,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     librarySignature=signature;
 
     // Group recordings into continuous Drives
-    detectedDrives = DriveGrouper.group(rawClips);
+    detectedDrives = DriveGrouper.group(rawClips);updateMoreBackupCurrent();
     driveCountEl.textContent = `${detectedDrives.length} drive${detectedDrives.length === 1 ? "" : "s"}`;
     driveListEl.innerHTML = "";
 
@@ -518,7 +518,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   window.BVSourceManager.subscribe(()=>{
     loadToken++;player.cancelLoad();hideLoadingModal();
-    activeClip=null;activeDrive=null;selectedDrive=null;detectedDrives=[];librarySignature=null;
+    activeClip=null;activeDrive=null;selectedDrive=null;detectedDrives=[];librarySignature=null;updateMoreBackupCurrent();
     window.BVRecordingBackupAction.update(overviewBackupBtn,null,window.BVSourceManager.source?.kind);
     recordingNavigation.update(false);
     document.getElementById('exportModal').classList.remove('open');document.getElementById('identifyModal').classList.remove('open');
@@ -717,7 +717,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const playbackLockLabel = document.getElementById('playbackLockLabel');
   const playbackDeleteBtn = document.getElementById('playbackDeleteBtn');
 
+  function updateMoreBackupCurrent() {
+    const backupCurrent=document.getElementById('moreBackupCurrentBtn');
+    if(backupCurrent){const eligible=['car','usb'].includes(window.BVSourceManager.source?.kind)&&activeClip?.complete===true&&typeof activeClip.id==='string'&&detectedDrives.some(d=>d.segments.some(seg=>seg.clip.id===activeClip.id));backupCurrent.disabled=!eligible;if(eligible)backupCurrent.dataset.currentRecording=activeClip.id;else delete backupCurrent.dataset.currentRecording;}
+  }
   function updatePlaybackLockUI() {
+    updateMoreBackupCurrent();
     if (!playbackLockBtn || !activeClip) return;
     const isLocked = Boolean(activeClip.locked);
     if (playbackLockLabel) playbackLockLabel.textContent = isLocked ? 'Locked' : 'Lock';
@@ -790,17 +795,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (headerSettingsBtn && settingsModal) {
     headerSettingsBtn.addEventListener('click', () => {
+      window.BVMoreMenuInstance?.close(false);
       settingsModal.classList.add('open');
+      closeSettingsBtn?.focus();
     });
   }
   if (closeSettingsBtn && settingsModal) {
     closeSettingsBtn.addEventListener('click', () => {
       settingsModal.classList.remove('open');
+      window.BVMoreMenuInstance?.trigger?.focus();
     });
   }
   if (dismissSettingsBtn && settingsModal) {
     dismissSettingsBtn.addEventListener('click', () => {
       settingsModal.classList.remove('open');
+      window.BVMoreMenuInstance?.trigger?.focus();
     });
   }
   if (settingsModal) {
@@ -866,11 +875,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  const appMenu=document.querySelector('.app-menu');
   document.getElementById('quickExportBtn').addEventListener('click',()=>document.getElementById('openExportBtn').click());
-  appMenu.addEventListener('click',event=>{if(event.target.closest('button'))appMenu.open=false;});
-  document.addEventListener('click',event=>{if(!appMenu.contains(event.target))appMenu.open=false;});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&appMenu.open){event.preventDefault();appMenu.open=false;appMenu.querySelector('summary').focus();}});
+  document.getElementById('moreDrivesBtn').addEventListener('click',()=>{player.pause();switchTab('recordings');viewRecordings.classList.remove('detail-open');});
+  document.getElementById('moreBackupCurrentBtn').addEventListener('click',event=>{const id=event.currentTarget.dataset.currentRecording;if(!id)return;try{Promise.resolve(window.BVBackupActions.openRecording(id)).catch(error=>alert(error.message));}catch(error){alert(error.message);}});
 
   // 6. Transport Controls
   hudElements.playBtn.addEventListener("click", () => player.togglePlay());

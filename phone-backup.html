@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <title>Phone Remote Backup · BimmerVision</title>
-  <link rel="stylesheet" href="style.css?v=phone-backup-1">
-  <link rel="stylesheet" href="mobile.css?v=phone-backup-1">
-  <link rel="stylesheet" href="hosted.css?v=phone-backup-1">
-  <link rel="stylesheet" href="remote-backup-page.css?v=phone-backup-1">
+  <link rel="stylesheet" href="style.css?v=phone-backup-77">
+  <link rel="stylesheet" href="mobile.css?v=phone-backup-77">
+  <link rel="stylesheet" href="hosted.css?v=phone-backup-77">
+  <link rel="stylesheet" href="remote-backup-page.css?v=phone-backup-77">
   <style>
     .phone-backup-page{min-height:100dvh;padding:32px 24px;background:#0b0b0c}.phone-backup-shell{max-width:760px;margin:auto}.phone-backup-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:26px;border-bottom:1px solid #303036;flex-wrap:wrap}.phone-backup-header img{width:180px;height:auto}.phone-backup-copy{padding:48px 0 28px}.phone-backup-copy h1{font-size:clamp(32px,6vw,48px);line-height:1.1;letter-spacing:-.04em;margin:16px 0 22px}.phone-backup-copy p{color:#b8b8c2;font-size:15px;line-height:1.7;max-width:580px}.phone-backup-page .source-error{margin:20px 0}.phone-backup-page .source-secondary{flex:none}@media(max-width:600px){.phone-backup-page{padding:24px 20px}.phone-backup-header img{width:150px}.phone-backup-copy{padding-top:32px}}
   </style>
@@ -21,6 +21,8 @@
       <h1>Phone Remote Backup</h1>
       <p id="phoneBackupConnectionStatus" role="status" aria-live="polite">Connecting to your car… Keep the original car tab open.</p>
       <p id="phoneBackupConnectionError" class="source-error" role="alert" hidden></p>
+      <button id="phoneBackupReturnBtn" class="source-primary" type="button" hidden>Return to car tab</button>
+      <p id="phoneBackupReturnHelp" class="source-detail" hidden>If this window stays open, choose Return to car tab. Your car will verify the uploaded recordings when it is connected to Wi-Fi.</p>
       <button id="phoneBackupResumeBtn" class="source-secondary" type="button" hidden>Open upload</button>
       <p class="source-detail">Your phone uploads directly to your Google Drive. Google sign-in stays in this window. Original recordings stay on your car’s recording drive.</p>
     </main>
@@ -36,16 +38,16 @@
     <div class="source-actions"><button id="startDriveBackupBtn" type="button" class="source-primary" disabled>Send to Remote Backup</button><button id="addDriveBackupBtn" type="button" class="source-secondary" hidden>Add recordings</button><button id="cancelDriveBackupBtn" type="button" class="source-secondary" hidden>Cancel upload</button></div>
   </dialog>
 
-  <script src="source-manager.js?v=phone-backup-1"></script>
-  <script src="viewer-connection.js?v=phone-backup-1"></script>
+  <script src="source-manager.js?v=phone-backup-77"></script>
+  <script src="viewer-connection.js?v=phone-backup-77"></script>
   <script src="google-drive-config.js?v=drive-1"></script>
   <script src="vendor/spark-md5-3.0.2.min.js"></script>
-  <script src="google-drive-client.js?v=phone-backup-1"></script>
-  <script src="google-drive-backup.js?v=phone-backup-1"></script>
-  <script src="google-drive-phone.js?v=phone-backup-1"></script>
-  <script src="google-drive-backup-ui.js?v=phone-backup-1"></script>
-  <script src="phone-bridge-source.js?v=phone-backup-1"></script>
-  <script src="remote-backup-page.js?v=phone-backup-1"></script>
-  <script src="phone-backup-bootstrap.js?v=phone-backup-1"></script>
+  <script src="google-drive-client.js?v=phone-backup-77"></script>
+  <script src="google-drive-backup.js?v=phone-backup-77"></script>
+  <script src="google-drive-phone.js?v=phone-backup-77"></script>
+  <script src="google-drive-backup-ui.js?v=phone-backup-77"></script>
+  <script src="phone-bridge-source.js?v=phone-backup-77"></script>
+  <script src="remote-backup-page.js?v=phone-backup-77"></script>
+  <script src="phone-backup-bootstrap.js?v=phone-backup-77"></script>
 </body>
 </html>

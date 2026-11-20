@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  'use strict';
  const manager=window.BVSourceManager,account=window.BVGoogleDriveAccount,get=id=>document.getElementById(id);
  const dialog=get('driveBackupDialog'),wifi=get('driveBackupWifi'),start=get('startDriveBackupBtn'),login=get('driveBackupSignInBtn'),cancel=get('cancelDriveBackupBtn'),close=get('closeDriveBackupBtn'),status=get('driveBackupProgressText'),progress=get('driveBackupProgress'),error=get('driveBackupError'),identity=get('driveBackupAccount');
- let selection=null,source=null,generation=0,work=null,auth=null,epoch=0,ready=false,phoneStatus=null,statusEpoch=0,session=null;
+ let selection=null,source=null,generation=0,work=null,auth=null,epoch=0,ready=false,phoneStatus=null,statusEpoch=0,session=null,authMessage='';
  const setup=get('driveBackupSetup'),percent=get('driveBackupPercent'),counts=get('driveBackupCounts'),stats=get('driveBackupTransferStats'),add=get('addDriveBackupBtn');
  const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
  const bytes=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';
@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   start.disabled=!!work||!!auth||!wifi.checked||!account.client||!selection||(source?.kind==='car'&&(phoneStatus?.available!==true||phoneStatus?.speedPermitted===false))||manager.source!==source||manager.generation!==generation;
   wifi.disabled=!!work;login.disabled=!!work||!!auth;cancel.hidden=!work&&!auth;
   identity.textContent=account.client?'Google Drive · '+(account.user?.emailAddress||account.user?.displayName||'Connected'):'Connect your own Google Drive account.';
-  login.textContent=account.client?'Change Google account':ready||window.google?.accounts?.oauth2?'Connect Google Drive':'Continue with Google';
+  login.textContent=auth?authMessage:account.client?'Change Google account':ready||window.google?.accounts?.oauth2?'Connect Google Drive':'Continue with Google';
+  login.setAttribute?.('aria-busy',String(!!auth));
   start.textContent='Start Remote Backup upload';
   setup.hidden=!!work;start.hidden=!!work;close.hidden=!!work;add.hidden=!work;
   dialog.setAttribute?.('data-uploading',String(!!work));
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    const statusSource=source;status.textContent='Checking the car’s phone backup status…';
    source.fetch('/api/v1/phone-backup').then(async response=>{if(!response.ok)throw Error('Update the car app to use phone backup.');return response.json();}).then(value=>{
     if(current!==statusEpoch||!dialog.open||manager.source!==statusSource)return;
-    phoneStatus=value;status.textContent=value.available&&value.speedPermitted!==false?'Select the same Google account as the car: '+(value.accountEmail||'see car backup settings')+'. Confirm internet use, then start.':value.reason||'Phone backup is unavailable. Check the car backup settings.';controls();
+    phoneStatus=value;if(!auth&&!work)status.textContent=value.available&&value.speedPermitted!==false?'Select the same Google account as the car: '+(value.accountEmail||'see car backup settings')+'. Confirm internet use, then start.':value.reason||'Phone backup is unavailable. Check the car backup settings.';controls();
    }).catch(e=>{if(current!==statusEpoch||!dialog.open||manager.source!==statusSource)return;error.textContent=e.message;error.hidden=false;controls();});
   }
  }
@@ -55,13 +56,22 @@ document.addEventListener('DOMContentLoaded',()=>{
  });
  wifi.addEventListener('change',controls);
  login.addEventListener('click',async()=>{
-  const token=++epoch;auth=new AbortController();const signal=auth.signal;error.hidden=true;controls();let client;
+  if(auth||work)return;
+  const token=++epoch;auth=new AbortController();const signal=auth.signal;error.hidden=true;
+  const preparing=!ready&&!window.google?.accounts?.oauth2;
+  authMessage=preparing?'Loading Google sign-in…':'Opening Google authentication window…';status.textContent=authMessage;controls();let client;
   try{
    const config=window.BV_GOOGLE_DRIVE_CONFIG;if(!config?.clientId)throw Error('Google Drive connection is not configured yet.');
-   if(!ready&&!window.google?.accounts?.oauth2){await window.BVGoogleDriveClient.prepare();if(token!==epoch)return;ready=true;status.textContent='Google sign-in is ready. Press Connect Google Drive to select your account.';}
-   else{client=await window.BVGoogleDriveClient.connect({clientId:config.clientId,signal,prompt:'select_account'});const about=await client.about({signal});if(token!==epoch){client.close();return;}account.set(client,about.user);client=null;}
-  }catch(e){client?.close();if(token===epoch&&e.name!=='AbortError'){error.textContent=e.message;error.hidden=false;}}
-  finally{if(token===epoch){auth=null;controls();}}
+   if(preparing){await window.BVGoogleDriveClient.prepare();if(token!==epoch)return;ready=true;status.textContent='Google sign-in is ready. Press Connect Google Drive to select your account.';}
+   else{
+    client=await window.BVGoogleDriveClient.connect({clientId:config.clientId,signal,prompt:'select_account'});
+    if(token!==epoch){client.close();return;}
+    authMessage='Checking your Google Drive account…';status.textContent=authMessage;controls();
+    const about=await client.about({signal});if(token!==epoch){client.close();return;}
+    account.set(client,about.user);client=null;status.textContent='Connected to Google Drive. Confirm internet use to start your upload.';
+   }
+  }catch(e){client?.close();if(token===epoch){status.textContent=e.name==='AbortError'?'Google connection cancelled. You can try again.':'Google sign-in did not finish. Please try again.';if(e.name!=='AbortError'){error.textContent=e.message;error.hidden=false;}}}
+  finally{if(token===epoch){auth=null;authMessage='';controls();}}
  });
  const cancelled=()=>new DOMException('Upload cancelled because its source or account changed.','AbortError');
  function checkSession(current){if(session!==current||!work||work.signal.aborted||manager.source!==current.source||manager.generation!==current.generation||account.client!==current.client||account.generation!==current.accountGeneration)throw cancelled();}
@@ -88,7 +98,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const current=session;if(!current)return Promise.resolve(false);
   const chosen=ids.filter(id=>!current.ids.has(id.toLowerCase())&&!current.reserved.has(id.toLowerCase()));
   if(!chosen.length)return Promise.resolve(true);
-  if(current.ids.size+current.reserved.size+chosen.length>1000){error.textContent='This upload can include up to 1000 recordings. Finish it before adding more.';error.hidden=false;return Promise.resolve(false);}
+  if(current.ids.size+current.reserved.size+chosen.length>1000){current.additionFailed=true;error.textContent='This upload can include up to 1000 recordings. Finish it before adding more.';error.hidden=false;return Promise.resolve(false);}
   chosen.forEach(id=>current.reserved.add(id.toLowerCase()));
   const task=current.addTail.then(async()=>{
    try{
@@ -101,7 +111,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
     checkSession(current);chosen.forEach(id=>current.ids.add(id.toLowerCase()));current.pending.push({ids:chosen.slice(),wholeDrive:true});
     renderProgress(current,current.lastProgress,current.activeCount);return true;
-   }catch(e){if(session===current&&e.name!=='AbortError'){error.textContent=e.message;error.hidden=false;}return false;}
+   }catch(e){if(session===current&&e.name!=='AbortError'){current.additionFailed=true;error.textContent=e.message;error.hidden=false;}return false;}
    finally{chosen.forEach(id=>current.reserved.delete(id.toLowerCase()));}
   });
   current.addTail=task;return task;
@@ -109,6 +119,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  add.addEventListener('click',async()=>{if(work)await window.BVRemoteBackupPage?.open([],{add:true});});
  start.addEventListener('click',async()=>{
   if(start.disabled)return;const token=++epoch;work=new AbortController();const signal=work.signal;
+  let completedSource=null;
   const current=session={source,generation,client:account.client,accountGeneration:account.generation,ids:new Set(selection.ids.map(id=>id.toLowerCase())),reserved:new Set(),pending:[selection],addTail:Promise.resolve(),finished:0,completed:0,bytes:0,uploadStarted:0,lastProgress:{},activeCount:0};
   error.hidden=true;progress.hidden=false;percent.hidden=false;counts.hidden=false;stats.hidden=false;progress.max=1;progress.value=0;wifi.checked=false;
   get('driveBackupTitle').textContent='Uploading to Remote Backup';get('driveBackupEyebrow').textContent='KEEP THIS PAGE OPEN';controls();renderProgress(current);
@@ -132,12 +143,13 @@ document.addEventListener('DOMContentLoaded',()=>{
    get('driveBackupTitle').textContent=phone?'Upload sent to Remote Backup':'Remote Backup complete';
    status.textContent=phone?'Transfer sent. The car will independently verify '+current.completed+' recordings in Google Drive after this phone disconnects and the car is on Wi-Fi.':current.ids.size===1&&lastResult?.localLockOnly?'Already backed up. Lock changes protect the USB original; the cloud copy stays unchanged.':'Backup complete · '+current.completed+' recordings. Original file sizes and checksums verified in Google Drive.';
    progress.value=progress.max;percent.textContent='100%';stats.textContent=bytes(current.bytes)+' sent'+(phone?' · Awaiting car Wi-Fi verification':' · Verified');
+   if(!current.additionFailed)completedSource=current.source;
   }catch(e){
    if(token!==epoch)return;
    error.textContent=(e.name==='AbortError'?'Backup cancelled. Confirm the connection before retrying.':e.message)+(source?.kind==='car'?' The car keeps queued recordings for Wi-Fi-only fallback.':' Completed uploads are kept.');error.hidden=false;
-  }finally{if(token===epoch){work=null;session=null;wifi.checked=false;controls();}}
+  }finally{if(token===epoch){work=null;session=null;wifi.checked=false;controls();if(completedSource)window.dispatchEvent?.(new CustomEvent('bv-remote-backup-complete',{detail:{source:completedSource}}));}}
  });
- cancel.addEventListener('click',()=>{cancelWork();status.textContent=source?.kind==='car'?'Backup cancelled. The car keeps queued recordings for Wi-Fi-only fallback.':'Backup cancelled. Completed uploads are kept. Confirm Wi-Fi again before retrying.';});
+ cancel.addEventListener('click',()=>{const signingIn=!!auth;cancelWork();status.textContent=signingIn?'Google connection cancelled. You can try again.':source?.kind==='car'?'Backup cancelled. The car keeps queued recordings for Wi-Fi-only fallback.':'Backup cancelled. Completed uploads are kept. Confirm Wi-Fi again before retrying.';});
  close.addEventListener('click',closeDialog);dialog.addEventListener('cancel',event=>{event.preventDefault();closeDialog();});
  manager.subscribe(()=>{if(!dialog.open)return;cancelWork();error.textContent='Recording source changed. Open Backup on a recording from the new local source.';error.hidden=false;});
  account.subscribe(()=>{if(work){cancelWork();status.textContent='Google account changed. Confirm the connection again before retrying.';}wifi.checked=false;controls();});

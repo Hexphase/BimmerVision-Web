@@ -20,3 +20,23 @@ test('website places entire drive backup beside overview recordings and retains 
  assert.doesNotMatch(html,/playbackBackupBtn|recording-backup-toolbar/);assert.match(html,/recording-backup-action\.js/);assert.match(app,/BVRecordingBackupAction\.update\(overviewBackupBtn,drive,/);assert.match(app,/Send to Remote Backup/);
  assert.match(app,/selectedDrive=null;overviewPlayBtn.disabled=true;[\s\S]*update\(overviewBackupBtn,null,/);
 });
+
+test('direct backup actions open upload selection instead of the Remote Backup manager',async()=>{
+ const {createActions}=require('../recording-backup-action'),opened=[],picker=[];
+ const root={BVSourceManager:{source:{kind:'usb'},generation:1},BVGoogleDriveBackupUI:{open:value=>opened.push([value]),openDrive:ids=>opened.push(ids)},BVRemoteBackupPage:{open:(...args)=>picker.push(args)}};
+ const actions=createActions(root);await actions.openRecording(id);await actions.openDrive([id,second]);assert.deepEqual(opened,[[id],[id,second]]);assert.equal(picker.length,0);
+ root.BVSourceManager.source={kind:'drive'};assert.throws(()=>actions.openRecording(id),/local|USB|car/);assert.equal(opened.length,2);
+ for(const invalid of ['',null,'bad'])assert.throws(()=>actions.openRecording(invalid));assert.throws(()=>actions.openDrive([id,id.toUpperCase()]));
+});
+test('direct car action preopens its popup synchronously and delegates durable queue work',async()=>{
+ const {createActions}=require('../recording-backup-action'),events=[],popup={};let finish;
+ const root={BVSourceManager:{source:{kind:'car'},generation:1},BVPhoneBackupLaunch:{preparePopup(){events.push('popup');return popup;},openDirect(ids,window){assert.equal(window,popup);assert.deepEqual(ids,[id]);events.push('durable');return new Promise(resolve=>finish=resolve);}},BVRemoteBackupPage:{open(){throw Error('manager must not open');}}};
+ const pending=createActions(root).openRecording(id);assert.deepEqual(events,['popup','durable']);finish(true);assert.equal(await pending,true);
+});
+test('per-record and drive click routing bypasses manager and prevents duplicate legacy handlers',async()=>{
+ const {bindActions}=require('../recording-backup-action'),handlers=[],opened=[],errors=[];
+ const root={document:{addEventListener(type,fn,capture){handlers.push({type,fn,capture});}},BVSourceManager:{source:{kind:'usb'},generation:1},alert:error=>errors.push(error)};
+ bindActions(root,{openRecording:value=>opened.push([value]),openDrive:ids=>opened.push(ids)});assert.equal(handlers[0].capture,true);
+ for(const dataset of [{backupRecording:id},{backupDrive:JSON.stringify([id,second])}]){let stopped=false,prevented=false;const button={dataset,disabled:false};await handlers[0].fn({target:{closest:()=>button},preventDefault(){prevented=true;},stopImmediatePropagation(){stopped=true;}});assert.equal(stopped,true);assert.equal(prevented,true);assert.equal(button.disabled,false);}
+ assert.deepEqual(opened,[[id],[id,second]]);assert.deepEqual(errors,[]);
+});

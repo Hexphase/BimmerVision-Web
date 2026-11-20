@@ -9,7 +9,7 @@ try{
 }catch(error){initialError=error;}
 const validSelection=ids=>Array.isArray(ids)&&ids.length>0&&ids.length<=1000&&ids.every(id=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))&&new Set(ids.map(id=>id.toLowerCase())).size===ids.length;
 async function start(){
- const get=id=>root.document.getElementById(id),status=get('phoneBackupConnectionStatus'),error=get('phoneBackupConnectionError'),resume=get('phoneBackupResumeBtn');
+ const get=id=>root.document.getElementById(id),status=get('phoneBackupConnectionStatus'),error=get('phoneBackupConnectionError'),resume=get('phoneBackupResumeBtn'),returnButton=get('phoneBackupReturnBtn'),returnHelp=get('phoneBackupReturnHelp');
  let latestSelection=[],source;
  const controller=new AbortController();
  root.addEventListener('pagehide',()=>controller.abort(),{once:true});
@@ -20,6 +20,17 @@ async function start(){
   return await root.BVGoogleDriveBackupUI.openDrive(latestSelection,'Selected recordings');
  }
  resume.addEventListener('click',()=>{void openSelection(latestSelection).catch(failure);});
+ function returnToCar(){
+  try{source?.returnToCar?.();}catch{}
+ }
+ returnButton.addEventListener('click',returnToCar);
+ root.addEventListener('bv-remote-backup-complete',event=>{
+  if(!source||event.detail?.source!==source||root.BVSourceManager.source!==source||source.closed||source.connected!==true||controller.signal.aborted)return;
+  status.textContent='Upload sent. Returning to your original car tab…';error.hidden=true;resume.hidden=true;returnButton.hidden=false;returnHelp.hidden=false;
+  get('driveBackupDialog').close();
+  returnToCar();
+ });
+
  try{
   if(initialError)throw initialError;
   if(!root.BVSourceManager||!root.BVGoogleDriveBackupUI)throw Error('Phone backup could not load. Reload this window from the original car tab.');

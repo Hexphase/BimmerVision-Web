@@ -11,12 +11,13 @@
   <link rel="icon" type="image/x-icon" href="assets/bimmervision.ico">
   <link rel="stylesheet" href="style.css?v=web-020">
   <link rel="stylesheet" href="mobile.css?v=web-020">
-  <link rel="stylesheet" href="hosted.css?v=remote-backup-76">
+  <link rel="stylesheet" href="hosted.css?v=remote-backup-77">
   <link rel="stylesheet" href="driving-view.css?v=signs-1">
   <link rel="stylesheet" href="playback-layout.css?v=drive-backup-3">
   <link rel="stylesheet" href="recordings-layout.css?v=remote-backup-4">
   <link rel="stylesheet" href="homepage.css?v=home-version-7">
-  <link rel="stylesheet" href="remote-backup-page.css?v=remote-backup-76">
+  <link rel="stylesheet" href="remote-backup-page.css?v=remote-backup-77">
+  <link rel="stylesheet" href="more-menu.css?v=77">
 </head>
 <body class="mobile-redesign" data-source-readonly="false" data-screen="library">
   <main id="sourceScreen" class="source-screen" aria-labelledby="sourceTitle">
@@ -89,7 +90,7 @@
         <div class="brand-cluster" title="BimmerVision">
           <img class="brand-wordmark" src="assets/bimmervision-wordmark.png" alt="BimmerVision">
         </div>
-      </div><div class="header-context"><button id="playbackBackBtn" class="back-link" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg><span>All drives</span></button><div class="playback-context"><h1 id="playbackTitle">Drive playback</h1><p><span id="playbackClipLabel"></span><span id="playbackStatus" role="status" aria-live="polite">Choose a recording</span><button id="playbackRetryBtn" class="back-link" type="button" hidden>Retry recording</button></p></div></div><div class="header-actions"><button id="quickExportBtn" type="button" class="header-export" aria-label="Export video" title="Export video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Export</span></button><details class="app-menu"><summary aria-label="Settings and playback options"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m9 3-.6 2.2-2 .9-2-.6-2 3.5 1.5 1.6v2.3L2.4 15l2 3.5 2-.6 2 .9L9 21h4l.6-2.2 2-.9 2 .6 2-3.5-1.5-1.6v-2.3l1.5-1.6-2-3.5-2 .6-2-.9L13 3Z"/><circle cx="11" cy="12" r="3"/></svg></summary><div class="app-menu-content"><div class="playback-tools"><div class="recording-actions" role="group" aria-label="Recording actions">
+      </div><div class="header-context"><button id="playbackBackBtn" class="back-link" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h13"/></svg><span>All drives</span></button><div class="playback-context"><h1 id="playbackTitle">Drive playback</h1><p><span id="playbackClipLabel"></span><span id="playbackStatus" role="status" aria-live="polite">Choose a recording</span><button id="playbackRetryBtn" class="back-link" type="button" hidden>Retry recording</button></p></div></div><div class="header-actions"><button id="quickExportBtn" type="button" class="header-export" aria-label="Export video" title="Export video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Export</span></button><details class="app-menu"><summary aria-label="More"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>More</span></summary><div class="app-menu-content"><nav class="more-navigation" aria-label="Main navigation"><button id="moreDrivesBtn" type="button">Drives &amp; recordings</button><button id="moreRemoteBackupBtn" type="button">Remote Backup</button><button id="moreBackupCurrentBtn" type="button" disabled>Back up current recording</button>        <button id="headerSettingsBtn" class="unit-toggle-pill" title="Settings & About" aria-label="Settings" style="display: flex; align-items: center; gap: 6px;">Settings</button></nav><div class="playback-tools"><div class="recording-actions" role="group" aria-label="Recording actions">
             <button id="playbackLockBtn" class="export-btn" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); display: flex; align-items: center; gap: 6px;" title="Lock recording to prevent deletion">
                   <span id="playbackLockIcon" style="display: flex; align-items: center;">
                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="currentColor" fill-opacity="0.15"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -119,12 +120,7 @@
           <input type="checkbox" id="advancedDetailsToggle">
           <span class="advanced-toggle-text">Diagnostics</span>
         </label>
-        <button id="headerSettingsBtn" class="unit-toggle-pill" title="Settings & About" aria-label="Settings" style="display: flex; align-items: center; gap: 6px;">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-          </svg>
-          Settings
-        </button>
+
         <div class="status-pill">
           <span class="status-dot"></span>
           <span id="connStatus">Choose a source</span>
@@ -688,12 +684,12 @@
   <script src="app-version-data.js?v=idrive-0239"></script>
   <script src="app-version.js?v=idrive-1"></script>
   <script src="viewer-connection.js?v=viewer-lease-1"></script>
-  <script src="recording-cache.js?v=remote-backup-76"></script>
+  <script src="recording-cache.js?v=remote-backup-77"></script>
   <script src="raw-download.js?v=web-020"></script>
   <script src="raw-zip.js?v=web-020"></script>
   <script src="local-source.js?v=player-lock-backup-1"></script>
-  <script src="remote-source.js?v=remote-backup-76"></script>
-  <script src="car-handoff.js?v=remote-backup-76"></script>
+  <script src="remote-source.js?v=remote-backup-77"></script>
+  <script src="car-handoff.js?v=remote-backup-77"></script>
   <script src="vendor/jsQR.js?v=1"></script>
   <script src="qr-scanner.js?v=web-020"></script>
   <script src="google-drive-config.js?v=drive-1"></script>
@@ -701,22 +697,22 @@
   <script src="google-drive-client.js?v=drive-1"></script>
   <script src="google-drive-source.js?v=drive-1"></script>
   <script src="google-drive-backup.js?v=drive-backup-3"></script>
-  <script src="google-drive-phone.js?v=remote-backup-76"></script>
-  <script src="google-drive-backup-ui.js?v=remote-backup-76"></script>
-  <script src="source-controller.js?v=remote-backup-76"></script>
+  <script src="google-drive-phone.js?v=remote-backup-77"></script>
+  <script src="google-drive-backup-ui.js?v=remote-backup-77"></script>
+  <script src="source-controller.js?v=remote-backup-77"></script>
   <script src="mp4-muxer.js?v=web-020"></script>
   <script src="traffic-signs.js?v=signs-1"></script>
   <script src="perception-data.js?v=signs-1"></script>
   <script src="vehicle-motion.js?v=vision-1"></script>
   <script src="driving-view.js?v=signs-1"></script>
   <script src="bvr-parser.js?v=vision-1"></script>
-  <script src="rtp-h264.js?v=remote-backup-76"></script>
+  <script src="rtp-h264.js?v=remote-backup-77"></script>
   <script src="drive-grouper.js?v=web-020"></script>
   <script src="dark-osm-map.js?v=export-2"></script>
   <script src="sedan-selector.js?v=mirror-cameras-12"></script>
   <script src="drive-timeline.js?v=web-020"></script>
   <script src="speed-limit-client.js?v=web-020"></script>
-  <script src="player.js?v=remote-backup-76"></script>
+  <script src="player.js?v=remote-backup-77"></script>
   <script src="exporter.js?v=export-2"></script>
   <script src="camera-store.js?v=web-020"></script>
   <script src="release-checker.js?v=web-020"></script>
@@ -724,8 +720,9 @@
   <script src="recording-notice.js?v=web-020"></script>
   <script src="playback-layout.js?v=lookahead-7"></script>
   <script src="recording-navigation.js?v=workspace-1"></script>
-  <script src="recording-backup-action.js?v=remote-queue-1"></script>
-  <script src="app.js?v=remote-backup-76"></script>
-  <script src="remote-backup-page.js?v=remote-backup-76"></script>
+  <script src="recording-backup-action.js?v=remote-backup-77"></script>
+  <script src="more-menu.js?v=77"></script>
+  <script src="app.js?v=remote-backup-77"></script>
+  <script src="remote-backup-page.js?v=remote-backup-77"></script>
 </body>
 </html>

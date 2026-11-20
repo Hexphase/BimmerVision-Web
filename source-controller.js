@@ -8,11 +8,15 @@ document.addEventListener('DOMContentLoaded',()=>{
  let directoryPickerAllowed=true;
  const closeUsb=()=>{if(usbDialog?.open)usbDialog.close();};
  const camera=document.getElementById('qrCameraPanel');let work=null,scanner=null,scanAbort=null,epoch=0;
+ let googleBusyButton=null;
+ const googleLabels=new Map();
  const buttons=['openUsbBtn','selectUsbDriveBtn','connectCarBtn','scanQrBtn','uploadQrBtn','prepareGoogleDriveBtn','connectGoogleDriveBtn','changeGoogleDriveAccountBtn'].map(id=>document.getElementById(id));
  function message(text){progress.textContent=text||'';}
  function failure(reason){error.textContent=reason?.message||String(reason);error.hidden=false;}
  function stopScanner(){scanAbort?.abort();scanAbort=null;scanner?.();scanner=null;camera.hidden=true;}
- function stopWork(){epoch++;work?.abort();work=null;stopScanner();buttons.forEach(b=>b.disabled=false);cancel.hidden=true;message('');}
+ function clearGoogleBusy(){if(googleBusyButton){googleBusyButton.setAttribute?.('aria-busy','false');googleBusyButton.textContent=googleLabels.get(googleBusyButton);googleBusyButton=null;}}
+ function googleBusy(button,text){if(!googleLabels.has(button))googleLabels.set(button,button.textContent||'Connect Google Drive');googleBusyButton=button;button.textContent=text;button.setAttribute?.('aria-busy','true');driveStatus.textContent=text;}
+ function stopWork(){clearGoogleBusy();epoch++;work?.abort();work=null;stopScanner();buttons.forEach(b=>b.disabled=false);cancel.hidden=true;message('');}
  function startWork(text){stopWork();work=new AbortController();buttons.forEach(b=>b.disabled=true);error.hidden=true;cancel.hidden=false;message(text);return {token:epoch,signal:work.signal};}
  function show(){closeUsb();stopWork();window.player?.pause();shell.hidden=true;shell.inert=true;screen.hidden=false;back.hidden=!manager.source;document.getElementById('openUsbBtn').focus();}
  function hide(){closeUsb();stopWork();screen.hidden=true;shell.hidden=false;shell.inert=false;const button=document.getElementById('changeSourceBtn'),menu=button.closest?.('details');(menu&&!menu.open?menu.querySelector('summary'):button).focus();}
@@ -25,11 +29,24 @@ document.addEventListener('DOMContentLoaded',()=>{
  function chosen(source){work=null;manager.setSource(source);updateSourceAccess(source);hide();source.indexing?.then(()=>{if(manager.source===source)window.dispatchEvent(new Event('bimmervision:library-updated'));}).catch(()=>{});}
  function report(value){if(typeof value==='string')message(value);else if(value){const n=value.completed??value.scanned??0,total=value.total;message(value.message||`Reading recordings${total?` · ${n} of ${total}`:n?` · ${n} checked`:''}…`);}}
  const driveStatus=document.getElementById('googleDriveStatus'),driveConnect=document.getElementById('connectGoogleDriveBtn'),drivePrepare=document.getElementById('prepareGoogleDriveBtn'),driveDisconnect=document.getElementById('disconnectGoogleDriveBtn'),driveChange=document.getElementById('changeGoogleDriveAccountBtn');
- drivePrepare.addEventListener('click',async()=>{const job=startWork('Loading Google sign-in…');try{if(!window.BV_GOOGLE_DRIVE_CONFIG?.clientId)throw Error('Google Drive connection is not configured yet.');await BVGoogleDriveClient.prepare();if(job.token!==epoch)return;stopWork();drivePrepare.hidden=true;driveConnect.hidden=false;driveStatus.textContent='Google sign-in is ready. Choose Connect Google Drive to select your account.';driveConnect.focus();}catch(e){if(job.token===epoch){stopWork();failure(e);}}});
- async function connectDrive(){const job=startWork('Connecting to your Google Drive…');let client;try{client=await BVGoogleDriveClient.connect({clientId:window.BV_GOOGLE_DRIVE_CONFIG?.clientId,signal:job.signal,prompt:'select_account'});if(job.token!==epoch){client.close();return;}const source=await BVGoogleDriveSource.fromClient(client,{signal:job.signal,onProgress:report,closeClient:false});if(job.token!==epoch){source.close();client.close();return;}account.set(client,source.account);driveStatus.textContent='Connected · '+(source.account.emailAddress||source.account.displayName||'Google Drive');driveDisconnect.hidden=false;driveChange.hidden=false;chosen(source);}catch(e){client?.close();if(job.token===epoch&&e.name!=='AbortError'){stopWork();failure(e);}}}
+ drivePrepare.addEventListener('click',async()=>{
+  if(work)return;const job=startWork('Loading Google sign-in…');googleBusy(drivePrepare,'Loading Google sign-in…');
+  try{if(!window.BV_GOOGLE_DRIVE_CONFIG?.clientId)throw Error('Google Drive connection is not configured yet.');await BVGoogleDriveClient.prepare();if(job.token!==epoch)return;stopWork();drivePrepare.hidden=true;driveConnect.hidden=false;driveStatus.textContent='Google sign-in is ready. Choose Connect Google Drive to select your account.';driveConnect.focus();}
+  catch(e){if(job.token===epoch){stopWork();driveStatus.textContent='Google sign-in could not load. Please try again.';failure(e);}}
+ });
+ async function connectDrive(event){
+  if(work)return;const button=event?.currentTarget||driveConnect,job=startWork('Opening Google authentication window…');googleBusy(button,'Opening Google authentication window…');let client;
+  try{
+   client=await BVGoogleDriveClient.connect({clientId:window.BV_GOOGLE_DRIVE_CONFIG?.clientId,signal:job.signal,prompt:'select_account'});
+   if(job.token!==epoch){client.close();return;}
+   googleBusy(button,'Reading your Google Drive…');message('Reading your Google Drive…');
+   const source=await BVGoogleDriveSource.fromClient(client,{signal:job.signal,onProgress:report,closeClient:false});if(job.token!==epoch){source.close();client.close();return;}
+   account.set(client,source.account);driveStatus.textContent='Connected · '+(source.account.emailAddress||source.account.displayName||'Google Drive');driveDisconnect.hidden=false;driveChange.hidden=false;chosen(source);
+  }catch(e){client?.close();if(job.token===epoch){stopWork();driveStatus.textContent=e.name==='AbortError'?'Google connection cancelled. You can try again.':'Google Drive connection did not finish. Please try again.';if(e.name!=='AbortError')failure(e);}}
+ }
  driveConnect.addEventListener('click',connectDrive);driveChange.addEventListener('click',connectDrive);
  driveDisconnect.addEventListener('click',()=>{account.clear();if(manager.source?.kind==='drive'){manager.source.close();manager.setSource({kind:'disconnected',readOnly:true,name:'Disconnected',fetch:async()=>new Response(JSON.stringify({recordings:[]}),{headers:{'Content-Type':'application/json'}})});}show();back.hidden=true;driveStatus.textContent='Disconnected. Your Google Drive session has been removed from this page.';driveDisconnect.hidden=true;driveChange.hidden=true;});
- document.getElementById('changeSourceBtn').addEventListener('click',show);back.addEventListener('click',hide);cancel.addEventListener('click',stopWork);
+ document.getElementById('changeSourceBtn').addEventListener('click',show);back.addEventListener('click',hide);cancel.addEventListener('click',()=>{const signingIn=!!googleBusyButton;stopWork();if(signingIn)driveStatus.textContent='Google connection cancelled. You can try again.';});
  usbOpen.addEventListener('click',()=>usbDialog.showModal());
  document.getElementById('closeUsbInstructionsBtn').addEventListener('click',closeUsb);
  usbDialog.addEventListener('click',event=>{const r=usbDialog.getBoundingClientRect();if(event.target===usbDialog&&(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom))closeUsb();});
