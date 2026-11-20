@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="driving-view.css?v=signs-1">
   <link rel="stylesheet" href="playback-layout.css?v=drive-backup-3">
   <link rel="stylesheet" href="recordings-layout.css?v=remote-backup-4">
-  <link rel="stylesheet" href="homepage.css?v=home-version-7">
+  <link rel="stylesheet" href="homepage.css?v=remote-backup-78">
   <link rel="stylesheet" href="remote-backup-page.css?v=remote-backup-77">
   <link rel="stylesheet" href="more-menu.css?v=77">
 </head>
@@ -32,7 +32,8 @@
           <span class="source-eyebrow">BUILT FOR YOUR BMW</span>
           <h1 id="sourceTitle">Bimmer<span>Vision.</span></h1>
           <p class="home-product-description">Continuous native 360° camera recording for your BMW.</p>
-          <p class="home-lede">The recording app for your BMW’s own cameras. Replay your drives, explore the metadata, and keep the moments that matter.</p>
+          <p class="home-lede">Replay your BMW’s own cameras, protect moments with your horn, and keep important recordings in your own Google Drive.</p>
+          <a class="home-release-link" href="#remoteBackupGuide"><span>NEW · 0.2.78</span> Remote Backup, Horn Protect &amp; Drive playback <span aria-hidden="true">↓</span></a>
           <div class="home-app-cta"><span>Don’t have BimmerVision?</span><a class="source-get-app source-primary" href="https://github.com/Hexphase/BimmerVision">Get it here<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></div>
           <a class="home-privacy-link" href="#recordingPrivacy"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg>Local playback. Optional Drive backup.</a>
         </div>
@@ -41,6 +42,15 @@
           <div class="home-road"><img class="home-driving-image" src="assets/vehicles/home-driving.webp?v=lead-distance-5" width="1400" height="800" alt="Illustration using the approved 3D vehicles, centered in three lanes with the blue driver vehicle in front a 125 ft example distance above the lead car, and a 45 MPH speed-limit sign on the right."></div>
           <figcaption><span>Camera replay</span><span>Driving view</span><span>Route map</span></figcaption>
         </figure>
+      </section>
+
+      <section id="remoteBackupGuide" class="home-release" aria-labelledby="remoteBackupGuideTitle">
+        <div class="home-release-heading"><span class="source-eyebrow">NEW IN BIMMERVISION 0.2.78</span><h2 id="remoteBackupGuideTitle">Keep the moments that matter.</h2><p>Protect them in the car. Back them up to your Google Drive. Replay them here.</p></div>
+        <div class="home-capabilities">
+          <article><span class="home-feature-number">01</span><div><h3>Remote Backup</h3><p>Choose important recordings or entire drives and send the originals directly to your own Google account and storage.</p><a href="#remoteBackupSetup">Choose an upload connection <span aria-hidden="true">↗</span></a></div></article>
+          <article id="hornProtection"><span class="home-feature-number">02</span><div><h3>Horn Protect</h3><p>A horn press locks whole recording clips covering 30 seconds before and after the horn, including separate neighboring clips.</p><p class="home-feature-detail">Automatic backup still requires a linked Google account and enabled car backup settings.</p></div></article>
+          <article><span class="home-feature-number">03</span><div><h3>Your Drive, in this browser</h3><p>Connect Google Drive below to watch your backed-up BimmerVision recordings, with their recorded telemetry.</p><a href="#googleDriveConnection">View backed-up recordings <span aria-hidden="true">↗</span></a></div></article>
+        </div>
       </section>
 
       <section id="usbConnection" class="home-connect home-usb" aria-labelledby="usbSourceTitle">
@@ -72,12 +82,21 @@
 
       <section id="googleDriveConnection" class="home-connect" aria-labelledby="googleDriveTitle">
         <div class="home-connect-copy"><span class="source-eyebrow">03 / GOOGLE DRIVE PLAYBACK</span><h2 id="googleDriveTitle">Your library,<br>in Google Drive.</h2><p>Connect your own Google account to view recordings backed up by BimmerVision. Recording video stays in your Drive and plays in this browser.</p></div>
-        <div class="source-card home-connect-form"><h3>Connect Google Drive</h3><p class="source-detail">Continuing loads Google’s sign-in service. Google receives connection information when it loads. Then choose an account and grant access to BimmerVision files only.</p><div class="source-actions"><button id="prepareGoogleDriveBtn" type="button" class="source-primary">Continue with Google</button><button id="connectGoogleDriveBtn" type="button" class="source-primary" hidden>Connect Google Drive</button><button id="changeGoogleDriveAccountBtn" type="button" class="source-secondary" hidden>Change account</button><button id="disconnectGoogleDriveBtn" type="button" class="source-secondary" hidden>Disconnect</button></div><p id="googleDriveStatus" class="source-detail" role="status" aria-live="polite">Google Drive is disconnected.</p><p class="source-detail">View only. Locking and deleting cloud recordings are unavailable. Access lasts for this page session; reconnect if it expires. Switch to a USB source to back up a selected local recording.</p></div>
+        <div class="source-card home-connect-form"><h3>Connect Google Drive</h3><p class="source-detail">Continuing loads Google’s sign-in service. Google receives connection information when it loads. Then choose your own account. The viewer uses Google’s drive.file permission for BimmerVision-created recordings, not your full personal Drive.</p><div class="source-actions"><button id="prepareGoogleDriveBtn" type="button" class="source-primary">Continue with Google</button><button id="connectGoogleDriveBtn" type="button" class="source-primary" hidden>Connect Google Drive</button><button id="changeGoogleDriveAccountBtn" type="button" class="source-secondary" hidden>Change account</button><button id="disconnectGoogleDriveBtn" type="button" class="source-secondary" hidden>Disconnect</button></div><p id="googleDriveStatus" class="source-detail" role="status" aria-live="polite">Google Drive is disconnected.</p><p class="source-detail">View only. Locking and deleting cloud recordings are unavailable. Access lasts for this page session; reconnect if it expires. To upload, switch to USB recordings or connect to the car.</p></div>
+      </section>
+
+      <section id="remoteBackupSetup" class="home-backup-guide" aria-labelledby="remoteBackupSetupTitle">
+        <div class="home-backup-intro"><span class="source-eyebrow">REMOTE BACKUP · CHOOSE YOUR CONNECTION</span><h2 id="remoteBackupSetupTitle">Start with the important clips.</h2><p>We recommend selected moments unless your car has a strong Wi-Fi connection. A two-minute recording averages about 300 MB; actual size varies.</p></div>
+        <div class="home-backup-routes">
+          <article><span class="home-route-label">FROM YOUR CAR</span><h3>Car Wi-Fi only.</h3><p>The car uploads over Wi-Fi, including a phone’s Wi-Fi hotspot. <strong>It never uploads over the car’s cellular connection.</strong></p><p>Link your Google account in iDrive and choose recordings in Remote Backup. Automatic backup requires enabled auto-upload settings and eligible Wi-Fi, recording, and driving conditions. Car uploads pause while a phone viewer is connected.</p></article>
+          <article><span class="home-route-label">WHILE VIEWING ON YOUR PHONE</span><h3>Your phone’s internet.</h3><p>From the car’s web player, choose Remote Backup or a recording’s backup action. Keep the original car tab and the secure upload window open.</p><p>Upload using your phone’s own mobile data or other internet only after explicit routing confirmation. The browser chooses the connection: verify it uses your phone’s internet, not BMW hotspot internet. Mobile data charges may apply.</p></article>
+        </div>
+        <details class="home-backup-details"><summary>Time, storage &amp; interrupted uploads <span aria-hidden="true">+</span></summary><div><p><strong>Give the car time.</strong> Vehicles often sleep around 5–15 minutes after locking, but timing varies and is not guaranteed. Keep selections conservative, especially on slower Wi-Fi.</p><p><strong>Your queue stays saved.</strong> Unfinished car uploads resume when the car is awake and eligible Wi-Fi returns. Verified completed files are kept. If a phone upload stops, the car may restart an unfinished file when it takes over on Wi-Fi.</p><p><strong>Your Google account, your storage.</strong> Backups use your own Drive capacity. BimmerVision does not provide cloud storage.</p></div></details>
       </section>
 
       <section id="recordingPrivacy" class="source-privacy home-privacy" aria-label="Recording privacy">
         <div><span class="source-eyebrow">LOCAL BY DESIGN</span><h2>Your recordings<br>stay yours.</h2></div>
-        <div><div class="source-privacy-heading"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg><strong>Local playback. Optional Drive backup.</strong></div><p>Your recordings and vehicle metadata are read and processed locally in your browser. They are never uploaded to BimmerVision or stored on our servers. Google Drive backups happen only when you select a recording, connect your account, and confirm the upload. Your original files stay on your device or in your own Google Drive. Connecting Google Drive sends requests directly to Google after you choose to continue.</p><p class="source-privacy-map">Online maps load OpenStreetMap tiles; those requests can reveal the map area you view. Your recording files are not sent to the map provider.</p></div>
+        <div><div class="source-privacy-heading"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg><strong>Local playback. Optional Drive backup.</strong></div><p>BimmerVision’s developers never see your recordings or recording metadata. They are read locally and are never uploaded to BimmerVision servers. Optional Remote Backup sends originals directly from your car or device to your own Google account and storage. Google sign-in and Drive requests go directly to Google after you choose to connect.</p><p class="source-privacy-map">Online maps load OpenStreetMap tiles; those requests can reveal the map area you view. Your recording files are not sent to the map provider.</p></div>
       </section>
       <aside class="source-work-status" aria-label="Connection and recording status"><p id="sourceProgress" class="source-progress" role="status" aria-live="polite"></p><p id="sourceError" class="source-error" role="alert" hidden></p><div><button id="cancelSourceWork" type="button" class="source-secondary" hidden>Cancel</button><button id="returnToRecordingsBtn" type="button" class="source-secondary" hidden>Return to recordings</button></div></aside>
       <footer class="source-footer"><div class="home-footer-identity"><span>Made for the moments between destinations.</span><a id="footerAppVersion" href="https://github.com/Hexphase/BimmerVision/releases" target="_blank" rel="noopener noreferrer">BimmerVision</a></div><div><a class="source-get-app" href="https://github.com/Hexphase/BimmerVision">Don't Have BimmerVision?</a><a href="https://github.com/Hexphase/BimmerVision-Web" target="_blank" rel="noopener noreferrer">About BimmerVision Web</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms</a></div></footer>
@@ -628,7 +647,7 @@
 
         <div class="settings-section" style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 16px;">
           <h4 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--tesla-muted); margin: 0 0 10px 0;">Software Versions</h4>
-          <p class="source-detail">BimmerVision Web 0.2.39 · runs on your device</p>
+          <p class="source-detail">BimmerVision Web 0.2.78 · runs on your device</p>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 8px; margin-bottom: 8px;">
             <span style="font-weight: 500; font-size: 13px;">BimmerVision version</span>
             <span style="background: rgba(61, 168, 242, 0.15); color: #3da8f2; padding: 3px 8px; border-radius: 6px; font-weight: 600; font-family: monospace; font-size: 13px;" id="installedCarVersion">—</span>

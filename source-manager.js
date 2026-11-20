@@ -17,7 +17,7 @@ class SourceManager {
   const source=this.source,generation=this.generation;if(!source)return json({error:'Choose a USB drive or connect to your car first.'},503);
   if(source.kind==='usb'){
    if(path==='/api/v1/capabilities')return json({nativePreview:false,readOnly:source.readOnly!==false,canLock:source.canLock===true,canDelete:false,localFiles:true});
-   if(path==='/api/v1/version')return json({version:'0.2.39',repository:'Hexphase/BimmerVision-Web',hostedViewer:true});
+   if(path==='/api/v1/version')return json({version:'0.2.78',repository:'Hexphase/BimmerVision-Web',hostedViewer:true});
   }
   const response=await (this.recordingCache ? this.recordingCache.fetch(source,path,options) : source.fetch(path,options));
   if(generation!==this.generation||source!==this.source){await response.body?.cancel();throw new DOMException('Recording source changed.','AbortError');}if(String(options.method||'GET').toUpperCase()==='POST'&&/\/lock$/.test(path)){
@@ -28,5 +28,5 @@ class SourceManager {
  }
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={SourceManager};
-else{root.BVSourceManager=new SourceManager({nativeFetch:root.fetch.bind(root)});root.BV_WEB_VERSION='0.2.39';}
+else{root.BVSourceManager=new SourceManager({nativeFetch:root.fetch.bind(root)});root.BV_WEB_VERSION='0.2.78';}
 })(typeof globalThis!=='undefined'?globalThis:this);
