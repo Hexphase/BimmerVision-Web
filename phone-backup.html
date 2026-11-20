@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>Phone Remote Backup · BimmerVision</title>
+  <link rel="stylesheet" href="style.css?v=phone-backup-1">
+  <link rel="stylesheet" href="mobile.css?v=phone-backup-1">
+  <link rel="stylesheet" href="hosted.css?v=phone-backup-1">
+  <link rel="stylesheet" href="remote-backup-page.css?v=phone-backup-1">
+  <style>
+    .phone-backup-page{min-height:100dvh;padding:32px 24px;background:#0b0b0c}.phone-backup-shell{max-width:760px;margin:auto}.phone-backup-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding-bottom:26px;border-bottom:1px solid #303036;flex-wrap:wrap}.phone-backup-header img{width:180px;height:auto}.phone-backup-copy{padding:48px 0 28px}.phone-backup-copy h1{font-size:clamp(32px,6vw,48px);line-height:1.1;letter-spacing:-.04em;margin:16px 0 22px}.phone-backup-copy p{color:#b8b8c2;font-size:15px;line-height:1.7;max-width:580px}.phone-backup-page .source-error{margin:20px 0}.phone-backup-page .source-secondary{flex:none}@media(max-width:600px){.phone-backup-page{padding:24px 20px}.phone-backup-header img{width:150px}.phone-backup-copy{padding-top:32px}}
+  </style>
+</head>
+<body class="phone-backup-page">
+  <div class="phone-backup-shell">
+    <header class="phone-backup-header"><img src="assets/bimmervision-wordmark.png" alt="BimmerVision"></header>
+    <main class="phone-backup-copy">
+      <span class="source-eyebrow">YOUR ORIGINALS, IN YOUR GOOGLE DRIVE</span>
+      <h1>Phone Remote Backup</h1>
+      <p id="phoneBackupConnectionStatus" role="status" aria-live="polite">Connecting to your car… Keep the original car tab open.</p>
+      <p id="phoneBackupConnectionError" class="source-error" role="alert" hidden></p>
+      <button id="phoneBackupResumeBtn" class="source-secondary" type="button" hidden>Open upload</button>
+      <p class="source-detail">Your phone uploads directly to your Google Drive. Google sign-in stays in this window. Original recordings stay on your car’s recording drive.</p>
+    </main>
+  </div>
+  <dialog id="driveBackupDialog" class="drive-backup-dialog" aria-labelledby="driveBackupTitle" aria-describedby="driveBackupPrivacy driveBackupWifiHelp">
+    <div class="drive-backup-heading"><span id="driveBackupEyebrow" class="source-eyebrow">REMOTE BACKUP · SELECTED RECORDING</span><button id="closeDriveBackupBtn" type="button" class="drive-backup-close" aria-label="Close Remote Backup">×</button></div><h2 id="driveBackupTitle">Upload this recording to Remote Backup.</h2><p id="driveBackupClip" class="drive-backup-clip"></p>
+    <div id="driveBackupSetup">
+    <p id="driveBackupPrivacy">Upload this recording’s unchanged original files directly from your device to your own Google Drive. No recordings pass through BimmerVision servers.</p>
+    <p id="driveBackupAccount" role="status" aria-live="polite"></p><button id="driveBackupSignInBtn" type="button" class="source-secondary">Continue with Google</button><p class="source-detail">Continuing loads Google’s sign-in service and sends connection information to Google. Your sign-in stays in memory for this page session.</p>
+    <label class="drive-backup-wifi"><input id="driveBackupWifi" type="checkbox"> <span id="driveBackupWifiLabel">I confirm this device is connected to Wi-Fi for this upload.</span></label><p id="driveBackupWifiHelp" class="source-detail">This browser cannot verify Wi-Fi. Check your device’s network before confirming. Large recordings can use significant data.</p>
+    </div>
+    <div class="drive-backup-progress-heading"><strong id="driveBackupPercent" hidden>0%</strong><span id="driveBackupCounts" hidden></span></div><progress id="driveBackupProgress" max="1" value="0" hidden></progress><p id="driveBackupTransferStats" class="drive-backup-transfer-stats" hidden></p><p id="driveBackupProgressText" role="status" aria-live="polite"></p><p id="driveBackupError" class="source-error" role="alert" hidden></p>
+    <div class="source-actions"><button id="startDriveBackupBtn" type="button" class="source-primary" disabled>Send to Remote Backup</button><button id="addDriveBackupBtn" type="button" class="source-secondary" hidden>Add recordings</button><button id="cancelDriveBackupBtn" type="button" class="source-secondary" hidden>Cancel upload</button></div>
+  </dialog>
+
+  <script src="source-manager.js?v=phone-backup-1"></script>
+  <script src="viewer-connection.js?v=phone-backup-1"></script>
+  <script src="google-drive-config.js?v=drive-1"></script>
+  <script src="vendor/spark-md5-3.0.2.min.js"></script>
+  <script src="google-drive-client.js?v=phone-backup-1"></script>
+  <script src="google-drive-backup.js?v=phone-backup-1"></script>
+  <script src="google-drive-phone.js?v=phone-backup-1"></script>
+  <script src="google-drive-backup-ui.js?v=phone-backup-1"></script>
+  <script src="phone-bridge-source.js?v=phone-backup-1"></script>
+  <script src="remote-backup-page.js?v=phone-backup-1"></script>
+  <script src="phone-backup-bootstrap.js?v=phone-backup-1"></script>
+</body>
+</html>
