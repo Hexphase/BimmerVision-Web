@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded',()=>{
    }
    checkSession(current);
    get('driveBackupTitle').textContent=phone?'Upload sent to Remote Backup':'Remote Backup complete';
-   status.textContent=phone?'Transfer sent. The car will independently verify '+current.completed+' recordings in Google Drive when it is on Wi-Fi.':current.ids.size===1&&lastResult?.localLockOnly?'Already backed up. Lock changes protect the USB original; the cloud copy stays unchanged.':'Backup complete · '+current.completed+' recordings. Original file sizes and checksums verified in Google Drive.';
+   status.textContent=phone?'Transfer sent. The car will independently verify '+current.completed+' recordings in Google Drive after this phone disconnects and the car is on Wi-Fi.':current.ids.size===1&&lastResult?.localLockOnly?'Already backed up. Lock changes protect the USB original; the cloud copy stays unchanged.':'Backup complete · '+current.completed+' recordings. Original file sizes and checksums verified in Google Drive.';
    progress.value=progress.max;percent.textContent='100%';stats.textContent=bytes(current.bytes)+' sent'+(phone?' · Awaiting car Wi-Fi verification':' · Verified');
   }catch(e){
    if(token!==epoch)return;
