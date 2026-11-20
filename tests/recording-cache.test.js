@@ -40,7 +40,7 @@ test('native lookahead caches preview info and MP4 instead of decoding or readin
  cache.setWindow(drive,'a',{native:true});await cache.start();assert(!calls.some(p=>p.endsWith('capture.bvr')));const count=calls.length;const info=await(await manager.fetch('/api/v1/preview/b')).json();assert.equal(await(await manager.fetch(info.mediaUrl)).text(),'bvr');assert.equal(calls.length,count);
 });
 test('total lookahead bytes remain bounded across the two recordings',async()=>{
- const {cache}=setup({maxBytes:45});cache.setWindow(drive,'a');await cache.start();const bytes=[...cache.entries.values()].reduce((sum,e)=>sum+[...e.files.values()].reduce((n,f)=>n+f.blob.size,0),0);assert(bytes<=45);assert.equal(cache.entries.size,1);
+ const {cache}=setup({maxBytes:45});cache.setWindow(drive,'a');await cache.start();const bytes=[...cache.entries.values()].reduce((sum,e)=>sum+[...e.files.values()].reduce((n,f)=>n+f.size,0),0);assert(bytes<=45);assert.equal(cache.entries.size,1);
 });
 test('leaving a drive cancels a pending preload and prevents late results from repopulating it',async()=>{
  const {cache,source}=setup();let release;source.fetch=async()=>{await new Promise(resolve=>release=resolve);return new Response('{}');};cache.setWindow(drive,'a');const pending=cache.start();cache.clear();release();await pending;assert.equal(cache.entries.size,0);
@@ -62,11 +62,53 @@ test('a continuously progressing preload may exceed the inactivity window in tot
   if(path.endsWith('manifest.json'))return new Response(JSON.stringify({complete:true,bytes:8}));
   let count=0;return new Response(new ReadableStream({async pull(c){await new Promise(resolve=>setTimeout(resolve,15));if(count++===8)c.close();else c.enqueue(new Uint8Array([1]));}}));
  };
- cache.setWindow({segments:drive.segments.slice(0,2)},'a');await cache.start();assert.equal(cache.entries.size,1);assert.equal(cache.entries.get('b').files.get('/api/v1/recordings/b/capture.bvr').blob.size,8);
+ cache.setWindow({segments:drive.segments.slice(0,2)},'a');await cache.start();assert.equal(cache.entries.size,1);assert.equal(cache.entries.get('b').files.get('/api/v1/recordings/b/capture.bvr').size,8);
 });
 test('lookahead waits for a foreground metadata stream to finish and then resumes',async()=>{
  const {manager,cache,source}=setup();const original=source.fetch;let end;
  source.fetch=async(path,options)=>path.includes('/a/capture.bvr')?new Response(new ReadableStream({start(c){end=()=>c.close();}})):original(path,options);
  cache.setWindow(drive,'a');const foreground=await manager.fetch('/api/v1/recordings/a/capture.bvr');await cache.start();assert.equal(cache.entries.size,0);assert.equal(cache.foregroundTokens.size,1);
  end();await foreground.text();await cache.pump;assert.deepEqual([...cache.entries.keys()],['b','c']);assert.equal(cache.foregroundTokens.size,0);
+});
+
+test('next clip metadata is available before its in-flight lookahead media finishes',async()=>{
+ const {cache,manager,source}=setup();let started,release;
+ const began=new Promise(resolve=>started=resolve),original=source.fetch;
+ source.fetch=async(path,options)=>{
+  if(path.endsWith('/b/capture.bvr')){started();await new Promise(resolve=>release=resolve);}
+  return original(path,options);
+ };
+ cache.setWindow(drive,'a');const warming=cache.start();await began;cache.setWindow(drive,'b');
+ try{
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),50);
+  try{assert.equal((await(await manager.fetch('/api/v1/recordings/b/manifest.json',{signal:controller.signal})).json()).complete,true);}
+  finally{clearTimeout(timer);}
+ }finally{release();cache.clear();await warming;}
+});
+test('lookahead playback does not depend on browser Blob resource streams',async()=>{
+ const fs=require('node:fs'),vm=require('node:vm');
+ class ExpiredBlob extends Blob {stream(){throw Error('blob loading failed');}}
+ const scope={module:{exports:{}},DOMException,AbortController,Headers,Response,ReadableStream,Blob:ExpiredBlob,setTimeout,clearTimeout};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../recording-cache'),'utf8'),scope);
+ const {manager,source,calls}=setup(),cache=new scope.module.exports.RecordingCache(manager);
+ cache.setWindow(drive,'a');await cache.start();cache.setWindow(drive,'b');const count=calls.length;
+ assert.equal(await(await manager.fetch('/api/v1/recordings/b/capture.bvr')).text(),'bvr');
+ assert.equal(calls.length,count,'cached bytes must survive loss of browser Blob resource backing');cache.clear();
+});
+
+test('selecting an in-flight next clip exposes progress before its download finishes',async()=>{
+ const {cache,manager,source,calls}=setup();let stream,started;const began=new Promise(resolve=>started=resolve),original=source.fetch;
+ source.fetch=async(path,options)=>{
+  if(path.endsWith('/b/capture.bvr')){calls.push(path);return new Response(new ReadableStream({start(c){stream=c;c.enqueue(new Uint8Array([98]));started();}}),{headers:{'Content-Length':'3'}});}
+  return original(path,options);
+ };
+ cache.setWindow(drive,'a');const warming=cache.start();await began;cache.setWindow(drive,'b');
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),100);
+ try{
+  const response=await manager.fetch('/api/v1/recordings/b/capture.bvr',{signal:controller.signal}),reader=response.body.getReader();
+  assert.deepEqual([...((await reader.read()).value)],[98]);
+  stream.enqueue(new Uint8Array([118,114]));stream.close();
+  assert.deepEqual([...((await reader.read()).value)],[118,114]);assert.equal((await reader.read()).done,true);
+  assert.equal(calls.filter(p=>p.endsWith('/b/capture.bvr')).length,1);
+ }finally{clearTimeout(timer);cache.clear();await warming;}
 });

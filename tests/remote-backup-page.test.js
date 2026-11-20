@@ -1,0 +1,2 @@
+'use strict';const test=require('node:test'),assert=require('node:assert/strict');const {selection,estimate}=require('../remote-backup-page');
+test('Remote Backup selection is bounded and durations use hours and minutes',()=>{const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';assert.deepEqual(selection([id]),[id]);for(const ids of [[],[id,id],['invalid'],Array(1001).fill(id)])assert.throws(()=>selection(ids));assert.equal(estimate(3660),'1 hr 01 min remaining');assert.equal(estimate(null),'');});

@@ -4,7 +4,7 @@ const {update}=require('../recording-backup-action');
 const id='12345678-1234-1234-1234-123456789abc',second='8136e19b-d2fb-4c10-9f55-634ea298980e';
 const drive=(ids=[id,second])=>({segments:ids.map(id=>({clip:{id,complete:true}}))});
 test('drive action keeps every complete recording and supports local sources',()=>{
- for(const kind of ['car','usb']){const b={dataset:{},setAttribute(){}};update(b,drive(),kind);assert.deepEqual(JSON.parse(b.dataset.backupDrive),[id,second]);assert.equal(b.disabled,false);assert.equal(b.hidden,false);}
+ for(const kind of ['car','usb']){const b={dataset:{},attributes:{},setAttribute(name,value){this.attributes[name]=value;}};update(b,drive(),kind);assert.equal(b.attributes['aria-label'],'Send entire drive to Remote Backup');assert.deepEqual(JSON.parse(b.dataset.backupDrive),[id,second]);assert.equal(b.disabled,false);assert.equal(b.hidden,false);}
 });
 test('drive action accepts exactly one thousand valid recordings',()=>{
  const ids=Array.from({length:1000},(_,i)=>i.toString(16).padStart(8,'0')+'-1234-1234-1234-123456789abc'),b={dataset:{},setAttribute(){}};update(b,drive(ids),'car');assert.equal(b.hidden,false);assert.deepEqual(JSON.parse(b.dataset.backupDrive),ids);
@@ -16,7 +16,7 @@ test('drive action clears IDs for missing, cloud, incomplete, duplicate or inval
 });
 test('website places entire drive backup beside overview recordings and retains per-clip actions',()=>{
  const html=fs.readFileSync(require.resolve('../index.html'),'utf8'),app=fs.readFileSync(require.resolve('../app.js'),'utf8');
- assert.match(html,/<div class="drive-segments-box">[\s\S]*id="overviewBackupBtn"[^>]*disabled[^>]*hidden[^>]*>Back up entire drive<\/button>[\s\S]*id="driveSegmentsList"/);
- assert.doesNotMatch(html,/playbackBackupBtn|recording-backup-toolbar/);assert.match(html,/recording-backup-action\.js/);assert.match(app,/BVRecordingBackupAction\.update\(overviewBackupBtn,drive,/);assert.match(app,/Back up recording to Google Drive/);
+ assert.match(html,/<div class="drive-segments-box">[\s\S]*id="overviewBackupBtn"[^>]*disabled[^>]*hidden[^>]*>Send entire drive to Remote Backup<\/button>[\s\S]*id="driveSegmentsList"/);
+ assert.doesNotMatch(html,/playbackBackupBtn|recording-backup-toolbar/);assert.match(html,/recording-backup-action\.js/);assert.match(app,/BVRecordingBackupAction\.update\(overviewBackupBtn,drive,/);assert.match(app,/Send to Remote Backup/);
  assert.match(app,/selectedDrive=null;overviewPlayBtn.disabled=true;[\s\S]*update\(overviewBackupBtn,null,/);
 });

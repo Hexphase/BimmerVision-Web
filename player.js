@@ -213,6 +213,7 @@ class BimmerVisionPlayer {
     const loadingText=readingLocal?'Reading the complete recording from your USB drive…':'Downloading the complete recording…';
     this._setState('loading',loadingText);
     const reader=response.body.getReader();
+    let yieldedAt=performance.now();
     try {
       while (true) {
         const {done,value}=await this._loadOperation(reader.read(),signal);
@@ -221,7 +222,9 @@ class BimmerVisionPlayer {
         this.loadedByteOffset+=value.byteLength;
         onChunk(value);
         this._setState('loading',loadingText);
-        await new Promise(resolve=>setTimeout(resolve,0));
+        // Cached streams can contain thousands of immediately ready chunks.
+        // Yield once per paint budget, rather than imposing a timer per chunk.
+        if(performance.now()-yieldedAt>=16){await new Promise(resolve=>setTimeout(resolve,0));yieldedAt=performance.now();}
       }
       if (this.totalBytes && this.loadedByteOffset !== this.totalBytes) throw new Error('The recording download was incomplete. Check the connection and retry.');
     } finally {

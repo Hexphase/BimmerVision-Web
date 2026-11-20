@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   wifi.disabled=!!work;login.disabled=!!work||!!auth;cancel.hidden=!work&&!auth;
   identity.textContent=account.client?'Google Drive · '+(account.user?.emailAddress||account.user?.displayName||'Connected'):'Connect your own Google Drive account.';
   login.textContent=account.client?'Change Google account':ready||window.google?.accounts?.oauth2?'Connect Google Drive':'Continue with Google';
-  start.textContent=selection?.wholeDrive?'Back up entire drive':'Back up this recording';
+  start.textContent='Start Remote Backup upload';
  }
  function cancelWork(){epoch++;work?.abort();work=null;auth?.abort();auth=null;wifi.checked=false;controls();}
  function closeDialog(){cancelWork();statusEpoch++;dialog.close();}
@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(work||auth){if(!dialog.open)dialog.showModal();return;}
   selection=Object.freeze({ids:Object.freeze(ids.slice()),wholeDrive,label});source=manager.source;generation=manager.generation;phoneStatus=null;
   const phone=source?.kind==='car',current=++statusEpoch;
-  get('driveBackupEyebrow').textContent=wholeDrive?'BACK UP ENTIRE DRIVE':'BACK UP SELECTED RECORDING';
-  get('driveBackupTitle').textContent=wholeDrive?'Keep this drive in your Google Drive.':'Keep the original in your Drive.';
+  get('driveBackupEyebrow').textContent=wholeDrive?'REMOTE BACKUP · ENTIRE DRIVE':'REMOTE BACKUP · SELECTED RECORDING';
+  get('driveBackupTitle').textContent=wholeDrive?'Upload this drive to Remote Backup.':'Upload this recording to Remote Backup.';
   get('driveBackupClip').textContent=wholeDrive?(label?label+' · ':'')+ids.length+' recordings · uploaded one at a time':ids[0];
   get('driveBackupWifiLabel').textContent=phone?'I confirm this phone uses its own cellular data or another non-car internet connection, not BMW hotspot internet. I allow this backup and any data charges.':'I confirm this device is connected to Wi-Fi for this upload.';
   get('driveBackupWifiHelp').textContent=phone?'This browser cannot force cellular routing or verify the active connection. If BMW hotspot internet is enabled, disable its internet sharing and verify the phone uses mobile data before starting. Keep the local connection to the car.':'This browser cannot verify Wi-Fi. Check your device’s network before confirming. Large recordings can use significant data.';

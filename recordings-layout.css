@@ -86,3 +86,12 @@
  .mobile-redesign #viewRecordings .recording-clip-row {flex-direction:column;align-items:stretch!important;}
  #viewRecordings .clip-row-actions {justify-content:flex-start;}
 }
+
+/* Keep clip metadata readable independently of the number of actions. */
+.mobile-redesign #viewRecordings :is(.recording-clip-row,.segment-item) {display:grid!important;grid-template-columns:minmax(0,1fr);align-items:start!important;gap:10px;}
+#viewRecordings :is(.clip-row-info,.segment-info) {width:100%;min-width:0;overflow-wrap:break-word;}
+#viewRecordings .clip-row-info>div {flex-wrap:wrap;}
+#viewRecordings .clip-row-actions {display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px;min-width:0;max-width:100%;}
+#viewRecordings .clip-row-actions>:is(button,a) {max-width:100%;white-space:normal;height:auto;min-height:44px;line-height:1.4;}
+#viewRecordings .clip-row-actions svg {flex-shrink:0;}
+#viewRecordings .clip-row-backup {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 12px;border:1px solid #416b88;border-radius:0;background:#122535;color:#b8e4ff;cursor:pointer;font-size:12px;}
