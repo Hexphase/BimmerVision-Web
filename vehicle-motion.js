@@ -22,7 +22,13 @@ function classifyVehicleMotion(o,egoMph=null){
 }
 function createVehicleMotion(data){
  const tracks=new Map();
- for(const f of data.frames)for(const o of f.o){let a=tracks.get(o[0]);if(!a){a=[];tracks.set(o[0],a);}const prev=a.at(-1),segment=!prev?0:prev.segment+(f.t-prev.t>.7||Math.hypot(o[1]-prev.x,o[2]-prev.y)>Math.max(12,(f.t-prev.t)*85)?1:0);a.push({t:f.t,x:o[1],y:o[2],segment,...classifyVehicleMotion(o,f.v)});}
+ for(const f of data.frames)for(const o of f.o){
+  let a=tracks.get(o[0]);if(!a){a=[];tracks.set(o[0],a);}
+  const time=f.objectT??f.t,prev=a.at(-1);
+  if(prev?.t===time)continue;
+  const segment=!prev?0:prev.segment+(time-prev.t>.7||Math.hypot(o[1]-prev.x,o[2]-prev.y)>Math.max(12,(time-prev.t)*85)?1:0);
+  a.push({t:time,x:o[1],y:o[2],segment,...classifyVehicleMotion(o,f.v)});
+ }
  function at(t,o,egoMph){
   const raw=classifyVehicleMotion(o,egoMph),a=tracks.get(o[0]);if(!a?.length)return raw;
   let l=0,h=a.length-1;while(l<h){const m=Math.ceil((l+h)/2);if(a[m].t<=t)l=m;else h=m-1;}

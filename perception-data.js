@@ -83,7 +83,7 @@ function inferReplayTurns(frames,gps,changes) {
 }
 
 class BVPerceptionCapture {
-  constructor() {this.schema=null;this.telemetry=[];this.hasSourceEvents=false;this.pending=new Map();this.objects=[];this.lanes=[];this.detected=[];this.front=[];this.gaps=[];this.changes=[];this.signs=[];this.intervalUs=100000;this.lastObjectUs=-Infinity;this.rejected=0;}
+  constructor() {this.schema=null;this.telemetry=[];this.hasSourceEvents=false;this.pending=new Map();this.objects=[];this.lanes=[];this.detected=[];this.front=[];this.gaps=[];this.changes=[];this.signs=[];this.rejected=0;}
   addEvent(event,atUs,payload,crc) {
     if(this.limited)return;
     const spec={53258:['de.bmw.environmentalmodel.SignRecognitionFrontCamera',1,{TrafficSignRecognitionFrontCamera:32769}],54580:['de.bmw.environmentalmodel.SignRecognitionFrontCameraLegacy',1,{recognitionTrafficSignCamera2:32770}],13625:['de.bmw.dass.GapVehicleAhead',1,{GapVehicleDrivingAhead:32769,DataFrontVehicle:32770}],61753:['de.bmw.environmentalmodel.ObjectRecognitionFrontCamera2',2,{ObjectRecognition:32769,ObjectPosition:32770,ObjectMovement:32771,ObjectProbability:32775}],53284:['de.bmw.environmentalmodel.LaneBoundaries',1,{LaneBoundaries:32771}],53252:['de.bmw.environmentalmodel.Lanes',1,{LanesDetection:32769,LaneChange:32770}]};
@@ -121,7 +121,6 @@ class BVPerceptionCapture {
       g[signal]={v,atUs};
       while(this.pending.size>32){const first=this.pending.keys().next().value;this._flush(this.pending.get(first));this.pending.delete(first);}
     } else if(signal==='LaneBoundaries') {
-      if(atUs-(this.lanes.at(-1)?.atUs??-Infinity)<this.intervalUs)return;
       const b=[],valid=[0,1].includes(v.eventDataQualifier),lr=v.laneRecognitionFront;
       if(valid)for(const [i,line] of (v.laneBoundaryFront||[]).entries()) {
         const p=line.pointSegment1,base=line.baseSegment1,par=line.parametersSegment1,prop=v.laneBoundaryPropertiesFront?.[i];
@@ -143,8 +142,7 @@ class BVPerceptionCapture {
   }
   _flush(g) {
     const rec=g.ObjectRecognition;
-    if(!rec || rec.atUs-this.lastObjectUs<this.intervalUs)return;
-    this.lastObjectUs=rec.atUs;
+    if(!rec)return;
     const r=rec.v,p=g.ObjectPosition,m=g.ObjectMovement,q=g.ObjectProbability,o=[];
     const paired=e=>e && e.v.numberOfObjects===r.numberOfObjects && [0,1].includes(e.v.eventDataQualifier) && Math.abs(e.atUs-rec.atUs)<300000;
     if([0,1].includes(r.eventDataQualifier) && paired(p))for(let i=0;i<r.numberOfObjects;i++) {
@@ -165,9 +163,8 @@ class BVPerceptionCapture {
     for(const rows of [this.objects,this.lanes,this.detected,this.front,this.gaps,this.signs])rows.sort((a,b)=>a.atUs-b.atUs);
     const fresh=(rows,t,age=350000)=>{const p=perceptionLatest(rows,t);return p && t-p.atUs<=age?p:null;};
     const times=[...new Set([...this.objects,...this.lanes].map(x=>x.atUs))].sort((a,b)=>a-b);
-    const frames=[];let last=-Infinity;
+    const frames=[];
     for(const atUs of times) {
-      if(atUs-last<this.intervalUs*.8)continue;last=atUs;
       const obj=fresh(this.objects,atUs),lane=fresh(this.lanes,atUs),det=fresh(this.detected,atUs),front=fresh(this.front,atUs),gap=fresh(this.gaps,atUs);
       const rec=fresh(telemetry,atUs,2000000),fields=rec?.fields||{};
       const field=(name,age)=>{const f=fields[name];return f?.valid===true && f.sourceValid===true && Number.isFinite(f.atUs) && f.atUs<=atUs && Number.isFinite(f.ageUs) && f.ageUs>=0 && ((name==='blinker' && f.latched===true) || (atUs-f.atUs<=age && f.ageUs<=age))?f.value:null;};
@@ -175,8 +172,8 @@ class BVPerceptionCapture {
       frames.push({t:(atUs-startUs)/1e6,objectT:obj?(obj.atUs-startUs)/1e6:null,laneT:lane?(lane.atUs-startUs)/1e6:null,leadT:front&&gap?(Math.min(front.atUs,gap.atUs)-startUs)/1e6:null,o:obj?.o||[],b:lane?.b||[],w:lane?.w||null,v:Number.isFinite(speed)?speed/1.609344:null,steering:Number.isFinite(steering)?steering:0,indicator:['left','right','both','hazard','off'].includes(blink)?blink:'unknown',leftLane:det?.leftLane||'unknown',rightLane:det?.rightLane||'unknown',lead:gap?.valid?front?.id??null:null});
     }
     // ENU coordinates stay local to this recording and are never requested online.
-    const validGPS=(f,t)=>f?.valid===true && f.sourceValid===true && Number.isFinite(f.value) && Number.isFinite(f.atUs) && f.atUs<=t && t-f.atUs<=2000000 && Number.isFinite(f.ageUs) && f.ageUs>=0 && f.ageUs<=2000000;
-    route=telemetry.filter(r=>validGPS(r.fields?.latitude,r.atUs)&&validGPS(r.fields?.longitude,r.atUs)).map(r=>({at:(r.atUs-startUs)/1e6,latitude:r.fields.latitude.value,longitude:r.fields.longitude.value})).filter(p=>Math.abs(p.latitude)<=90&&Math.abs(p.longitude)<=180&&(p.latitude!==0||p.longitude!==0));
+    const validMeasurement=(f,t)=>f?.valid===true && f.sourceValid===true && Number.isFinite(f.value) && Number.isFinite(f.atUs) && f.atUs<=t && t-f.atUs<=2000000 && Number.isFinite(f.ageUs) && f.ageUs>=0 && f.ageUs<=2000000;
+    route=telemetry.filter(r=>validMeasurement(r.fields?.latitude,r.atUs)&&validMeasurement(r.fields?.longitude,r.atUs)).map(r=>({at:(r.atUs-startUs)/1e6,latitude:r.fields.latitude.value,longitude:r.fields.longitude.value})).filter(p=>Math.abs(p.latitude)<=90&&Math.abs(p.longitude)<=180&&(p.latitude!==0||p.longitude!==0));
     const first=route[0],gps=[];
     if(first)for(const p of route){const lat=p.latitude??p.lat,lon=p.longitude??p.lng??p.lon,lat0=first.latitude??first.lat,lon0=first.longitude??first.lng??first.lon,t=p.at??p.time??p.t;if([lat,lon,lat0,lon0,t].every(Number.isFinite))gps.push([t,(lon-lon0)*Math.PI/180*6371000*Math.cos(lat0*Math.PI/180),(lat-lat0)*Math.PI/180*6371000]);}
     const events=[];
@@ -188,7 +185,13 @@ class BVPerceptionCapture {
       events.push({kind:'change',side:change.side,at,planStart,start:Math.max(planStart,at-1.6),end:at+.5,evidence:'Recorded lane change'});
     }
     events.push(...inferReplayTurns(frames,gps,events));events.sort((a,b)=>a.at-b.at);
-    return {duration,frames,gps,events,signs:this.signs.map(r=>({t:(r.atUs-startUs)/1e6,signs:r.signs})),rejected:this.rejected};
+    const speeds=[];
+    for(const row of telemetry){
+      const speed=row.fields?.speed;
+      const value=validMeasurement(speed,row.atUs)?speed.value:null;
+      speeds.push([(row.atUs-startUs)/1e6,value]);
+    }
+    return {duration,frames,gps,events,speeds,signs:this.signs.map(r=>({t:(r.atUs-startUs)/1e6,signs:r.signs})),rejected:this.rejected};
   }
 }
 if(typeof module!=='undefined' && module.exports)module.exports={decodePerception,BVPerceptionCapture,frameAt,perceptionFrameIndex,inferReplayTurns};

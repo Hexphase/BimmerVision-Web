@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="style.css?v=export-picker-contrast-1">
   <link rel="stylesheet" href="mobile.css?v=web-020">
   <link rel="stylesheet" href="hosted.css?v=google-sign-in-1">
-  <link rel="stylesheet" href="driving-view.css?v=signs-1">
-  <link rel="stylesheet" href="playback-layout.css?v=camera-spacing-1">
+  <link rel="stylesheet" href="driving-view.css?v=camera-picker-1">
+  <link rel="stylesheet" href="playback-layout.css?v=larger-driving-view-1">
   <link rel="stylesheet" href="recordings-layout.css?v=recording-surfaces-1">
   <link rel="stylesheet" href="homepage.css?v=adaptive-shell-1">
   <link rel="stylesheet" href="remote-backup-page.css?v=backup-workspace-1">
@@ -609,6 +609,25 @@
                   <canvas class="driving-signs" role="img" hidden></canvas>
                 </div>
                 <div class="driving-detail"></div>
+                <div class="camera-enhanced-controls"><label class="camera-enhanced-switch"><input type="checkbox" role="switch" class="camera-enhanced-toggle"> Camera Enhanced View</label>
+                <button type="button" class="camera-enhanced-details" aria-label="Camera details" hidden>Details</button></div>
+                <dialog class="camera-enhanced-dialog camera-picker" aria-labelledby="camera-picker-heading">
+                  <h2 id="camera-picker-heading">Select the front camera</h2>
+                  <p class="camera-picker-note">Choose the view looking straight ahead.</p>
+                  <div class="camera-picker-grid"></div>
+                  <button type="button" class="camera-picker-cancel">Cancel</button>
+                </dialog>
+                <dialog class="camera-enhanced-dialog camera-enhanced-output" aria-labelledby="camera-details-heading">
+                  <h2 id="camera-details-heading">Camera details</h2>
+                  <div class="camera-enhanced-status" role="status"></div>
+                  <h3 class="camera-preview-title">Road boundaries</h3>
+                  <div class="camera-enhanced-cameras"></div>
+                  <div class="camera-enhanced-key" hidden><span>Paint</span><span>Extended paint</span><span>Possible curb</span><span>Vehicle candidate</span></div>
+                  <h3 class="camera-preview-title">Road users and intersections</h3>
+                  <div class="camera-enhanced-cameras camera-object-previews" aria-label="Road users detected by camera"></div>
+                  <button type="button" class="camera-enhanced-calibrate" hidden>Identify front camera</button>
+                  <button type="button" class="camera-details-close">Close</button>
+                </dialog>
               </section>
             </div>
 <section class="panel-card live-map-panel">
@@ -956,17 +975,18 @@
   <script src="source-controller.js?v=playback-action-cards-1"></script>
   <script src="mp4-muxer.js?v=web-020"></script>
   <script src="traffic-signs.js?v=signs-1"></script>
-  <script src="perception-data.js?v=signs-1"></script>
-  <script src="vehicle-motion.js?v=vision-1"></script>
-  <script src="driving-view.js?v=signs-1"></script>
+  <script src="perception-data.js?v=signal-hold-1"></script>
+  <script src="vehicle-motion.js?v=recorded-boundaries-1"></script>
+  <script src="camera-enhancement.js?v=signal-hold-1"></script>
+  <script src="driving-view.js?v=signal-hold-1"></script>
   <script src="bvr-parser.js?v=camera-availability-1"></script>
-  <script src="rtp-h264.js?v=remote-backup-77"></script>
+  <script src="rtp-h264.js?v=camera-enhancement-1"></script>
   <script src="drive-grouper.js?v=drive-metadata-1"></script>
-  <script src="dark-osm-map.js?v=export-2"></script>
+  <script src="dark-osm-map.js?v=local-preview-1"></script>
   <script src="sedan-selector.js?v=library-match-1"></script>
   <script src="drive-timeline.js?v=web-020"></script>
   <script src="speed-limit-client.js?v=web-020"></script>
-  <script src="player.js?v=remote-backup-77"></script>
+  <script src="player.js?v=signal-hold-1"></script>
   <script src="exporter.js?v=camera-selection-1"></script>
   <script src="camera-store.js?v=web-020"></script>
   <script src="release-checker.js?v=web-020"></script>

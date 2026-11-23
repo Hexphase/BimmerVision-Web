@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
 const {decodePerception,BVPerceptionCapture,frameAt,perceptionFrameIndex,inferReplayTurns}=require('../perception-data');
-const {classifyVehicleMotion}=require('../vehicle-motion');
+const {classifyVehicleMotion,createVehicleMotion}=require('../vehicle-motion');
 const schema={datatypes:{Pair:{type:'struct',members:[{name:'x',dataRef:'Float'},{name:'y',dataRef:'Float'}]}},interfaces:{sample:{events:{Point:{eventId:1,outputs:[{name:'p',dataRef:'Pair'}]}}}}};
 test('embedded schema decoder reads big endian and requires exact bounded payload',()=>{
  const bytes=Buffer.alloc(8);bytes.writeFloatBE(12.5);bytes.writeFloatBE(-3.25,4);
@@ -67,7 +67,116 @@ test('interpolation locates the next snapshot after expiry creates a filtered fr
 test('metadata limits fail explicitly instead of dropping route history or flickering',()=>{
  const c=new BVPerceptionCapture();
  for(let i=0;i<12001;i++)c._push(c.objects,{atUs:i*100000,o:[]});
- const data=c.finish([],0,2000,[]);assert.equal(data.limited,true);assert.equal(data.frames.length,0);assert(c.objects.length<=12000);assert.equal(c.intervalUs,100000);
+ const data=c.finish([],0,2000,[]);assert.equal(data.limited,true);assert.equal(data.frames.length,0);assert(c.objects.length<=12000);
+});
+test('replay preserves sub-100 ms lane and adjacent traffic updates without duplicating object samples',()=>{
+ const c=new BVPerceptionCapture();
+ for(const [i,atUs] of [1000000,1060000,1120000].entries()){
+  const timestamp={seconds:1,nanoseconds:i*60000000};
+  c.accept('LaneBoundaries',{eventDataQualifier:0,laneBoundaryFront:[],laneRecognitionFront:{}},atUs);
+  c.accept('ObjectPosition',{timestamp,eventDataQualifier:0,numberOfObjects:1,
+   objectPositionInfo:[{positionX:14,positionY:4-i*.25,objectPositionInfoInvalidFlags:0}]},atUs+1000);
+  c.accept('ObjectRecognition',{timestamp,eventDataQualifier:0,numberOfObjects:1,
+   objectRecognitionInfo:[{objectID:7,statusMeasurement:1,classificationType:3}]},atUs+2000);
+ }
+ const data=c.finish([],1000000,1,[]);
+ assert.equal(data.frames.length,6);
+ assert.equal(frameAt(data.frames,.08).o[0][2],3.75);
+ assert.equal(frameAt(data.frames,.14).o[0][2],3.5);
+ assert.equal(createVehicleMotion(data).tracks.get(7).length,3);
+ assert.equal(frameAt(data.frames,.50),null);
+});
+test('recorded boundary ends at its measured length and distinguishes a curb from paint',async()=>{
+ const {sampleRecordedBoundary}=await import('../road-estimation.js');
+ const dashed=sampleRecordedBoundary([0,8,3,0,0,0,11,1]);
+ assert.equal(dashed.isEdge,false);
+ assert.deepEqual([dashed.points[0].x,dashed.points[0].y],[8,3]);
+ assert.equal(dashed.points.at(-1).x,19);
+ assert.equal(dashed.points.filter(p=>p.painted).at(-1).s,11);
+ assert.ok(dashed.points.some(p=>!p.painted&&p.s>3.5&&p.s<=9));
+ const curb=sampleRecordedBoundary([0,8,3,0,.02,0,11,9]);
+ assert.equal(curb.isEdge,true);
+ assert.equal(curb.points.at(-1).s,11);
+ assert.ok(curb.points.at(-1).y>3);
+});
+test('drive path starts in the car’s frame and blends into the estimate ahead',async()=>{
+ const {anchorDrivePath}=await import('../road-estimation.js');
+ assert.deepEqual(anchorDrivePath(0,{x:.2,y:1.4}),{x:0,y:0});
+ assert.ok(anchorDrivePath(2,{x:2,y:1.4}).y<.1);
+ assert.deepEqual(anchorDrivePath(8,{x:8,y:1.4}),{x:8,y:.7});
+ assert.deepEqual(anchorDrivePath(16,{x:15,y:1.4}),{x:15,y:1.4});
+});
+test('confirmed lane changes curve from the car toward the destination without counting an existing shift twice',async()=>{
+ const {laneChangeBend}=await import('../road-estimation.js');
+ const left={side:'left',start:1,end:3};
+ const bend=laneChangeBend(left,2,4,[0,0,1],20,1);
+ assert.equal(bend(0),0);
+ assert.equal(bend(10),1);
+ assert.equal(bend(20),2);
+ assert.equal(bend(30),2);
+ assert.equal(laneChangeBend(left,2,4,[0,0,1],20,3)(20),0);
+ assert.equal(laneChangeBend(left,3,4,null,20,0)(20),0);
+ assert.equal(laneChangeBend({...left,side:'right'},2,4,null,20,0)(20),-4);
+});
+test('replay trajectory uses future turn and lane-change data while staying anchored',async()=>{
+ const {createReplayTrajectory}=await import('../road-estimation.js');
+ const gps=Array.from({length:101},(_,i)=>{
+  const t=i/5;
+  return [t,Math.min(t,8)*10,Math.max(0,t-8)*10];
+ });
+ const route=createReplayTrajectory({gps});
+ const beforeTurn=route.pathAt(5);
+ assert.deepEqual(beforeTurn[0],{x:0,y:0,s:0});
+ assert.ok(beforeTurn.some(point=>point.x>25&&point.y>10));
+ assert.deepEqual(route.pathAt(5),beforeTurn);
+
+ const flat=gps.map(([t])=>[t,t*10,0]);
+ const change={kind:'change',side:'left',start:5,end:8};
+ const replay=createReplayTrajectory({gps:flat,events:[change,{...change,start:5.3,end:7.8}]});
+ const beforeMerge=replay.pathAt(4);
+ assert.ok(beforeMerge.at(-1).y>3.4&&beforeMerge.at(-1).y<3.6);
+ const resolved=flat.map(([t,e])=>[t,e,3.5*Math.min(1,Math.max(0,(t-5)/3))]);
+ const resolvedPath=createReplayTrajectory({gps:resolved,events:[change]}).pathAt(4);
+ assert.ok(resolvedPath.at(-1).y>3.4&&resolvedPath.at(-1).y<3.6);
+ const right=createReplayTrajectory({gps:flat,events:[{...change,side:'right'}]}).pathAt(4);
+ assert.ok(right.at(-1).y< -3.4);
+});
+test('replay trajectory stops at a GPS gap without connecting unrelated fixes',async()=>{
+ const {createReplayTrajectory}=await import('../road-estimation.js');
+ const gps=[[0,0,0],[1,10,0],[2,20,0],[8,80,20],[9,90,20],[10,100,20]];
+ const route=createReplayTrajectory({gps});
+ assert.equal(route.pathAt(4),null);
+ assert.equal(route.pathAt(1).at(-1).x,10);
+ assert.deepEqual(route.pathAt(2),[{x:0,y:0,s:0}]);
+});
+test('lane look-ahead extends a boundary from an aligned later measurement and fills a short gap',async()=>{
+ const {createReplayTrajectory,createLaneLookAhead}=await import('../road-estimation.js');
+ const gps=Array.from({length:26},(_,i)=>[i/5,i*2,0]);
+ const current=[0,0,2,0,0,0,20,2,7,0];
+ const future=[0,0,2,0,0,0,30,2,7,0];
+ const frames=[{t:1,laneT:1,b:[current]},{t:1.5,laneT:1.5,b:[]},{t:2.05,laneT:2.05,b:[future]}];
+ const replay=createReplayTrajectory({gps});
+ const lookAhead=createLaneLookAhead(frames,replay);
+ const [extension]=lookAhead.at(1,[current]);
+ assert.deepEqual(extension[0],{x:20,y:2});
+ assert.ok(extension.at(-1).x>40);
+ const [gap]=lookAhead.at(1.5,[]);
+ assert.ok(gap[0].x>5&&gap.at(-1).x<=15);
+ assert.ok(gap.every(point=>Math.abs(point.y-2)<1e-6));
+ assert.deepEqual(current,[0,0,2,0,0,0,20,2,7,0]);
+ assert.equal(lookAhead.at(4,[]).length,0);
+});
+test('lane look-ahead declines unmatched or misaligned observations',async()=>{
+ const {createReplayTrajectory,createLaneLookAhead}=await import('../road-estimation.js');
+ const replay=createReplayTrajectory({gps:Array.from({length:26},(_,i)=>[i/5,i*2,0])});
+ const line=[0,0,2,0,0,0,20,2,7,0];
+ for(const changes of [{2:5},{8:8}]){
+  const future=Object.assign([...line],{6:30,...changes});
+  const frames=[{t:1,b:[line]},{t:2.05,b:[future]}];
+  const lookAhead=createLaneLookAhead(frames,replay);
+  assert.deepEqual(lookAhead.at(1,[line]),[]);
+  assert.deepEqual(lookAhead.at(1.5,[]),[]);
+ }
 });
 test('turn reconstruction requires matching GPS course, speed, steering and indicator evidence',()=>{
  const gps=[],frames=[];

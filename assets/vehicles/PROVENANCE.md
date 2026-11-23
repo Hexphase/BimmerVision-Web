@@ -19,3 +19,8 @@ Three.js 0.170.0 and RoomEnvironment are vendored under vendor/three/LICENSE (MI
 `home-driving.webp` is a static render of the same approved model geometry with
 synthetic lane positions. It contains no personal recording or route data and
 is covered by the same asset permission as the source mesh.
+
+`dashboard-sedan.webp` is a transparent render of the same approved unbranded mesh for the dashboard.
+
+Driving View uses sedan-replay.bin.gz, a reduced-detail version of the same
+approved geometry with 8,577 triangles. It retains the original materials.

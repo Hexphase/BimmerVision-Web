@@ -1,11 +1,19 @@
 const DrivingSigns=typeof BVTrafficSigns!=='undefined'?BVTrafficSigns:(typeof module!=='undefined'&&module.exports?require('./traffic-signs'):null);
 /* The player owns time. The view owns only rendering and may fail independently. */
+function leadLabel(lead,speedMph,metric){
+  if(!lead)return '';
+  const gap=metric?Math.round(lead[1])+' m':Math.round(lead[1]/.3048)+' ft';
+  const speed=metric?Math.round(speedMph*1.609344)+' km/h':Math.round(speedMph)+' mph';
+  return gap+' ahead'+(Number.isFinite(speedMph)?' · Est. '+speed:'');
+}
 class BVDrivingView {
-  constructor(panel,sceneLoader=()=>import('./driving-scene.js?v=signs-1')) {
+  constructor(panel,sceneLoader=()=>import('./driving-scene.js?v=signal-hold-1')) {
     this.panel=panel;this.stage=panel.querySelector('.driving-stage');this.message=panel.querySelector('.driving-message');this.detail=panel.querySelector('.driving-detail');this.distance=panel.querySelector('.driving-distance');this.status=panel.querySelector('.driving-status');this.signCanvas=panel.querySelector('.driving-signs');this.loader=sceneLoader;this.epoch=0;this.time=0;
+    if(typeof BVCameraEnhancement!=='undefined' && panel.querySelector('.camera-enhanced-toggle'))this.cameraEnhancement=new BVCameraEnhancement(this,panel);
     panel.querySelector('.driving-angle')?.addEventListener('click',e=>{this.overhead=!this.overhead;e.currentTarget.setAttribute('aria-pressed',String(this.overhead));this.scene?.setView(this.overhead?'overhead':'perspective');});
   }
   reset(message='Open a recording to build its driving view.') {
+    this.cameraEnhancement?.reset();this.cameraLayout=null;
     ++this.epoch;this.abort?.abort();this.abort=null;this.scene?.dispose();this.scene=null;this.data=null;this.time=0;this.message.hidden=false;this.message.textContent=message;this.status.textContent='RECORDED';this.detail.textContent='';this.distance.textContent='';this.signKey=null;this.panel.dataset.state='empty';this.updateSigns();
   }
   // Native previews contain telemetry only. Read raw events independently while
@@ -24,10 +32,17 @@ class BVDrivingView {
     finally {clearTimeout(timer);if(reader){if(controller.signal.aborted)await reader.cancel().catch(()=>{});reader.releaseLock();}if(this.abort===controller)this.abort=null;}
   }
   async load(parser,manifest) {
+    this.cameraLayout={cameraViewEvents:parser.cameraViewEvents,getCameraViewAtTime:parser.getCameraViewAtTime};
     const token=++this.epoch;this.scene?.dispose();this.scene=null;this.message.hidden=false;this.message.textContent='Building driving view…';this.panel.dataset.state='loading';
     try {
       const data=parser.perception?.finish(parser.telemetryRecords,manifest.startMonotonicUs,manifest.durationSeconds||0,[]) || {frames:[],gps:[]};data.speedLimits=(parser.speedLimitEvents||[]).map(e=>({...e,t:(e.atUs-(manifest.startMonotonicUs||0))/1e6}));this.data=data;this.updateSigns();
       if(!DrivingSigns.hasData(data)){this.message.textContent=data.limited?'This recording exceeds the driving-view metadata limit. Video playback is still available.':'This recording has no supported lane or traffic metadata.';this.panel.dataset.state='unavailable';this.status.textContent='UNAVAILABLE';return;}
+      if (globalThis.location?.protocol === 'file:') {
+        this.message.textContent = '3D Driving View needs a web address. Open BimmerVision.app or use the local web preview.';
+        this.panel.dataset.state = 'unavailable';
+        this.status.textContent = 'UNAVAILABLE';
+        return;
+      }
       const module=await this.loader();if(token!==this.epoch)return;
       const scene=await module.createDrivingScene(this.stage,data,message=>{if(token===this.epoch){this.message.hidden=false;this.message.textContent=message;this.panel.dataset.state='unavailable';}});
       if(token!==this.epoch){scene.dispose();return;}
@@ -37,9 +52,13 @@ class BVDrivingView {
   setTime(t) {
     this.time=t;this.updateSigns();if(!this.scene)return;
     try {
-      const f=this.scene.setTime(t),lead=f?.o.find(o=>o[0]===f.lead&&o[1]>0);
-      this.distance.textContent=lead?Math.round(lead[1]/.3048)+' ft ahead':'';
-      this.detail.textContent=f?(f.b.length?'Recorded lanes':'Lanes unavailable')+(this.data.gps.length>2?' · GPS estimate ahead':''):'No fresh perception at this time';
+      const sample=this.cameraEnhancement?.at(t);
+      const f=this.scene.setTime(t,sample,!!this.cameraEnhancement?.requested),lead=f?.o.find(o=>o[0]===f.lead&&o[1]>0);
+      this.distance.textContent=leadLabel(lead,f?.leadSpeedMph,this.speedUnit?.()==='km/h');
+      const signal=this.scene.signalCount?'Traffic light detected · ':'';
+      const boundaries = f?.inferredLanes ? (f.b.length ? 'Recorded and inferred boundaries' : 'Inferred boundaries') : (f?.b.length ? 'Camera-recorded boundaries' : 'Camera boundaries unavailable');
+      const intersectionLabel=(this.scene.stopBarVisible?(this.scene.stopBarDepth<0?'Passed stop bar · ':'Possible stop bar ahead · '):'')+signal;
+      this.detail.textContent=intersectionLabel+(f?(f.laneChange?(f.laneChange==='left'?'Changing lanes left':'Changing lanes right')+' · ':'')+boundaries+(this.data.gps.length>2?' · Replay path from recorded data':''):'No fresh perception at this time');
     } catch(e) {this.reset('The 3D view is unavailable. Video playback is still available.');}
   }
   updateSigns(){
@@ -53,6 +72,7 @@ class BVDrivingView {
     canvas.setAttribute('aria-label',signs.map(s=>s.label+(s.value?' '+s.value+' '+s.unit:'')).join(', '));
   }
   async createExportRenderer() {
+    if (globalThis.location?.protocol === 'file:') throw new Error('Open BimmerVision from a web address to export the 3D Driving View.');
     const data=this.data,token=this.epoch;
     if(!DrivingSigns.hasData(data))throw new Error('Driving view metadata is unavailable for this recording.');
     const module=await this.loader();
@@ -65,13 +85,14 @@ class BVDrivingView {
     try {
       scene=await module.createDrivingScene(stage,data,message=>{failure=new Error(message);});
       if(token!==this.epoch)throw new Error('Export cancelled because the recording changed.');
+      const metric=this.speedUnit?.()==='km/h';
       return {drawTo(ctx,x,y,w,h,t){
         if(disposed||failure)throw failure||new Error('Driving view export was closed.');
         scene.setSize(w,h);const f=scene.setTime(t);
         ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.drawImage(scene.canvas,x,y,w,h);
         ctx.fillStyle='#d6dfec';ctx.font='14px -apple-system, BlinkMacSystemFont, sans-serif';ctx.textAlign='left';ctx.fillText('DRIVING VIEW',x+16,y+24);
         const lead=f?.o.find(o=>o[0]===f.lead&&o[1]>0);
-        if(lead){ctx.font='18px -apple-system, BlinkMacSystemFont, sans-serif';ctx.fillText(Math.round(lead[1]/.3048)+' ft ahead',x+16,y+50);}
+        if(lead){ctx.font='18px -apple-system, BlinkMacSystemFont, sans-serif';ctx.fillText(leadLabel(lead,f?.leadSpeedMph,metric),x+16,y+50);}
         const signs=DrivingSigns.at(data,t).display;for(let i=0;i<signs.length;i++)DrivingSigns.draw(ctx,signs[i],x+w-16-(signs.length-i)*48,y+12,44);
         ctx.restore();
       },dispose};

@@ -46,7 +46,7 @@
 #viewPlayback .sedan-view-switchers {align-self:stretch;}
 #viewPlayback .sedan-view-pill {padding:5px 3px;min-height:44px;font-size:11px;}
 #viewPlayback .sedan-stage-wrapper {width:100%;height:auto;flex:1;min-height:0;}
-.mobile-redesign #viewPlayback .playback-grid {padding:0;gap:1px;background:#282c32;grid-template-columns:minmax(0,1.65fr) minmax(150px,.38fr) minmax(230px,.67fr);grid-template-rows:minmax(250px,1fr) minmax(140px,.55fr) auto auto;grid-template-areas:"cameras selector driving" "cameras map map" "instruments instruments instruments" "transport transport transport";}
+.mobile-redesign #viewPlayback .playback-grid {padding:0;gap:1px;background:#282c32;grid-template-columns:minmax(0,1.55fr) minmax(150px,.36fr) minmax(260px,.87fr);grid-template-rows:minmax(250px,1fr) minmax(140px,.55fr) auto auto;grid-template-areas:"cameras selector driving" "cameras map map" "instruments instruments instruments" "transport transport transport";}
 .mobile-redesign #viewPlayback :is(#playerStage,.panel-card,.cockpit-hud,.transport-panel) {border-radius:0;border:0;box-shadow:none;}
 .mobile-redesign #viewPlayback :where(#playerStage,.panel-card,.cockpit-hud,.transport-panel) {margin:0;}
 .mobile-redesign #viewPlayback .transport-panel {background:#101216;padding:8px 20px;}
@@ -66,7 +66,7 @@
  body[data-screen="playback"] :is(#playbackClipLabel,#playbackStatus) {display:none;}
  body[data-screen="playback"] #playbackRetryBtn {pointer-events:auto;}
  .mobile-redesign #viewPlayback {animation:none;overflow:visible;height:auto;flex:none;}
- .mobile-redesign #viewPlayback .playback-grid {display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 300px 360px 280px;grid-template-areas:"instruments" "transport" "selector" "driving" "map";height:auto;min-height:0;gap:1px;padding:var(--pinned-video-height) 0 env(safe-area-inset-bottom,0px);overflow:visible;}
+ .mobile-redesign #viewPlayback .playback-grid {display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 300px 420px 280px;grid-template-areas:"instruments" "transport" "selector" "driving" "map";height:auto;min-height:0;gap:1px;padding:var(--pinned-video-height) 0 env(safe-area-inset-bottom,0px);overflow:visible;}
  .mobile-redesign #viewPlayback #playerStage {position:fixed;top:var(--playback-header-height);left:0;right:0;z-index:70;width:100%;height:var(--pinned-video-height);min-height:0;background:#000;}
  .mobile-redesign #viewPlayback .canvas-viewport {height:100%;width:100%;max-height:none;aspect-ratio:auto;}
  .mobile-redesign #viewPlayback #videoCanvas {display:block;width:100%;height:100%;object-fit:contain;}
@@ -96,7 +96,7 @@
  #viewPlayback .sedan-panel-header {padding:10px 16px;}
  #viewPlayback .sedan-header-meta {flex-direction:row;}
  #viewPlayback .sedan-stage-wrapper {height:auto;width:100%;min-height:0;flex:1;}
- .mobile-redesign #viewPlayback #drivingViewPanel {position:static;grid-area:driving;height:360px;min-height:0;}
+ .mobile-redesign #viewPlayback #drivingViewPanel {position:static;grid-area:driving;height:420px;min-height:0;}
  #viewPlayback .driving-stage {height:auto;min-height:0;flex:1;}
  #viewPlayback .driving-detail {padding:8px 12px;font-size:9px;}
  .mobile-redesign #viewPlayback .live-map-panel {grid-area:map;height:280px;min-height:0;}
@@ -135,7 +135,7 @@
 @media(max-width:999px) {
  html:has(body[data-screen="playback"]) {scroll-padding-top:calc(110px + env(safe-area-inset-top,0px) + min(75vw, max(100px, calc(100dvh - 210px - env(safe-area-inset-top,0px)))));}
  .mobile-redesign #viewPlayback .cockpit-hud {position:fixed;top:calc(var(--playback-header-height) + var(--pinned-video-height));left:0;right:0;z-index:70;width:100%;height:54px;}
- .mobile-redesign #viewPlayback .playback-grid {grid-template-rows:auto 312px auto 360px 280px;grid-template-areas:"transport" "selector" "actions" "driving" "map";padding-top:calc(var(--pinned-video-height) + 54px);}
+ .mobile-redesign #viewPlayback .playback-grid {grid-template-rows:auto 312px auto 420px 280px;grid-template-areas:"transport" "selector" "actions" "driving" "map";padding-top:calc(var(--pinned-video-height) + 54px);}
 }
 
 /* Typography replaces the speed-limit sign. */
@@ -301,7 +301,7 @@ body[data-screen="playback"] .playback-context p {color:var(--playback-muted);fo
   .mobile-redesign[data-screen="playback"] #viewPlayback .transport-panel {margin-top:16px}
   .mobile-redesign[data-screen="playback"] #viewPlayback .sedan-panel-card {margin-top:12px}
   .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid:has(#cameraViewUnavailable:not([hidden])) {
-    grid-template-rows:auto minmax(144px,auto) auto 360px 280px
+    grid-template-rows:auto minmax(144px,auto) auto 420px 280px
   }
   #viewPlayback .sedan-panel-card:has(#cameraViewUnavailable:not([hidden])) {height:auto}
 }

@@ -1,4 +1,334 @@
 /* Retrospective local road sketch. GPS supplies the driven route, not mapped lanes. */
+export function anchorDrivePath(distance, estimated, blendDistance = 16) {
+  // The car model is centered at (0,0), with positive x pointing forward.
+  const t = Math.min(1, distance / blendDistance);
+  const blend = t * t * (3 - 2 * t);
+  return {
+    x: distance + (estimated.x - distance) * blend,
+    y: estimated.y * blend
+  };
+}
+
+const replayStep = .2;
+const replayGap = 1.25;
+const clampReplay = (value, min, max) => Math.max(min, Math.min(max, value));
+
+function smoothReplayCurve(curve) {
+  if (curve.length < 3) return curve;
+  // Use equal spacing so slow turns get the same rounding as faster ones.
+  let points = [curve[0]], segment = 1;
+  for (let distance = 2.5; distance < curve.at(-1).s; distance += 2.5) {
+    while (curve[segment].s < distance) segment++;
+    const a = curve[segment-1], b = curve[segment], weight = (distance-a.s)/(b.s-a.s);
+    points.push({x:a.x + (b.x-a.x)*weight,y:a.y + (b.y-a.y)*weight});
+  }
+  points.push(curve.at(-1));
+  for (let pass = 0; pass < 2; pass++) {
+    const rounded = [points[0]];
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i-1], b = points[i];
+      for (const weight of [.25,.75]) {
+        rounded.push({x:a.x + (b.x-a.x)*weight,y:a.y + (b.y-a.y)*weight});
+      }
+    }
+    rounded.push(points.at(-1));
+    points = rounded;
+  }
+  let distance = 0;
+  return points.map((point,i) => {
+    if (i) distance += Math.hypot(point.x-points[i-1].x,point.y-points[i-1].y);
+    return {...point,s:distance};
+  });
+}
+
+export function createReplayTrajectory({gps = [], frames = [], events = []}) {
+  function position(points, time) {
+    let lo = 0, hi = points.length - 1;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (points[mid][0] <= time) lo = mid;
+      else hi = mid - 1;
+    }
+    const a = points[lo], b = points[lo + 1];
+    if (!b) return a.slice(1);
+    const fraction = clampReplay((time - a[0]) / (b[0] - a[0]), 0, 1);
+    return [a[1] + (b[1] - a[1]) * fraction, a[2] + (b[2] - a[2]) * fraction];
+  }
+
+  const runs = [];
+  let run = [];
+  for (const point of gps) {
+    if (point.length < 3 || !point.slice(0,3).every(Number.isFinite)) continue;
+    const previous = run.at(-1);
+    if (previous) {
+      const elapsed = point[0] - previous[0];
+      if (elapsed <= 0) continue;
+      if (elapsed > replayGap || Math.hypot(point[1] - previous[1], point[2] - previous[2]) > Math.max(12, elapsed * 65)) {
+        if (run.length > 1) runs.push(run);
+        run = [];
+      }
+    }
+    run.push(point);
+  }
+  if (run.length > 1) runs.push(run);
+
+  // Overlapping reports for the same maneuver should contribute one correction.
+  const changes = [];
+  for (const event of events.filter(event => event.kind === 'change').sort((a,b) => a.start - b.start)) {
+    const previous = changes.at(-1);
+    if (previous?.side === event.side && event.start <= previous.end) previous.end = Math.max(previous.end, event.end);
+    else changes.push({...event});
+  }
+
+  const tracks = runs.map(rows => {
+    const start = rows[0][0], end = rows.at(-1)[0], uniform = [];
+    for (let time = start; time < end; time += replayStep) uniform.push([time, ...position(rows,time)]);
+    uniform.push([end, ...rows.at(-1).slice(1)]);
+    let points = uniform.map(([time,east,north], i) => {
+      if (i < 3 || i >= uniform.length - 3) return [time,east,north];
+      // Symmetric smoothing preserves the timing of turns while removing GPS steps.
+      let e = 0, n = 0;
+      for (let j = -3; j <= 3; j++) {
+        const weight = 4 - Math.abs(j);
+        e += uniform[i+j][1] * weight;
+        n += uniform[i+j][2] * weight;
+      }
+      return [time,e/16,n/16];
+    });
+    const corrections = [];
+    for (const change of changes) {
+      if (change.start - .6 < start || change.end + .6 > end || change.end <= change.start) continue;
+      const [e0,n0] = position(points,change.start - 1.6), [e1,n1] = position(points,change.start);
+      const [e2,n2] = position(points,change.end), [e3,n3] = position(points,change.end + 1.6);
+      const approach = Math.hypot(e1-e0,n1-n0), exit = Math.hypot(e3-e2,n3-n2);
+      if (approach < 3 || exit < 3) continue;
+      const east = (e1-e0)/approach + (e3-e2)/exit, north = (n1-n0)/approach + (n3-n2)/exit;
+      const norm = Math.hypot(east,north);
+      if (norm < 1.8) continue;
+      const side = change.side === 'left' ? 1 : -1;
+      const observed = side * ((n2-n1)*east - (e2-e1)*north)/norm;
+      const measuredWidth = frames.find(frame => Math.abs(frame.t-change.start) < .5 && frame.w >= 2.4 && frame.w <= 4.8)?.w;
+      const width = measuredWidth ?? 3.5;
+      // Add only the missing lateral movement when navigation GPS hugs a road centerline.
+      const missing = observed >= width * .8 ? 0 : width - Math.max(0,observed);
+      if (missing > 0) corrections.push({...change,east:-north/norm*side*missing,north:east/norm*side*missing});
+    }
+    if (corrections.length) {
+      points = points.map(([time,east,north]) => {
+        for (const change of corrections) {
+          const u = clampReplay((time-change.start)/(change.end-change.start),0,1);
+          const easing = u**3 * (10 - 15*u + 6*u*u);
+          east += change.east * easing;
+          north += change.north * easing;
+        }
+        return [time,east,north];
+      });
+    }
+    return {start,end,points};
+  });
+
+  function poseAt(time) {
+    const track = tracks.find(({start,end}) => time >= start - .1 && time <= end);
+    if (!track) return null;
+    const {start,end,points} = track, origin = position(points,time);
+    let east = 0, north = 0;
+    for (const span of [.8,1.6,3]) {
+      const before = position(points,Math.max(start,time-span));
+      const after = position(points,Math.min(end,time+.16));
+      east = after[0] - before[0];
+      north = after[1] - before[1];
+      if (Math.hypot(east,north) >= 2) break;
+    }
+    if (Math.hypot(east,north) < 2) {
+      const ahead = position(points,Math.min(end,time+1.6));
+      east = ahead[0] - origin[0];
+      north = ahead[1] - origin[1];
+    }
+    const norm = Math.hypot(east,north);
+    return {track,origin,forward:norm < 1 ? null : [east/norm,north/norm]};
+  }
+
+  function pathAt(time) {
+    const pose = poseAt(time);
+    if (!pose) return null;
+    const curve = [{x:0,y:0,s:0}];
+    if (!pose.forward) return curve;
+    const {origin,track:{end,points},forward:[east,north]} = pose;
+    const limit = Math.min(end,time+9);
+    for (let future = Math.min(limit,time+.25); future > time;) {
+      const [e,n] = position(points,future);
+      const de = e-origin[0], dn = n-origin[1];
+      const x = de*east+dn*north, y = dn*east-de*north;
+      const previous = curve.at(-1), length = Math.hypot(x-previous.x,y-previous.y);
+      if (length >= .25) {
+        const s = previous.s + length;
+        if (s > 80) break;
+        curve.push({x,y,s});
+      }
+      if (future >= limit) break;
+      future = Math.min(limit,future+.25);
+    }
+    return smoothReplayCurve(curve);
+  }
+  return {pathAt,poseAt};
+}
+
+export function laneChangeBend(change, time, width, boundary, mergeDistance, estimatedLateral) {
+  const direction = change.side === 'left' ? 1 : -1;
+  const destination = boundary ? boundary[2] + direction * width / 2 : direction * width;
+  // The estimated path may already include part of the same maneuver.
+  const missingShift = Math.max(0, Math.min(width, direction * (destination - estimatedLateral)));
+  const ramp = Math.max(0, Math.min(1, (time - change.start) / .25, (change.end - time) / .5));
+  return distance => {
+    const t = Math.min(1, distance / mergeDistance);
+    return direction * missingShift * ramp * t * t * (3 - 2 * t);
+  };
+}
+
+const markingStyles = {
+  1: {period: 9, painted: 3.5},
+  2: {},
+  3: {period: 2, painted: 0.5},
+  5: {period: 9, painted: 3.5, double: true},
+  6: {double: true},
+  7: {period: 9, painted: 3.5},
+  8: {}
+};
+
+// Integrate the camera clothoid in its own coordinates for the measured length.
+// The style codes describe markings separately from curbs and other edges.
+export function sampleRecordedBoundary(line) {
+  const [, x, y, headingDegrees, curvature, curvatureChange, length, type] = line;
+  const marking = markingStyles[type];
+  const points = [{x, y, s: 0, angle: headingDegrees * Math.PI / 180}];
+  const end = Math.min(110, length);
+  for (let s = 0; s < end;) {
+    const phase = marking?.period ? s % marking.period : 0;
+    const painted = !marking?.period || phase < marking.painted - 1e-6;
+    const step = Math.min(0.75, end - s, marking?.period
+      ? (painted ? marking.painted : marking.period) - phase
+      : Infinity);
+    if (step < 1e-9) break;
+    const midpoint = s + step / 2, next = s + step;
+    const direction = points[0].angle + curvature * midpoint + curvatureChange * midpoint ** 2 / 2;
+    const previous = points.at(-1);
+    points.push({
+      x: previous.x + Math.cos(direction) * step,
+      y: previous.y + Math.sin(direction) * step,
+      s: next,
+      angle: points[0].angle + curvature * next + curvatureChange * next ** 2 / 2,
+      painted
+    });
+    s = next;
+  }
+  return {points, isEdge: !marking, offsets: marking?.double ? [-0.10, 0.10] : [0]};
+}
+
+export function createLaneLookAhead(frames, trajectory) {
+  const slots = new Map(), sampled = new Map();
+  let lastTime = -Infinity;
+  for (const frame of frames) {
+    const time = frame.laneT ?? (frame.laneT === undefined ? frame.t : null);
+    if (!Number.isFinite(time) || time <= lastTime) continue;
+    lastTime = time;
+    for (const line of frame.b || []) {
+      if (!Number.isInteger(line[8]) || line[8] === 255) continue;
+      if (!slots.has(line[0])) slots.set(line[0],[]);
+      slots.get(line[0]).push({time,line});
+    }
+  }
+
+  function firstAfter(rows,time) {
+    let lo = 0, hi = rows.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (rows[mid].time <= time) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  }
+
+  function samples(line) {
+    if (!sampled.has(line)) {
+      sampled.set(line,sampleRecordedBoundary(line).points);
+      if (sampled.size > 24) sampled.delete(sampled.keys().next().value);
+    }
+    return sampled.get(line);
+  }
+
+  function project(row, target) {
+    const source = trajectory.poseAt(row.time);
+    if (!source?.forward || source.track !== target.track) return [];
+    const [se,sn] = source.forward, [te,tn] = target.forward;
+    const cos = se*te + sn*tn, sin = sn*te - se*tn;
+    // Do not drag a lane across a junction or a large heading change.
+    if (cos < .86) return [];
+    const east = source.origin[0]-target.origin[0], north = source.origin[1]-target.origin[1];
+    const dx = east*te+north*tn, dy = north*te-east*tn;
+    const points = [];
+    for (const p of samples(row.line)) {
+      const x = dx+p.x*cos-p.y*sin, y = dy+p.x*sin+p.y*cos;
+      if (points.length && x <= points.at(-1).x) break;
+      points.push({x,y});
+    }
+    return points;
+  }
+
+  function yAt(points,x) {
+    if (!points.length || x < points[0].x || x > points.at(-1).x) return null;
+    const i = points.findIndex(p => p.x >= x);
+    const b = points[i], a = points[i-1] ?? b;
+    return a === b ? b.y : a.y+(b.y-a.y)*(x-a.x)/(b.x-a.x);
+  }
+
+  const same = (a,b) => a && b && a[8] === b[8] && a[7] === b[7];
+  function pathBetween(start,end,y) {
+    if (end-start < 2) return [];
+    const points = [];
+    for (let x = start; x < end; x += 1) points.push({x,y:y(x)});
+    points.push({x:end,y:y(end)});
+    return points;
+  }
+
+  function at(time, measured) {
+    const pose = trajectory.poseAt(time);
+    if (!pose?.forward) return [];
+    const inferred = [];
+    for (const [slot,rows] of slots) {
+      const line = measured.find(boundary => boundary[0] === slot);
+      let points = [];
+      if (line) {
+        const current = samples(line), end = current.at(-1), check = current.find(p => p.x >= end.x-5);
+        if (!check || check.x >= end.x-2 || end.x < 0 || end.x >= 95) continue;
+        // Match a later observation to the measured end before extending it.
+        for (const lead of [1,2,3]) {
+          const future = rows[firstAfter(rows,time+lead)];
+          if (!same(line,future?.line) || future.time > time+lead+.35) continue;
+          const projected = project(future,pose), join = yAt(projected,end.x), overlap = yAt(projected,check.x);
+          if (join === null || overlap === null || Math.abs(join-end.y) > 1 ||
+              Math.abs((join-overlap)-(end.y-check.y)) > .65) continue;
+          const limit = Math.min(105,end.x+32,projected.at(-1).x);
+          const shift = end.y-join;
+          points = pathBetween(end.x,limit,x => yAt(projected,x)+shift*Math.max(0,1-(x-end.x)/10));
+          if (points.length) break;
+        }
+      } else {
+        const i = firstAfter(rows,time), before = rows[i-1], after = rows[i];
+        if (!same(before?.line,after?.line) || after.time-before.time > 1.4) continue;
+        const a = project(before,pose), b = project(after,pose);
+        if (a.length < 2 || b.length < 2) continue;
+        const start = Math.max(0,a[0].x,b[0].x), end = Math.min(85,a.at(-1).x,b.at(-1).x);
+        if (end-start < 5 || [start,(start+end)/2,end].some(x => Math.abs(yAt(a,x)-yAt(b,x)) > 1)) continue;
+        const blend = (time-before.time)/(after.time-before.time);
+        points = pathBetween(start,end,x => yAt(a,x)*(1-blend)+yAt(b,x)*blend);
+      }
+      if (points.length) inferred.push(points);
+    }
+    return inferred;
+  }
+  return {at};
+}
+
 export function createRoadEstimator(data){
   const gps=data.gps||[],frames=data.frames,changes=(data.events||[]).filter(e=>e.kind==='change');
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));

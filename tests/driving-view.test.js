@@ -33,3 +33,13 @@ test('native metadata reads abort independently when the selected recording chan
  const view=new BVDrivingView(panel()),pending=view.loadSource('/recording/capture.bvr',{});view.reset();await pending;
  assert.equal(signal.aborted,true);assert.equal(view.panel.dataset.state,'empty');delete global.bvFetch;
 });
+
+test('camera analysis cannot hold back the KAFAS playback clock',()=>{
+  const view=new BVDrivingView(panel()), calls=[];
+  const sample={time:6,results:[]};
+  view.cameraEnhancement={at:()=>sample};
+  view.scene={setTime:(time,overlay)=>{calls.push([time,overlay]);}};
+  view.setTime(6.1);
+  view.setTime(6.2);
+  assert.deepEqual(calls,[[6.1,sample],[6.2,sample]]);
+});

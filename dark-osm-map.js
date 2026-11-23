@@ -12,7 +12,7 @@ class DarkOsmMap {
     this.track = options.track || []; // [{ at, latitude, longitude }]
     this.currentTime = 0;
 
-    this.tileCache = new Map(); // key -> HTMLCanvasElement (pre-darkened)
+    this.tileCache = new Map(); // key -> decoded raster tile
     this.pendingTiles = new Set();
     this.failedTiles = new Map();
     this.defaultZoom = 16;
@@ -341,30 +341,34 @@ class DarkOsmMap {
     return Math.atan2(y, x);
   }
 
-  _loadTile(tileKey, zoom, x, y) {
-    if(this.pendingTiles.has(tileKey) || this.pendingTiles.size>=8) return;
+  async _loadTile(tileKey, zoom, x, y) {
+    if (globalThis.location?.protocol === 'file:' || this.pendingTiles.has(tileKey) || this.pendingTiles.size >= 8) return;
     this.pendingTiles.add(tileKey);
-    let attempt=0;
-    const load=(direct)=>{
-      const token=++attempt, image=new Image();
-      image.crossOrigin='anonymous';
-      let done=false,timer;
-      const finish=(ok)=>{
-        if(done || token!==attempt)return;
-        done=true;clearTimeout(timer);image.onload=null;image.onerror=null;
-        if(!ok)image.src='';
-        this.pendingTiles.delete(tileKey);
-        if(ok){this.failedTiles.delete(tileKey);this.tileCache.set(tileKey,image);while(this.tileCache.size>256)this.tileCache.delete(this.tileCache.keys().next().value);}
-        else {this.failedTiles.set(tileKey,Date.now());while(this.failedTiles.size>256)this.failedTiles.delete(this.failedTiles.keys().next().value);}
-        this.render();
-      };
-      image.onload=()=>finish(true);image.onerror=()=>finish(false);
-      timer=setTimeout(()=>finish(false),8000);
-      // External Image requests carry no recorder bearer headers. Anonymous CORS
-      // also keeps the map canvas usable by video export.
-      image.src=`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
-    };
-    load(true);
+    try {
+      const response = await fetch(`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`, {
+        credentials: 'omit',
+        referrerPolicy: 'strict-origin-when-cross-origin',
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!response.ok || response.headers.has('x-blocked')) {
+        await response.body?.cancel();
+        throw new Error('Street map tile unavailable');
+      }
+      const image = await createImageBitmap(await response.blob());
+      this.failedTiles.delete(tileKey);
+      this.tileCache.set(tileKey, image);
+      while (this.tileCache.size > 256) {
+        const oldest = this.tileCache.keys().next().value;
+        this.tileCache.get(oldest).close();
+        this.tileCache.delete(oldest);
+      }
+    } catch (_) {
+      this.failedTiles.set(tileKey, Date.now());
+      while (this.failedTiles.size > 256) this.failedTiles.delete(this.failedTiles.keys().next().value);
+    } finally {
+      this.pendingTiles.delete(tileKey);
+      this.render();
+    }
   }
 
   _drawTiles(ctx, w, h, zoom, centerWorld) {
@@ -378,7 +382,8 @@ class DarkOsmMap {
     const endTileY = Math.floor((h - originY) / tileSize);
 
     const maxTile = 1 << zoom;
-    let visibleFailure=false;
+    const localFile = globalThis.location?.protocol === 'file:';
+    let visibleFailure = localFile;
 
     // Draw dark vector grid lines first (ensures crisp display on vehicle Wi-Fi)
     ctx.save();
@@ -417,13 +422,24 @@ class DarkOsmMap {
           ctx.restore();
         } else {
           if(this.failedTiles.has(tileKey))visibleFailure=true;
-          if (!this.pendingTiles.has(tileKey) && Date.now()-(this.failedTiles.get(tileKey)||0)>30000) {
+          if (!localFile && !this.pendingTiles.has(tileKey) && Date.now()-(this.failedTiles.get(tileKey)||0)>30000) {
             this._loadTile(tileKey,zoom,normalizedTx,ty);
           }
         }
       }
     }
-    if(visibleFailure){ctx.fillStyle='#10141c';ctx.fillRect(6,6,230,22);ctx.fillStyle='#c6cdd8';ctx.font='10px system-ui';ctx.fillText('Street map unavailable • Internet needed',14,21);}
+    if (visibleFailure) {
+      ctx.save();
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      const label = localFile ? 'Street map requires a web address' : 'Street map unavailable';
+      ctx.fillStyle = '#10141c';
+      ctx.fillRect(6, h - 31, ctx.measureText(label).width + 12, 15);
+      ctx.fillStyle = '#c6cdd8';
+      ctx.fillText(label, 12, h - 18);
+      ctx.restore();
+    }
   }
 
   _drawRoute(ctx, w, h, zoom, centerWorld, vehicleFix) {
