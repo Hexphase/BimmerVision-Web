@@ -1,11 +1,45 @@
-/* Read-only Drive library adapter. Listing downloads small manifests, never BVR video. */
+/* Open the Drive library from manifests, then index archive metadata in the background. */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.BVGoogleDriveSource=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
 const rawZip=typeof module==='object'&&module.exports?require('./raw-zip'):globalThis.BVRawZip;
+const {scan}=typeof module==='object'&&module.exports?require('./recording-metadata'):globalThis.BVRecordingMetadata;
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i,ID=/^[A-Za-z0-9_-]{1,256}$/,MAX_JSON=1048576;
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
 const abort=()=>new DOMException('Google Drive source closed.','AbortError');
 async function bounded(response){if(Number(response.headers.get('Content-Length'))>MAX_JSON){await response.body?.cancel();throw Error('Manifest exceeds size limit.');}const reader=response.body.getReader(),parts=[];let length=0;try{for(;;){const {done,value}=await reader.read();if(done)break;length+=value.byteLength;if(length>MAX_JSON)throw Error('Manifest exceeds size limit.');parts.push(value);}}finally{await reader.cancel().catch(()=>{});}return JSON.parse(await new Blob(parts).text());}
+function archiveReader(client, file, signal) {
+ const size = Number(file.size);
+ return {size, slice(start, end) {
+  return {async arrayBuffer() {
+   const response = await client.read(file.id, {
+    range: `bytes=${start}-${end - 1}`,
+    signal: AbortSignal.any([signal, AbortSignal.timeout(30000)])
+   });
+   const contentRange = response.headers.get('Content-Range');
+   if (response.status !== 206 || !response.body ||
+       (contentRange && contentRange !== `bytes ${start}-${end - 1}/${size}`)) {
+    await response.body?.cancel();
+    throw Error('Google Drive did not return the requested archive range.');
+   }
+   const bytes = new Uint8Array(end - start);
+   const reader = response.body.getReader();
+   let offset = 0;
+   try {
+    for (;;) {
+     const {done, value} = await reader.read();
+     if (done) break;
+     if (offset + value.byteLength > bytes.length) throw Error('Oversized Google Drive range.');
+     bytes.set(value, offset);
+     offset += value.byteLength;
+    }
+   } finally {
+    await reader.cancel().catch(() => {});
+   }
+   if (offset !== bytes.length) throw Error('Incomplete Google Drive range.');
+   return bytes.buffer;
+  }};
+ }};
+}
 async function fromClient(client,{signal,onProgress=()=>{},closeClient=true}={}){
  const controller=new AbortController();let closed=false;const recordings=new Map(),warnings=[];
  const check=()=>{if(closed||signal?.aborted)throw abort();};
@@ -17,9 +51,12 @@ async function fromClient(client,{signal,onProgress=()=>{},closeClient=true}={})
   for(const group of groups.values()){check();const mf=group.get('manifest.json'),capture=group.get('capture.bvr');if(!mf||!capture||Number(mf.size)>MAX_JSON)continue;
    try{const manifest=await bounded(await client.read(mf.id,{signal:controller.signal}));check();if(!manifest||!UUID.test(manifest.id)||manifest.complete!==true||manifest.schemaVersion!==1||manifest.format!=='bvr1'||!Number.isSafeInteger(manifest.bytes)||manifest.bytes<16||manifest.bytes!==Number(capture.size))throw Error('Incomplete or invalid recording.');const key=manifest.id.toLowerCase();if(recordings.has(key)||duplicateIds.has(key)){recordings.delete(key);duplicateIds.add(key);throw Error('Duplicate recording ID.');}recordings.set(key,{manifest,files:group});}catch(e){check();warnings.push(e.message);}onProgress({completed:++n,total:groups.size,message:`Reading Google Drive library · ${n} of ${groups.size}…`});
   }
-  return {kind:'drive',readOnly:true,name:'Google Drive',account:account.user||{},warnings,close,
+  const source = {kind:'drive',readOnly:true,name:'Google Drive',account:account.user||{},warnings,close,
    async fetch(path,options={}){check();if(options.signal?.aborted)throw abort();const method=(options.method||'GET').toUpperCase();if(!['GET','HEAD'].includes(method))return json({error:'Google Drive viewing is read only. Locking and deletion are unavailable.'},403);
-    if(path==='/api/v1/recordings')return json({recordings:[...recordings.values()].map(r=>({...r.manifest,route:[],endpoints:null,routeStatus:'unavailable'})),warnings});
+    if(path==='/api/v1/recordings')return json({recordings:[...recordings.values()].map(r=>({
+     ...r.manifest, route: Array.isArray(r.manifest.route) ? r.manifest.route : [],
+     endpoints: r.manifest.endpoints ?? null, routeStatus: 'indexing', ...r.overview
+    })),warnings});
     if(path==='/api/v1/capabilities')return json({nativePreview:false,readOnly:true,cloudFiles:true});
     if(path==='/api/v1/version')return json({version:globalThis.BV_WEB_VERSION||'0.2.39',hostedViewer:true});
     if(path==='/api/v1/speed-limit')return json(null);
@@ -32,6 +69,31 @@ async function fromClient(client,{signal,onProgress=()=>{},closeClient=true}={})
     if(method==='HEAD')return new Response(null,{headers:{'Content-Length':file.size||'0','Accept-Ranges':'bytes'}});
     const response=await client.read(file.id,{range:new Headers(options.headers).get('Range')||undefined,signal:requestSignal});check();return response;
    }};
+  source.indexing = (async () => {
+   const queue = [...recordings.values()].sort((a, b) =>
+    String(b.manifest.startedAt ?? '').localeCompare(String(a.manifest.startedAt ?? '')));
+   // Let the manifest catalog render first. Index one archive at a time.
+   await new Promise(resolve => setTimeout(resolve, 0));
+   for (const record of queue) {
+    if (controller.signal.aborted) break;
+    const {manifest, files} = record;
+    try {
+     const result = await scan(archiveReader(client, files.get('capture.bvr'), controller.signal),
+      manifest, () => controller.signal.aborted);
+     if (controller.signal.aborted) break;
+     record.overview = {
+      ...result,
+      route: Array.isArray(manifest.route) && manifest.route.length ? manifest.route : result.route,
+      endpoints: manifest.endpoints ?? result.endpoints,
+      metrics: {...result.metrics, ...manifest.metrics}
+     };
+    } catch (_) {
+     if (controller.signal.aborted) break;
+     record.overview = {routeStatus: 'failed'};
+    }
+   }
+  })();
+  return source;
  }catch(e){close();throw e;}
 }
 return {fromClient};

@@ -1,6 +1,8 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
 const Client=require('../google-drive-client'),Drive=require('../google-drive-source');
+const {DriveGrouper} = require('../drive-grouper');
+const {crc32} = require('node:zlib');
 const id='12345678-1234-1234-1234-123456789abc';
 const manifest={id,schemaVersion:1,complete:true,format:'bvr1',bytes:16,startMonotonicUs:0};
 function fixture(){const reads=[];const client={async about(){return {user:{displayName:'Driver',emailAddress:'driver@example.com'}};},async listRecordings(){return ['manifest.json','capture.bvr','mapping.json'].map((name,i)=>({id:'file_'+i,name,parents:['clip_parent'],size:String(i===1?16:100),appProperties:{bimmervision:'a'.repeat(64)}}));},async read(file,options={}){reads.push([file,options]);return new Response(JSON.stringify(file==='file_0'?manifest:{schemaVersion:1,confirmed:true,phase0:'frontRear',phase1:'leftRight',flipHalves:false}));},close(){this.closed=true;}};return {client,reads};}
@@ -12,3 +14,81 @@ test('closing Drive cancels a response already streaming',async()=>{let cancelle
 test('Drive upload creates tagged multipart files and validates parent ids',async()=>{let call;const c=new Client({accessToken:'private',fetcher:async(url,options)=>{call={url,options};return new Response('{"id":"uploaded"}');}});await assert.rejects(c.upload({metadata:{name:'capture.bvr',parents:['../bad']},blob:new Blob(['video'])}),/parent/);const result=await c.upload({metadata:{name:'capture.bvr',parents:['clip_parent'],appProperties:{bimmervision:'a'.repeat(64)}},blob:new Blob(['video'])});assert.equal(result.id,'uploaded');assert.equal(new URL(call.url).pathname,'/upload/drive/v3/files');const body=await call.options.body.text();assert.match(body,/"bimmervision":"a{64}"/);assert.match(body,/video/);});
 test('Drive original ZIP streams only when requested through range reads',async()=>{const {client,reads}=fixture();const listing=client.listRecordings;client.listRecordings=async()=>{const files=await listing();files[0].size=String(JSON.stringify(manifest).length);files[2].size='2';return files;};const header=new Uint8Array(16);header.set(new TextEncoder().encode('BVR1'));new DataView(header.buffer).setUint32(4,1,true);new DataView(header.buffer).setUint32(8,16,true);client.read=async(file,options={})=>{reads.push([file,options]);if(file==='file_1'){const match=/bytes=(\d+)-(\d+)/.exec(options.range);return new Response(header.slice(Number(match[1]),Number(match[2])+1),{status:206});}const data=new TextEncoder().encode(JSON.stringify(file==='file_0'?manifest:{}));if(options.range){const match=/bytes=(\d+)-(\d+)/.exec(options.range);return new Response(data.slice(Number(match[1]),Number(match[2])+1),{status:206});}return new Response(data);};const source=await Drive.fromClient(client);assert.equal(reads.length,1);const zip=await source.fetch(`/api/v1/recordings/${id}/raw.zip`);assert.equal(zip.headers.get('Content-Type'),'application/zip');const bytes=new Uint8Array(await zip.arrayBuffer());assert.equal(String.fromCharCode(...bytes.slice(0,2)),'PK');assert(reads.some(r=>r[0]==='file_1'&&r[1].range));source.close();});
 test('One sign-in call loads Google and requests account selection and OAuth cancellation discards late tokens',async()=>{const vm=require('node:vm'),fs=require('node:fs');let loaded=0,script,config,request;const root={crypto,fetch:async()=>{throw Error('Unexpected network');},document:{createElement(){return {};},head:{appendChild(value){loaded++;script=value;}}}};const sandbox={globalThis:root,DOMException,URL,URLSearchParams,Headers,Response,ReadableStream,Blob,AbortController,Date,Set,Promise};vm.runInNewContext(fs.readFileSync(require.resolve('../google-drive-client'),'utf8'),sandbox);assert.equal(loaded,0);const controller=new AbortController();const connect=root.BVGoogleDriveClient.connect({clientId:'test.apps.googleusercontent.com',signal:controller.signal});assert.equal(loaded,1);assert.equal(script.src,'https://accounts.google.com/gsi/client');root.google={accounts:{oauth2:{initTokenClient(value){config=value;return {requestAccessToken(options){request=options;}};}}}};script.onload();await new Promise(resolve=>setImmediate(resolve));assert.equal(config.scope,Client.SCOPE);assert.equal(config.include_granted_scopes,false);assert.equal(request.prompt,'select_account');controller.abort();await assert.rejects(connect,{name:'AbortError'});config.callback({access_token:'late_private',expires_in:3600,scope:Client.SCOPE});assert.equal(loaded,1);});
+
+test('Drive indexes every backup from bounded ranges and preserves manifest metadata', async () => {
+  const header = Buffer.alloc(16);
+  header.write('BVR1');
+  header.writeUInt32LE(1, 4);
+  header.writeUInt32LE(16, 8);
+  function record(kind, seconds, data) {
+    const h = Buffer.alloc(24);
+    h.write('BVRR');
+    h[4] = kind;
+    h.writeUInt16LE(24, 6);
+    h.writeUInt32LE(data.length, 8);
+    h.writeUInt32LE(seconds * 1000000, 12);
+    h.writeUInt32LE(crc32(data), 20);
+    return Buffer.concat([h, data]);
+  }
+  function telemetry(seconds, latitude, speed, brake) {
+    const fields = Object.fromEntries(Object.entries({latitude, longitude: -97, speed, brake, steeringAngleDeg: -24})
+      .map(([key, value]) => [key, {value}]));
+    return record(2, seconds, Buffer.from(JSON.stringify({type: 'telemetry', fields})));
+  }
+  const archives = [
+    Buffer.concat([header, telemetry(1, 30, 31, false), record(1, 1, Buffer.alloc(5 * 1024 * 1024)), telemetry(2, 30.001, 62, true)]),
+    Buffer.concat([header, telemetry(1, 31, 25, false)])
+  ];
+  const manifests = archives.map((archive, i) => ({
+    ...manifest, id: i === 0 ? id : '22345678-1234-1234-1234-123456789abc', bytes: archive.length,
+    startMonotonicUs: 1000000, startedAt: `2026-11-2${i}T00:00:00.000Z`,
+    metrics: i === 0 ? {topSpeedKph: 63} : undefined
+  }));
+  const reads = [];
+  const client = {
+    async about() { return {}; },
+    async listRecordings() {
+      return manifests.flatMap((entry, i) => [
+        {id: `manifest_${i}`, name: 'manifest.json', size: JSON.stringify(entry).length},
+        {id: `archive_${i}`, name: 'capture.bvr', size: entry.bytes}
+      ].map(file => ({...file, parents: [`clip_${i}`], appProperties: {bimmervision: 'a'.repeat(64)}})));
+    },
+    async read(file, {range} = {}) {
+      const i = Number(file.at(-1));
+      if (file.startsWith('manifest_')) return Response.json(manifests[i]);
+      const [, start, end] = /^bytes=(\d+)-(\d+)$/.exec(range).map(Number);
+      reads.push({i, start, end});
+      return new Response(archives[i].subarray(start, end + 1), {
+        status: 206, headers: {'Content-Range': `bytes ${start}-${end}/${archives[i].length}`}
+      });
+    },
+    close() {}
+  };
+  const source = await Drive.fromClient(client);
+  const list = async () => (await (await source.fetch('/api/v1/recordings')).json()).recordings;
+  assert.deepEqual((await list()).map(clip => clip.routeStatus), ['indexing', 'indexing']);
+  assert.equal(reads.length, 0);
+  await source.indexing;
+  const [first, second] = await list();
+  assert.deepEqual([first.routeStatus, second.routeStatus], ['ready', 'ready']);
+  assert.equal(first.endpoints.start.latitude, 30);
+  assert.equal(first.endpoints.end.latitude, 30.001);
+  assert.equal(second.endpoints.start.latitude, 31);
+  assert.deepEqual(first.metrics, {topSpeedKph: 63, avgSpeedKph: 46.5, maxSteeringDeg: 24, brakeEvents: 1});
+  assert.equal(first.route[1].speedKph, 62);
+  assert.equal(reads[0].i, 1);
+  assert.ok(reads.every(({start, end}) => end - start + 1 <= 4 * 1024 * 1024));
+  assert.ok(reads.filter(read => read.i === 0).reduce((total, {start, end}) => total + end - start + 1, 0) < archives[0].length);
+  assert.equal(DriveGrouper.group([{...first, metrics: {topSpeedKph: 63}}])[0].metrics.brakeEvents, null);
+  source.close();
+});
+
+test('Drive keeps a listing usable when archive indexing fails', async () => {
+  const {client} = fixture();
+  const source = await Drive.fromClient(client);
+  await source.indexing;
+  const {recordings} = await (await source.fetch('/api/v1/recordings')).json();
+  assert.equal(recordings[0].routeStatus, 'failed');
+  assert.equal(recordings[0].id, id);
+  source.close();
+});

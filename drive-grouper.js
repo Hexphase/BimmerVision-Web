@@ -20,25 +20,26 @@ class DriveGrouper {
     return distance;
   }
 
+  static measurement(value) {
+    const n = typeof value === 'string' && value.trim() ? Number(value) : value;
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+
   static summarize(drives) {
     let distanceMeters = null, topSpeedKph = null, seconds = 0, recordings = 0;
-    const measurement = value => {
-      const n = typeof value === 'string' && value.trim() ? Number(value) : value;
-      return Number.isFinite(n) && n >= 0 ? n : null;
-    };
     for (const drive of drives) {
       for (const {clip} of drive.segments) {
         recordings++;
-        seconds += measurement(clip.durationSeconds) ?? 0;
+        seconds += this.measurement(clip.durationSeconds) ?? 0;
         const route = (clip.route || []).filter(DriveGrouper.validRoutePoint);
-        const kilometers = measurement(clip.metrics?.distanceKm);
-        const distance = measurement(clip.metrics?.distanceMeters) ??
+        const kilometers = this.measurement(clip.metrics?.distanceKm);
+        const distance = this.measurement(clip.metrics?.distanceMeters) ??
           (kilometers !== null ? kilometers * 1000 : route.length > 1 ? this.routeDistanceMeters(route) : null);
         if (distance !== null) distanceMeters = (distanceMeters ?? 0) + distance;
-        const recordedSpeed = measurement(clip.metrics?.topSpeedKph);
+        const recordedSpeed = this.measurement(clip.metrics?.topSpeedKph);
         if (recordedSpeed !== null) topSpeedKph = Math.max(topSpeedKph ?? 0, recordedSpeed);
         for (const point of route) {
-          const speed = measurement(point.speedKph);
+          const speed = this.measurement(point.speedKph);
           if (speed !== null) topSpeedKph = Math.max(topSpeedKph ?? 0, speed);
         }
       }
@@ -210,52 +211,41 @@ class DriveGrouper {
       const durSecs = totalRounded % 60;
       const durationFormatted = durMins > 0 ? `${durMins}m ${durSecs.toString().padStart(2, "0")}s` : `${durSecs}s`;
 
-      // Aggregate drive metrics
-      let totalDistanceMeters = 0;
-      let maxSpeedKph = 0;
-      let totalWeightedSpeed = 0;
-      let totalSpeedDuration = 0;
-      let maxSteeringDeg = 0;
-      let totalBrakeEvents = 0;
-      let hasMetrics = false;
-
-      for (const seg of run) {
-        const m = seg.clip.metrics;
-        if (m) {
-          hasMetrics = true;
-          if (typeof m.distanceMeters === "number") totalDistanceMeters += m.distanceMeters;
-          else if (typeof m.distanceKm === "number" || typeof m.distanceKm === "string") totalDistanceMeters += parseFloat(m.distanceKm) * 1000;
-          if (m.topSpeedKph && m.topSpeedKph > maxSpeedKph) maxSpeedKph = m.topSpeedKph;
-          if (m.maxSteeringDeg && m.maxSteeringDeg > maxSteeringDeg) maxSteeringDeg = m.maxSteeringDeg;
-          if (typeof m.brakeEvents === "number") totalBrakeEvents += m.brakeEvents;
-          const segDur = seg.clip.durationSeconds || 4;
-          if (m.avgSpeedKph) {
-            totalWeightedSpeed += m.avgSpeedKph * segDur;
-            totalSpeedDuration += segDur;
-          }
+      let totalDistanceMeters = null, maxSpeedKph = null, maxSteeringDeg = null, totalBrakeEvents = null;
+      let totalWeightedSpeed = 0, totalSpeedDuration = 0;
+      for (const {clip} of run) {
+        const m = clip.metrics;
+        if (!m) continue;
+        const kilometers = this.measurement(m.distanceKm);
+        const distance = this.measurement(m.distanceMeters) ?? (kilometers === null ? null : kilometers * 1000);
+        const speed = this.measurement(m.topSpeedKph), steering = this.measurement(m.maxSteeringDeg);
+        const braking = this.measurement(m.brakeEvents), average = this.measurement(m.avgSpeedKph);
+        if (distance !== null) totalDistanceMeters = (totalDistanceMeters ?? 0) + distance;
+        if (speed !== null) maxSpeedKph = Math.max(maxSpeedKph ?? 0, speed);
+        if (steering !== null) maxSteeringDeg = Math.max(maxSteeringDeg ?? 0, steering);
+        if (braking !== null) totalBrakeEvents = (totalBrakeEvents ?? 0) + braking;
+        if (average !== null) {
+          const duration = clip.durationSeconds || 4;
+          totalWeightedSpeed += average * duration;
+          totalSpeedDuration += duration;
         }
       }
 
-      // If distance wasn't summed from metrics, but routeCoordinates has points, compute haversine distance
-      if (totalDistanceMeters === 0 && routeCoordinates.length > 1) {
+      if ((totalDistanceMeters ?? 0) === 0 && routeCoordinates.length > 1) {
         totalDistanceMeters = this.routeDistanceMeters(routeCoordinates);
-        if (totalDistanceMeters > 0) hasMetrics = true;
       }
-
-      const avgSpeedKph = totalSpeedDuration > 0 ? Math.round(totalWeightedSpeed / totalSpeedDuration) : (totalDuration > 0 && totalDistanceMeters > 0 ? Math.round((totalDistanceMeters / 1000) / (totalDuration / 3600)) : null);
-      const metrics = hasMetrics ? {
-        distanceMeters: Math.round(totalDistanceMeters),
-        distanceKm: (totalDistanceMeters / 1000).toFixed(1),
-        distanceMiles: (totalDistanceMeters / 1609.344).toFixed(1),
-        topSpeedKph: Math.round(maxSpeedKph),
-        topSpeedMph: Math.round(maxSpeedKph * 0.621371),
-        avgSpeedKph: avgSpeedKph != null ? Math.round(avgSpeedKph) : null,
-        avgSpeedMph: avgSpeedKph != null ? Math.round(avgSpeedKph * 0.621371) : null,
-        maxSteeringDeg: Math.round(maxSteeringDeg),
+      const avgSpeedKph = totalSpeedDuration > 0 ? totalWeightedSpeed / totalSpeedDuration
+        : (totalDuration > 0 && totalDistanceMeters > 0 ? (totalDistanceMeters / 1000) / (totalDuration / 3600) : null);
+      const metrics = {
+        distanceMeters: totalDistanceMeters === null ? null : Math.round(totalDistanceMeters),
+        distanceKm: totalDistanceMeters === null ? null : (totalDistanceMeters / 1000).toFixed(1),
+        distanceMiles: totalDistanceMeters === null ? null : (totalDistanceMeters / 1609.344).toFixed(1),
+        topSpeedKph: maxSpeedKph === null ? null : Math.round(maxSpeedKph),
+        topSpeedMph: maxSpeedKph === null ? null : Math.round(maxSpeedKph * 0.621371),
+        avgSpeedKph: avgSpeedKph === null ? null : Math.round(avgSpeedKph),
+        avgSpeedMph: avgSpeedKph === null ? null : Math.round(avgSpeedKph * 0.621371),
+        maxSteeringDeg: maxSteeringDeg === null ? null : Math.round(maxSteeringDeg),
         brakeEvents: totalBrakeEvents
-      } : {
-        distanceKm: null, distanceMiles: null, topSpeedKph: null, topSpeedMph: null,
-        avgSpeedKph: null, avgSpeedMph: null, maxSteeringDeg: null, brakeEvents: null
       };
 
       return {

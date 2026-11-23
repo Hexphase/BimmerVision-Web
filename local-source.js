@@ -9,6 +9,7 @@
   const MAX_JSON = 1048576;
   const yieldUI=()=>new Promise(resolve=>setTimeout(resolve,0));
   const rawZip = typeof module === 'object' && module.exports ? require('./raw-zip') : globalThis.BVRawZip;
+  const {scan, validHeader} = typeof module === 'object' && module.exports ? require('./recording-metadata') : globalThis.BVRecordingMetadata;
   const LABEL = 'USB view only, mappings saved this browser';
   const abort = () => new DOMException('USB reading cancelled', 'AbortError');
   function check(signal) { if (signal && signal.aborted) throw abort(); }
@@ -20,54 +21,6 @@
   function json(value, status = 200) { return new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json'}}); }
   function validMapping(m) {
     return m && m.schemaVersion === 1 && m.confirmed === true && ['frontRear', 'leftRight'].includes(m.phase0) && ['frontRear', 'leftRight'].includes(m.phase1) && m.phase0 !== m.phase1 && typeof m.flipHalves === 'boolean';
-  }
-  function crc32(bytes) {
-    let crc = -1;
-    for (let i = 0; i < bytes.length; i++) { crc ^= bytes[i]; for (let b = 0; b < 8; b++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0); }
-    return (crc ^ -1) >>> 0;
-  }
-  const magic = (bytes, value) => bytes.length >= value.length && [...value].every((c, i) => bytes[i] === c.charCodeAt(0));
-  async function scan(blob, manifest, cancelled, progress) {
-    let window = new Uint8Array(), windowAt = 0, pos = 16, records = 0, lastTime = -Infinity;
-    const route = [];
-    async function read(at, length) {
-      if (cancelled()) throw abort();
-      if (at < windowAt || at + length > windowAt + window.length) {
-        windowAt = at;
-        window = new Uint8Array(await blob.slice(at, Math.min(blob.size, at + MAX_JSON)).arrayBuffer());
-      }
-      return window.subarray(at - windowAt, at - windowAt + length);
-    }
-    let header = await read(0, 16), dv = new DataView(header.buffer, header.byteOffset, header.byteLength);
-    if (!magic(header, 'BVR1') || dv.getUint32(4, true) !== 1 || dv.getUint32(8, true) !== 16) throw Error('Invalid BVR1 archive');
-    while (pos + 24 <= blob.size && route.length < 14400) {
-      if (++records > 2000000) throw Error('Archive record limit exceeded');
-      if(records%200===0){await yieldUI();if(cancelled())throw abort();}
-      const h = await read(pos, 24);
-      if (h.length !== 24 || !magic(h, 'BVRR')) throw Error('Invalid BVR record');
-      dv = new DataView(h.buffer, h.byteOffset, h.byteLength);
-      const kind = h[4], length = dv.getUint32(8, true), atUs = dv.getUint32(12, true) + dv.getUint32(16, true) * 4294967296, crc = dv.getUint32(20, true);
-      if (dv.getUint16(6, true) !== 24 || !length || length > 16777216 || pos + 24 + length > blob.size) throw Error('Invalid BVR record length');
-      if (kind === 2 && length <= 65536) {
-        const bytes = await read(pos + 24, length);
-        let obj = null;
-        try { if (crc32(bytes) === crc) obj = JSON.parse(new TextDecoder().decode(bytes)); } catch (_) {}
-        if (obj && obj.type === 'telemetry' && obj.fields) {
-          const f = obj.fields, lat = f.latitude, lon = f.longitude, t = (atUs - manifest.startMonotonicUs) / 1000000;
-          const valid = v => v && v.valid !== false && v.sourceValid !== false && typeof v.value === 'number' && Number.isFinite(v.value);
-          if (valid(lat) && valid(lon) && Math.abs(lat.value) <= 90 && Math.abs(lon.value) <= 180 && (lat.value !== 0 || lon.value !== 0) && Number.isFinite(t) && t >= 0 && t >= lastTime + .5) {
-            const point = {at: t, latitude: lat.value, longitude: lon.value};
-            if (valid(f.speed)) point.speedKph = f.speed.value;
-            route.push(point); lastTime = t;
-          }
-        }
-      }
-      pos += 24 + length;
-      // Yield regularly so disconnect and source switches can cancel promptly.
-      if (records % 512 === 0) { progress(pos, blob.size); await new Promise(resolve => setTimeout(resolve, 0)); }
-    }
-    const location = p => ({latitude: p.latitude, longitude: p.longitude});
-    return {route, endpoints: route.length ? {start: location(route[0]), end: location(route[route.length - 1])} : null, routeStatus: 'ready'};
   }
   function ranged(blob, range, method) {
     const headers = {'Accept-Ranges': 'bytes', 'Content-Type': 'application/octet-stream'};
@@ -114,8 +67,7 @@
         if (!manifest || manifest.id !== group.id || !UUID.test(manifest.id) || manifest.complete !== true || manifest.schemaVersion !== 1 || manifest.format !== 'bvr1') throw Error('Invalid or incomplete recording manifest');
         if (!Number.isSafeInteger(manifest.bytes) || manifest.bytes !== capture.size || capture.size < 16) throw Error('Archive size does not match manifest');
         const header = new Uint8Array(await capture.slice(0, 16).arrayBuffer());
-        const dv = new DataView(header.buffer, header.byteOffset, header.byteLength);
-        if (!magic(header, 'BVR1') || dv.getUint32(4, true) !== 1 || dv.getUint32(8, true) !== 16) throw Error('Invalid archive header');
+        if (!validHeader(header)) throw Error('Invalid archive header');
         recordings.set(manifest.id.toLowerCase(), {manifest, manifestFile:mf, manifestHandle:group.handles.get('manifest.json'), captureHandle:group.handles.get('capture.bvr'), capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
       } catch (error) { warnings.push(`${group.id}: ${error.message}`); }
       onProgress({phase: 'catalog', completed: ++count, total: groups.size});
@@ -214,8 +166,8 @@
         if (closed || signal && signal.aborted) break;
         await new Promise(resolve => setTimeout(resolve, 0));
         try {
-          const result = await scan(record.capture, record.manifest, () => closed || signal && signal.aborted, (completed, total) => onProgress({phase: 'route', id, completed, total}));
-          if (!closed && !(signal && signal.aborted)) record.overview = result;
+          const {route, endpoints, routeStatus} = await scan(record.capture, record.manifest, () => closed || signal && signal.aborted, (completed, total) => onProgress({phase: 'route', id, completed, total}));
+          if (!closed && !(signal && signal.aborted)) record.overview = {route, endpoints, routeStatus};
         } catch (error) { record.overview.routeStatus = error.name === 'AbortError' ? 'cancelled' : 'unavailable'; }
         onProgress({phase: 'route', id, completed: record.capture.size, total: record.capture.size, status: record.overview.routeStatus});
       }

@@ -396,6 +396,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // 5. Fetch USB Recordings & Group as Drives
   let libraryLoading=null, librarySignature=null;
+  function recordedLocationStatus(drive) {
+    if (drive.segments.some(({clip}) => clip.routeStatus === 'indexing')) return 'Reading recorded location…';
+    if (drive.segments.some(({clip}) => clip.routeStatus === 'failed')) return 'Could not read recorded location';
+    return 'Location not recorded';
+  }
   async function loadLibrary({quiet=false,onlyChanged=false}={}) {
   const librarySource=window.BVSourceManager.source;
   if(libraryLoading===librarySource)return;
@@ -448,6 +453,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     ];
     const clipCount = rawClips.length;
     librarySummary.textContent = `${detectedDrives.length} drive${detectedDrives.length===1?'':'s'} · ${clipCount} recording${clipCount===1?'':'s'}`;
+    if (librarySource.kind === 'drive') {
+      const remaining = rawClips.filter(clip => clip.routeStatus === 'indexing').length;
+      if (remaining) librarySummary.textContent += ` · Reading metadata (${clipCount - remaining}/${clipCount})`;
+    }
     dateGroups.forEach(group => {
       const section = document.createElement('section');
       section.className = group.featured ? 'date-group latest-drive-group' : 'date-group older-drive-group';
@@ -473,7 +482,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               </button>
             </h3>
             <p class="drive-route-summary">
-              ${escapeHtml(location === 'Location unavailable' ? (drive.segments.some(s=>s.clip.routeStatus==='indexing')?'Loading recorded location…':'Location not recorded') : location)}
+              ${escapeHtml(location === 'Location unavailable' ? recordedLocationStatus(drive) : location)}
             </p>
           </div>
           <div class="drive-card-meta">
@@ -695,14 +704,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     overviewTitle.textContent = [drive.date, drive.startTime].filter(Boolean).join(" · ") || "Recorded drive";
     overviewSubtitle.textContent = `${drive.segments.length} ${drive.segments.length === 1 ? "recording" : "recordings"} · ${formatBytes(drive.bytes)}`;
 
-    endpointStartAddr.textContent = drive.endpoints.start.address;
+    const locationStatus = recordedLocationStatus(drive);
+    endpointStartAddr.textContent = drive.endpoints.start.address === 'Location unavailable' ? locationStatus : drive.endpoints.start.address;
     endpointStartTime.textContent = drive.endpoints.start.time ? drive.endpoints.start.time : drive.endpoints.start.coords;
 
-    endpointEndAddr.textContent = drive.endpoints.end.address;
+    endpointEndAddr.textContent = drive.endpoints.end.address === 'Location unavailable' ? locationStatus : drive.endpoints.end.address;
     endpointEndTime.textContent = drive.endpoints.end.time ? drive.endpoints.end.time : drive.endpoints.end.coords;
 
     // Update Overview Map
-    overviewMap.emptyMessage=drive.segments.some(s=>s.clip.routeStatus==='indexing')?'Loading recorded location…':'Location was not recorded';
+    overviewMap.emptyMessage = locationStatus;
     overviewMap.setTrack(drive.route);
 
     // Update Live Tracking Map track
