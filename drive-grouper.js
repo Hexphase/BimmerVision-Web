@@ -6,6 +6,51 @@ class DriveGrouper {
   // Drives should show as one if recording times match up within 5 minutes (300 seconds) of each other
   static MaximumGapSeconds = 300.0;
 
+  static routeDistanceMeters(points) {
+    let distance = 0;
+    for (let i = 1; i < points.length; i++) {
+      const start = points[i - 1], end = points[i];
+      const dLat = (end.latitude - start.latitude) * Math.PI / 180;
+      const dLon = (end.longitude - start.longitude) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(start.latitude * Math.PI / 180) * Math.cos(end.latitude * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
+      distance += 6371000 * 2 * Math.asin(Math.sqrt(Math.min(1, a)));
+    }
+    return distance;
+  }
+
+  static summarize(drives) {
+    let distanceMeters = null, topSpeedKph = null, seconds = 0, recordings = 0;
+    const measurement = value => {
+      const n = typeof value === 'string' && value.trim() ? Number(value) : value;
+      return Number.isFinite(n) && n >= 0 ? n : null;
+    };
+    for (const drive of drives) {
+      for (const {clip} of drive.segments) {
+        recordings++;
+        seconds += measurement(clip.durationSeconds) ?? 0;
+        const route = (clip.route || []).filter(DriveGrouper.validRoutePoint);
+        const kilometers = measurement(clip.metrics?.distanceKm);
+        const distance = measurement(clip.metrics?.distanceMeters) ??
+          (kilometers !== null ? kilometers * 1000 : route.length > 1 ? this.routeDistanceMeters(route) : null);
+        if (distance !== null) distanceMeters = (distanceMeters ?? 0) + distance;
+        const recordedSpeed = measurement(clip.metrics?.topSpeedKph);
+        if (recordedSpeed !== null) topSpeedKph = Math.max(topSpeedKph ?? 0, recordedSpeed);
+        for (const point of route) {
+          const speed = measurement(point.speedKph);
+          if (speed !== null) topSpeedKph = Math.max(topSpeedKph ?? 0, speed);
+        }
+      }
+    }
+    return {distanceMeters, topSpeedKph, seconds, recordings};
+  }
+
+  static validRoutePoint(point) {
+    return point && Number.isFinite(point.latitude) && Number.isFinite(point.longitude) &&
+      Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180;
+  }
+
   /**
    * Groups a list of recording manifests into DetectedDrive objects.
    * Matches DriveGrouping.cs multi-session merging and enforces the 5-minute threshold.
@@ -153,7 +198,7 @@ class DriveGrouper {
         }
       }
 
-      const validPoint = p => p && Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && Math.abs(p.latitude) <= 90 && Math.abs(p.longitude) <= 180;
+      const validPoint = DriveGrouper.validRoutePoint;
       const formatCoord = p => validPoint(p) ? `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}` : "GPS unavailable";
       const startAddress = realStart?.address || (validPoint(realStart) ? formatCoord(realStart) : "Location unavailable");
       const endAddress = realEnd?.address || (validPoint(realEnd) ? formatCoord(realEnd) : "Location unavailable");
@@ -193,16 +238,7 @@ class DriveGrouper {
 
       // If distance wasn't summed from metrics, but routeCoordinates has points, compute haversine distance
       if (totalDistanceMeters === 0 && routeCoordinates.length > 1) {
-        for (let i = 1; i < routeCoordinates.length; i++) {
-          const p1 = routeCoordinates[i - 1];
-          const p2 = routeCoordinates[i];
-          const dLat = (p2.latitude - p1.latitude) * Math.PI / 180;
-          const dLon = (p2.longitude - p1.longitude) * Math.PI / 180;
-          const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(p1.latitude * Math.PI / 180) * Math.cos(p2.latitude * Math.PI / 180) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-          totalDistanceMeters += 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        }
+        totalDistanceMeters = this.routeDistanceMeters(routeCoordinates);
         if (totalDistanceMeters > 0) hasMetrics = true;
       }
 

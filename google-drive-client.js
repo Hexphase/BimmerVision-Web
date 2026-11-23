@@ -7,19 +7,18 @@ const SparkMD5=typeof module==='object'&&module.exports?require('./vendor/spark-
 let library;
 function loadIdentity(){
  if(root.google?.accounts?.oauth2)return Promise.resolve(root.google.accounts.oauth2);
- if(!library)library=new Promise((resolve,reject)=>{const script=root.document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;script.onload=()=>root.google?.accounts?.oauth2?resolve(root.google.accounts.oauth2):reject(Error('Google sign-in did not load.'));script.onerror=()=>{script.remove();library=null;reject(Error('Google sign-in could not load. Try again.'));};root.document.head.appendChild(script);});
+ if(!library)library=new Promise((resolve,reject)=>{const script=root.document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.async=true;const failed=()=>{script.remove();library=null;reject(Error('Google sign-in could not load. Try again.'));};script.onload=()=>root.google?.accounts?.oauth2?resolve(root.google.accounts.oauth2):failed();script.onerror=failed;root.document.head.appendChild(script);});
  return library;
 }
 class GoogleDriveClient {
  #token;#expires;#fetch;#closed=false;#requests=new Set();#phoneTargets=new WeakMap();
  constructor({accessToken,expiresIn=3600,fetcher=root.fetch.bind(root)}){if(typeof accessToken!=='string'||!accessToken||/[\s\r\n]/.test(accessToken))throw Error('Invalid Google access token.');this.#token=accessToken;this.#expires=Date.now()+Math.max(0,Number(expiresIn)||0)*1000;this.#fetch=fetcher;}
- static async prepare(){return loadIdentity();}
- // Call from an explicit user gesture, after prepare() has loaded the library.
+ // Call from the sign-in click so the browser can open Google’s popup.
  static async connect({clientId,signal,prompt='select_account'}={}){
   if(!/^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(clientId||''))throw Error('Google Drive connection is not configured yet.');
-  if(signal?.aborted)throw cancelled();const oauth=await loadIdentity();if(signal?.aborted)throw cancelled();
+  if(signal?.aborted)throw cancelled();const oauth=root.google?.accounts?.oauth2??await loadIdentity();if(signal?.aborted)throw cancelled();
   return new Promise((resolve,reject)=>{let done=false;const finish=(error,value)=>{if(done){value?.close();return;}done=true;signal?.removeEventListener('abort',abort);error?reject(error):resolve(value);};const abort=()=>finish(cancelled());signal?.addEventListener('abort',abort,{once:true});
-   const tokenClient=oauth.initTokenClient({client_id:clientId,scope:SCOPE,include_granted_scopes:false,callback:r=>{if(r.error||!r.access_token){finish(Error('Google Drive permission was not granted.'));return;}if(r.scope&&!r.scope.split(' ').includes(SCOPE)){finish(Error('Google Drive file access was not granted.'));return;}finish(null,new GoogleDriveClient({accessToken:r.access_token,expiresIn:r.expires_in}));},error_callback:()=>finish(Error('Google sign-in was closed or blocked. Press Connect Google Drive to try again.'))});tokenClient.requestAccessToken({prompt});
+   const tokenClient=oauth.initTokenClient({client_id:clientId,scope:SCOPE,include_granted_scopes:false,callback:r=>{if(r.error||!r.access_token){finish(Error('Google Drive permission was not granted.'));return;}if(r.scope&&!r.scope.split(' ').includes(SCOPE)){finish(Error('Google Drive file access was not granted.'));return;}finish(null,new GoogleDriveClient({accessToken:r.access_token,expiresIn:r.expires_in}));},error_callback:({type}={})=>finish(Error(type==='popup_failed_to_open'?'Your browser blocked the Google sign-in window. Allow popups for this site and try again.':type==='popup_closed'?'The Google sign-in window was closed. Try again when ready.':'Google sign-in could not finish. Try again.'))});tokenClient.requestAccessToken({prompt});
   });
  }
  async #request(path,{signal,headers,method='GET',body,acceptStatuses=[]}={}){

@@ -130,7 +130,7 @@ class ClipExporter {
   /**
    * Export clip with options:
    * @param {Object} options
-   * @param {string} options.view - "quad", "front", "rear", "left", "right", "source"
+   * @param {string|string[]} options.view - "quad", "front", "rear", "left", "right", "source", or a camera subset
    * @param {Object} [options.overlays] - individual metadata toggle flags: { blinkers, speed, speedLimit, steering, brake, gas, time }
    * @param {boolean} [options.includeHud] - master telemetry switch (default true)
    * @param {string} options.speedUnit - "mph" or "km/h"
@@ -406,7 +406,7 @@ class ClipExporter {
       progress(1, 'Ready to save');
       return {
         buffer: muxer.target.buffer,
-        fileName: `BimmerVision-${manifest.id.slice(0, 8)}-${view}${requested > 0 ? '-' + requested + 's' : ''}.m4v`,
+        fileName: `BimmerVision-${manifest.id.slice(0, 8)}-${Array.isArray(view) ? view.join("-") : view}${requested > 0 ? '-' + requested + 's' : ''}.m4v`,
         totalFrames,
         duration
       };
@@ -670,7 +670,7 @@ class ClipExporter {
       progress(1, 'Ready to save');
       return {
         buffer: arrayBuffer,
-        fileName: `BimmerVision-${manifest.id.slice(0, 8)}-${view}${requested > 0 ? '-' + requested + 's' : ''}.${ext}`,
+        fileName: `BimmerVision-${manifest.id.slice(0, 8)}-${Array.isArray(view) ? view.join("-") : view}${requested > 0 ? '-' + requested + 's' : ''}.${ext}`,
         totalFrames,
         duration
       };
@@ -741,6 +741,17 @@ class ClipExporter {
 
     if (cameraView?.single) {
       this._drawRecordedView(ctx,cameraView,frames.rawFrame);
+    } else if (Array.isArray(view)) {
+      for (const [index, camera] of view.entries()) {
+        const image = camera === 'front' || camera === 'rear' ? fr : lr;
+        const cropX = camera === 'rear' || camera === 'right' ? x1 : x0;
+        const x = index === 2 ? 320 : index * 640;
+        const y = view.length === 2 ? 240 : index === 2 ? 480 : 0;
+        if (image) {
+          try { ctx.drawImage(image, cropX, 0, 640, 480, x, y, 640, 480); } catch (_) {}
+        }
+        this._drawCameraBadge(ctx, camera.toUpperCase(), x + 20, y + 20);
+      }
     } else if (view === 'quad') {
       if (fr) {
         try {
@@ -823,25 +834,27 @@ class ClipExporter {
     this.renderFrame(targetCanvas, options);
   }
 
-  _drawQuadLabels(ctx) {
+  _drawCameraBadge(ctx, text, x, y) {
     ctx.save();
     ctx.font = "bold 20px -apple-system, BlinkMacSystemFont, sans-serif";
-    const drawBadge = (text, x, y) => {
-      ctx.fillStyle = "rgba(10, 12, 16, 0.75)";
-      ctx.beginPath();
-      ctx.roundRect(x, y, 96, 32, 6);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(text, x + 16, y + 23);
-    };
+    ctx.fillStyle = "rgba(10, 12, 16, 0.75)";
+    ctx.beginPath();
+    ctx.roundRect(x, y, 96, 32, 6);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(text, x + 16, y + 23);
+    ctx.restore();
+  }
 
-    drawBadge("FRONT", 20, 20);
-    drawBadge("REAR", 660, 20);
-    drawBadge("LEFT", 20, 500);
-    drawBadge("RIGHT", 660, 500);
+  _drawQuadLabels(ctx) {
+    ctx.save();
+    this._drawCameraBadge(ctx, "FRONT", 20, 20);
+    this._drawCameraBadge(ctx, "REAR", 660, 20);
+    this._drawCameraBadge(ctx, "LEFT", 20, 500);
+    this._drawCameraBadge(ctx, "RIGHT", 660, 500);
 
     // Dividers
     ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";

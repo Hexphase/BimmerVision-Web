@@ -9,43 +9,63 @@ document.addEventListener('DOMContentLoaded',()=>{
  const closeUsb=()=>{if(usbDialog?.open)usbDialog.close();};
  const camera=document.getElementById('qrCameraPanel');let work=null,scanner=null,scanAbort=null,epoch=0;
  let googleBusyButton=null;
- const googleLabels=new Map();
- const buttons=['openUsbBtn','selectUsbDriveBtn','connectCarBtn','scanQrBtn','uploadQrBtn','prepareGoogleDriveBtn','connectGoogleDriveBtn','changeGoogleDriveAccountBtn'].map(id=>document.getElementById(id));
+ let googleIdleLabel;
+ const buttons=['openUsbBtn','selectUsbDriveBtn','connectCarBtn','scanQrBtn','uploadQrBtn','connectGoogleDriveBtn','changeGoogleDriveAccountBtn'].map(id=>document.getElementById(id));
  function message(text){progress.textContent=text||'';}
  function failure(reason){error.textContent=reason?.message||String(reason);error.hidden=false;}
  function stopScanner(){scanAbort?.abort();scanAbort=null;scanner?.();scanner=null;camera.hidden=true;}
- function clearGoogleBusy(){if(googleBusyButton){googleBusyButton.setAttribute?.('aria-busy','false');googleBusyButton.textContent=googleLabels.get(googleBusyButton);googleBusyButton=null;}}
- function googleBusy(button,text){if(!googleLabels.has(button))googleLabels.set(button,button.textContent||'Connect Google Drive');googleBusyButton=button;button.textContent=text;button.setAttribute?.('aria-busy','true');driveStatus.textContent=text;}
+ function clearGoogleBusy(){if(googleBusyButton){googleBusyButton.setAttribute?.('aria-busy','false');googleBusyButton.textContent=googleIdleLabel;googleBusyButton=null;}}
+ function googleBusy(button,text){if(!googleBusyButton)googleIdleLabel=button.textContent||'Connect Google Drive';googleBusyButton=button;button.textContent=text;button.setAttribute?.('aria-busy','true');driveStatus.textContent=text;}
  function stopWork(){clearGoogleBusy();epoch++;work?.abort();work=null;stopScanner();buttons.forEach(b=>b.disabled=false);cancel.hidden=true;message('');}
  function startWork(text){stopWork();work=new AbortController();buttons.forEach(b=>b.disabled=true);error.hidden=true;cancel.hidden=false;message(text);return {token:epoch,signal:work.signal};}
  function show(){closeUsb();stopWork();window.player?.pause();shell.hidden=true;shell.inert=true;screen.hidden=false;back.hidden=!manager.source;document.getElementById('openUsbBtn').focus();}
- function hide(){closeUsb();stopWork();screen.hidden=true;shell.hidden=false;shell.inert=false;const button=document.getElementById('changeSourceBtn'),menu=button.closest?.('details');(menu&&!menu.open?menu.querySelector('summary'):button).focus();}
+ function hide(){closeUsb();stopWork();screen.hidden=true;shell.hidden=false;shell.inert=false;const button=document.getElementById('changeSourceBtn'),menu=button.closest?.('details');(button.hidden?document.getElementById('recordingsPageTitle'):menu&&!menu.open?menu.querySelector('summary'):button).focus();}
  function updateSourceAccess(source){
   document.body.dataset.sourceReadonly=String(source.readOnly===true);
   document.body.dataset.sourceCanDelete=String(source.kind==='car'&&source.canDelete!==false);
   const notice=document.getElementById('sourceAccessNotice');notice.hidden=source.kind!=='usb';
   if(source.kind==='usb')notice.textContent=source.canLock?'USB lock changes are saved to the drive after you allow write access. Video files stay unchanged.':'This browser opened USB recordings read-only. Back up to Drive is available; use Chrome or Edge with the native folder picker, or connect to the car, to save locks.';
  }
- function chosen(source){work=null;manager.setSource(source);updateSourceAccess(source);hide();source.indexing?.then(()=>{if(manager.source===source)window.dispatchEvent(new Event('bimmervision:library-updated'));}).catch(()=>{});}
- function report(value){if(typeof value==='string')message(value);else if(value){const n=value.completed??value.scanned??0,total=value.total;message(value.message||`Reading recordings${total?` · ${n} of ${total}`:n?` · ${n} checked`:''}…`);}}
- const driveStatus=document.getElementById('googleDriveStatus'),driveConnect=document.getElementById('connectGoogleDriveBtn'),drivePrepare=document.getElementById('prepareGoogleDriveBtn'),driveDisconnect=document.getElementById('disconnectGoogleDriveBtn'),driveChange=document.getElementById('changeGoogleDriveAccountBtn');
- drivePrepare.addEventListener('click',async()=>{
-  if(work)return;const job=startWork('Loading Google sign-in…');googleBusy(drivePrepare,'Loading Google sign-in…');
-  try{if(!window.BV_GOOGLE_DRIVE_CONFIG?.clientId)throw Error('Google Drive connection is not configured yet.');await BVGoogleDriveClient.prepare();if(job.token!==epoch)return;stopWork();drivePrepare.hidden=true;driveConnect.hidden=false;driveStatus.textContent='Google sign-in is ready. Choose Connect Google Drive to select your account.';driveConnect.focus();}
-  catch(e){if(job.token===epoch){stopWork();driveStatus.textContent='Google sign-in could not load. Please try again.';failure(e);}}
- });
+ function chosen(source){work=null;manager.setSource(source);updateSourceAccess(source);closeUsb();if(window.BVDashboard?.sourceSelected(source)){back.hidden=false;stopWork();}else hide();source.indexing?.then(()=>{if(manager.source===source)window.dispatchEvent(new Event('bimmervision:library-updated'));}).catch(()=>{});}
+
+ const driveStatus=document.getElementById('googleDriveStatus'),driveConnect=document.getElementById('connectGoogleDriveBtn'),driveDisconnect=document.getElementById('disconnectGoogleDriveBtn'),driveChange=document.getElementById('changeGoogleDriveAccountBtn');
+ function clearDriveSource(){
+  if(manager.source?.kind!=='drive')return;
+  manager.setSource({kind:'disconnected',readOnly:true,name:'Disconnected',fetch:async()=>new Response(JSON.stringify({recordings:[]}),{headers:{'Content-Type':'application/json'}})});
+  back.hidden=true;
+ }
  async function connectDrive(event){
-  if(work)return;const button=event?.currentTarget||driveConnect,job=startWork('Opening Google authentication window…');googleBusy(button,'Opening Google authentication window…');let client;
+  if(work)return;
+  const button=event?.currentTarget||driveConnect,accountOnly=window.BVDashboard?.googleAccountOnly===true;
+  const reusable=!accountOnly&&button===driveConnect?account.client:null;
+  const initial=reusable?'Reading your Google Drive…':'Opening Google sign-in…';
+  const job=startWork(initial);googleBusy(button,initial);
+  let client=reusable;
   try{
-   client=await BVGoogleDriveClient.connect({clientId:window.BV_GOOGLE_DRIVE_CONFIG?.clientId,signal:job.signal,prompt:'select_account'});
-   if(job.token!==epoch){client.close();return;}
-   googleBusy(button,'Reading your Google Drive…');message('Reading your Google Drive…');
-   const source=await BVGoogleDriveSource.fromClient(client,{signal:job.signal,onProgress:report,closeClient:false});if(job.token!==epoch){source.close();client.close();return;}
-   account.set(client,source.account);driveStatus.textContent='Connected · '+(source.account.emailAddress||source.account.displayName||'Google Drive');driveDisconnect.hidden=false;driveChange.hidden=false;chosen(source);
-  }catch(e){client?.close();if(job.token===epoch){stopWork();driveStatus.textContent=e.name==='AbortError'?'Google connection cancelled. You can try again.':'Google Drive connection did not finish. Please try again.';if(e.name!=='AbortError')failure(e);}}
+   if(!client)client=await BVGoogleDriveClient.connect({clientId:window.BV_GOOGLE_DRIVE_CONFIG?.clientId,signal:job.signal,prompt:'select_account'});
+   if(job.token!==epoch){if(!reusable)client.close();return;}
+   const reading=accountOnly?'Checking your Google account…':'Reading your Google Drive…';
+   googleBusy(button,reading);message(reading);
+   if(accountOnly){
+    const about=await client.about({signal:job.signal});
+    if(job.token!==epoch){client.close();return;}
+    clearDriveSource();
+    stopWork();
+    account.set(client,about.user);
+    return;
+   }
+   const source=await BVGoogleDriveSource.fromClient(client,{signal:job.signal,closeClient:false});
+   if(job.token!==epoch){source.close();if(!reusable)client.close();return;}
+   if(!reusable)account.set(client,source.account);
+   chosen(source);
+  }catch(e){if(!reusable)client?.close();if(job.token===epoch){stopWork();driveStatus.textContent=e.name==='AbortError'?'Google connection cancelled. You can try again.':'Google Drive connection did not finish. Please try again.';if(e.name!=='AbortError')failure(e);}}
  }
  driveConnect.addEventListener('click',connectDrive);driveChange.addEventListener('click',connectDrive);
- driveDisconnect.addEventListener('click',()=>{account.clear();if(manager.source?.kind==='drive'){manager.source.close();manager.setSource({kind:'disconnected',readOnly:true,name:'Disconnected',fetch:async()=>new Response(JSON.stringify({recordings:[]}),{headers:{'Content-Type':'application/json'}})});}show();back.hidden=true;driveStatus.textContent='Disconnected. Your Google Drive session has been removed from this page.';driveDisconnect.hidden=true;driveChange.hidden=true;});
+ driveDisconnect.addEventListener('click',()=>{
+  stopWork();account.clear();clearDriveSource();
+  if(!window.BVDashboard)show();
+  back.hidden=true;driveStatus.textContent='Disconnected. Your Google Drive session has been removed from this page.';driveDisconnect.hidden=true;driveChange.hidden=true;
+ });
  document.getElementById('changeSourceBtn').addEventListener('click',show);back.addEventListener('click',hide);cancel.addEventListener('click',()=>{const signingIn=!!googleBusyButton;stopWork();if(signingIn)driveStatus.textContent='Google connection cancelled. You can try again.';});
  usbOpen.addEventListener('click',()=>usbDialog.showModal());
  document.getElementById('closeUsbInstructionsBtn').addEventListener('click',closeUsb);
@@ -56,23 +76,23 @@ document.addEventListener('DOMContentLoaded',()=>{
   const job=startWork('Choose your BimmerVision recording folder…');
   try{
    const handle=await window.showDirectoryPicker({id:'bimmervision-recordings',mode:'read'});
-   if(job.token!==epoch)return;closeUsb();message('Reading your USB recordings…');
-   const source=await BVLocalSource.fromDirectoryHandle(handle,{onProgress:report,signal:job.signal});
+   if(job.token!==epoch)return;closeUsb();message('Opening USB recordings…');
+   const source=await BVLocalSource.fromDirectoryHandle(handle,{signal:job.signal});
    if(job.token!==epoch){source.close();return;}chosen(source);
   }catch(e){
    if(job.token!==epoch)return;stopWork();
    if(e.name==='AbortError')return;
    if(['SecurityError','NotSupportedError'].includes(e.name)){
     directoryPickerAllowed=false;
-    document.getElementById('usbPickerStatus').textContent='This browser needs the compatibility folder picker. Press Select Drive again to continue.';
+    document.getElementById('usbPickerStatus').textContent='This browser needs the compatibility folder picker. Choose Select folder again to continue.';
     if(!usbDialog.open)usbDialog.showModal();document.getElementById('selectUsbDriveBtn').focus();return;
    }
    closeUsb();failure(e);
   }
  });
  folder.addEventListener('change',async()=>{
-  if(!folder.files.length)return;const job=startWork('Reading your USB recordings…');
-  try{const source=await BVLocalSource.fromFiles(folder.files,{onProgress:report,signal:job.signal});if(job.token!==epoch){source.close();return;}chosen(source);}
+  if(!folder.files.length)return;const job=startWork('Opening USB recordings…');
+  try{const source=await BVLocalSource.fromFiles(folder.files,{signal:job.signal});if(job.token!==epoch){source.close();return;}chosen(source);}
   catch(e){if(job.token===epoch&&e.name!=='AbortError'){stopWork();failure(e);}}
  });
  function fillQr(value){const parsed=BVRemoteSource.parseInput(value);address.value=parsed.baseUrl;if(parsed.code)code.value=parsed.code;return parsed;}
@@ -82,7 +102,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   try{
    const parsed=BVRemoteSource.parseInput(address.value);const pairingCode=code.value.trim()||parsed.code;
    const fallback=document.getElementById('carFallbackLink');fallback.href=parsed.baseUrl+'/'+(fragmentHandoff?'':'?'+new URLSearchParams(pairingCode?{code:pairingCode}:{}));document.getElementById('carFallback').hidden=false;
-   const source=await BVRemoteSource.connect(address.value,{code:pairingCode,signal:job.signal,onProgress:report});if(job.token!==epoch){source.close();return;}chosen(source);
+   const source=await BVRemoteSource.connect(address.value,{code:pairingCode,signal:job.signal,onProgress:text=>{if(job.token===epoch)message(text);}});if(job.token!==epoch){source.close();return;}chosen(source);
   }catch(e){if(job.token===epoch&&e.name!=='AbortError'){stopWork();failure(e);}}
  }
  document.getElementById('carConnectForm').addEventListener('submit',e=>{e.preventDefault();connect();});
@@ -117,5 +137,5 @@ document.addEventListener('DOMContentLoaded',()=>{
    }
   });return;}
  const params=new URLSearchParams(location.search);const supplied=params.get('car')||params.get('address');
- if(supplied){try{fillQr(supplied);if(params.get('code'))code.value=params.get('code');}catch(e){failure(e);}history.replaceState({},'',location.pathname+location.hash);}
+ if(supplied){document.getElementById('manualPairing').open=true;try{fillQr(supplied);if(params.get('code'))code.value=params.get('code');}catch(e){failure(e);}history.replaceState({},'',location.pathname+location.hash);}
 });

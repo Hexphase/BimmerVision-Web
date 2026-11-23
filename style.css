@@ -1465,6 +1465,7 @@ body {
 }
 
 .modal-select {
+  color-scheme: dark;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--tesla-line);
   color: #fff;
@@ -1472,6 +1473,11 @@ body {
   border-radius: 8px;
   font-size: 13px;
   outline: none;
+}
+
+.modal-select option {
+  background-color: #252728;
+  color: #fff;
 }
 
 .modal-toggle {

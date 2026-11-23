@@ -19,7 +19,7 @@ class BVPlaybackLayout {
     const flash=(action,side=0)=>{
       feedback.dataset.action=action;
       feedback.style.left=side<0?'max(40px, 9%)':side>0?'min(calc(100% - 40px), 91%)':'50%';
-      feedback.innerHTML=side?'<span class="seek-feedback"><span aria-hidden="true">'+(side<0?'‹‹':'››')+'</span><span>10s</span></span>':action==='play'?'<svg viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></svg>':'<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4Z"/></svg>';
+      feedback.innerHTML=side?'<span class="seek-feedback"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="'+(side<0?'m12 5-9 7 9 7zm9 0-9 7 9 7z':'m3 5 9 7-9 7zm9 0 9 7-9 7z')+'"/></svg><span>10s</span></span>':action==='play'?'<svg viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></svg>':'<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4Z"/></svg>';
       this.feedbackAnimation?.cancel();
       feedback.dataset.animating='true';
       const reduce=root.ownerDocument.defaultView.matchMedia('(prefers-reduced-motion:reduce)').matches;

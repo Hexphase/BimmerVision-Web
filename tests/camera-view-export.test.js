@@ -25,3 +25,10 @@ test('a timed-out MediaRecorder source seek cannot overwrite restored playback',
  await assert.rejects(e._exportWithMediaRecorder({includeHud:false}),/Timed out/);
  await new Promise(r=>setTimeout(r,55));assert.equal(player.currentTime,.8);assert.equal(player.currentAuIndex,8,'old seek must stop before resetting decoder target');
 });
+
+test('a three-camera export draws only the requested crops', () => {
+ const {e,canvas,draws,labels,after}=fixture();
+ e.renderFrame(canvas,{view:['front','rear','left'],time:2.2,includeHud:false});
+ assert.deepEqual(draws.map(d=>d.slice(0,3)),[[after,640,0],[after,0,0]]);
+ assert.deepEqual(labels,['FRONT','REAR','LEFT']);
+});

@@ -79,7 +79,7 @@
  #sourceScreen .home-header {height:66px;padding:0 20px;}
  #sourceScreen .home-header img {width:148px;}
  #sourceScreen .home-header nav {gap:0;}
- #sourceScreen .home-header nav>a:first-child {display:none;}
+
  #sourceScreen .home-header a {font-size:10px;gap:5px;}
  #sourceScreen .home-hero {grid-template-columns:1fr;min-height:0;}
  #sourceScreen .home-hero-copy {padding:42px 24px 24px;}

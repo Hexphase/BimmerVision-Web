@@ -7,6 +7,8 @@ test('both parsers resolve recorded camera modes across forward and backward see
  for(const p of parsers(bytes)){
   assert.equal(p.getCameraViewAtTime(.5,1000000).single,false);
   assert.equal(p.getCameraViewAtTime(1,1000000).label,'Parking view');
+  assert.equal(p.getCameraViewAtTime(1,1000000).bmwCameraActive,true);
+  assert.equal(p.getCameraViewAtTime(.5,1000000).bmwCameraActive,false);
   assert.equal(p.getCameraViewAtTime(2.5,1000000).label,'Rear wide view');
   assert.equal(p.getCameraViewAtTime(3.5,1000000).label,'Front wide view');
   assert.equal(p.getCameraViewAtTime(4,1000000).single,false);
@@ -21,6 +23,8 @@ test('legacy recordings retain the calibrated layout; unavailable or corrupt met
   assert.equal(p.getCameraViewAtTime(2,0).label,'Camera view unavailable');
   assert.equal(p.getCameraViewAtTime(3,0).label,'Camera view unavailable');
   assert.equal(p.getCameraViewAtTime(4,0).label,'Camera view');
+  assert.equal(p.getCameraViewAtTime(4,0).bmwCameraActive,false);
+  assert.equal(Boolean(p.getCameraViewAtTime(2,0).bmwCameraActive),false);
  }
 });
 function playerFixture(){const p=Object.create(Player.prototype),draws=[],labels=[];Object.assign(p,{canvas:{width:1280,height:960},ctx:{fillRect(){},drawImage(...args){draws.push(args);}},manifest:{startMonotonicUs:0},parser:parsers(Buffer.concat([A.header(),event('323207',0),event('020500',1000000),event('323207',2000000)]))[0],accessUnits:[{index:0,atUs:900000,time:.9,phase:1},{index:1,atUs:1100000,time:1.1,phase:0},{index:2,atUs:2100000,time:2.1,phase:1}],decodedFrames:new Map(),cameraMapping:{phase0:'frontRear',flipHalves:true},lastFrFrame:{old:true},lastLrFrame:{old:true},_drawSingleBadge(ctx,label){labels.push(label);},_drawToCanvas(fr,lr){draws.push(['quad',fr,lr]);}});return {p,draws,labels};}

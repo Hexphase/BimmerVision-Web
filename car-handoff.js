@@ -2,6 +2,7 @@
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./remote-source'):root.BVRemoteSource);if(typeof module==='object'&&module.exports)module.exports=api;else root.BVCarHandoff=api;})(typeof globalThis!=='undefined'?globalThis:this,function(RemoteSource){
 'use strict';
 function consume(location,history){
+ if(location.hash==='#backup')return null;
  const params=new URLSearchParams((location.hash||'').replace(/^#/,''));if(!['car','code','backup'].some(k=>params.has(k)))return null;
  history.replaceState({},'',location.pathname);
  if(!['https://bimmervision.app','https://www.bimmervision.app'].includes(location.origin)&&!/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(location.origin||''))throw Error('Open phone backup on the hosted BimmerVision website.');

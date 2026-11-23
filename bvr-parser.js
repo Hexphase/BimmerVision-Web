@@ -207,7 +207,7 @@ class BvrParser {
     else if (app===60) label='Remote 360° view';
     else if (app===255 || mode===255) label='Camera view unavailable';
     else if ([50,51,52].includes(app)) label=perspective===1 ? 'Front camera' : perspective===2 ? 'Rear camera' : 'Recorder camera view';
-    return {single,label,atUs:found.atUs,rawStateHex:found.hex};
+    return {single,label,atUs:found.atUs,rawStateHex:found.hex,bmwCameraActive:[1,2,3,20,60].includes(app)};
   }
 
   getCarSpeedLimitAtTime(seconds, manifestStartUs) {

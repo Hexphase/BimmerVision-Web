@@ -17,7 +17,7 @@ class SedanCameraSelector {
     this.container.innerHTML = `
       <div class="sedan-panel-header">
         <div class="sedan-header-meta">
-          <span class="sedan-panel-title">CAMERAS</span>
+          <span class="sedan-panel-title">Cameras</span>
           <span class="sedan-hint-text">Tap a camera view to see</span>
         </div>
         <div class="sedan-view-switchers">

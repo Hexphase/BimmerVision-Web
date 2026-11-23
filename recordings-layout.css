@@ -6,7 +6,6 @@
 .mobile-redesign #viewRecordings .date-group {margin:0;}
 .mobile-redesign #viewRecordings .date-group-header {margin:0;padding:13px 24px;background:#0f1115;border-top:1px solid #282c32;border-bottom:1px solid #282c32;font-size:11px;color:#9da6b5;}
 .mobile-redesign #viewRecordings .drive-card {width:100%;margin:0;padding:22px 24px;border:0;border-bottom:1px solid #2a2e36;border-radius:0;background:#15181d;box-shadow:none;}
-.mobile-redesign #viewRecordings .drive-card.active {background:#19232e;box-shadow:inset 3px 0 #1689f5;}
 #viewRecordings .drive-card-header>div:first-child {min-width:0;}
 #viewRecordings .drive-departure {font-size:20px!important;font-weight:550!important;}
 #viewRecordings .drive-storage {border:0;background:none;font-size:10px!important;padding:0!important;}
@@ -95,3 +94,426 @@
 #viewRecordings .clip-row-actions>:is(button,a) {max-width:100%;white-space:normal;height:auto;min-height:44px;line-height:1.4;}
 #viewRecordings .clip-row-actions svg {flex-shrink:0;}
 #viewRecordings .clip-row-backup {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 12px;border:1px solid #416b88;border-radius:0;background:#122535;color:#b8e4ff;cursor:pointer;font-size:12px;}
+
+/* Keep source and date context visible beside the selected drive. */
+.mobile-redesign #viewRecordings {
+  --library-blue:#008efc;
+  --library-text:#f1f3f5;
+  --library-muted:#afb3ba;
+  --library-border:#34363a;
+  background:#171819;
+}
+.mobile-redesign #viewRecordings .recordings-grid {
+  grid-template-columns:minmax(350px,420px) minmax(0,1fr);
+}
+#viewRecordings .library-heading {padding-bottom:14px}
+#viewRecordings .library-heading h1 {font-size:28px;font-weight:600;color:var(--library-text)}
+#librarySummary {color:var(--library-muted);font-size:13px}
+.library-source-row {
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 24px 8px;
+  font-size:14px;color:var(--library-text)
+}
+#libraryChangeSourceBtn {
+  border:0;background:none;color:var(--library-blue);font:inherit;cursor:pointer;min-height:44px;padding:0 0 0 8px
+}
+.mobile-redesign #viewRecordings .date-group-header {
+  background:#1f2022;border-color:var(--library-border);color:var(--library-muted);
+  text-transform:none;letter-spacing:0;font-size:13px
+}
+.mobile-redesign #viewRecordings .drive-card {background:transparent;border-color:var(--library-border);padding-block:14px}
+#viewRecordings .drive-departure {margin:0}
+#viewRecordings .drive-departure .btn-view-entire-drive {
+  padding:0!important;background:transparent!important;color:var(--library-text);font-size:18px!important;
+  justify-content:flex-start;font-weight:600;text-decoration:underline;text-decoration-color:#ffffff3b;text-underline-offset:4px
+}
+#viewRecordings .drive-departure .btn-view-entire-drive:hover {text-decoration-color:var(--library-blue)}
+.mobile-redesign #viewRecordings .drive-card-actions {display:flex!important;flex-wrap:wrap;gap:10px!important}
+#viewRecordings .drive-card-actions :is(.drive-play,.btn-toggle-recordings) {border-radius:5px!important}
+#viewRecordings .drive-card-actions .drive-play {background:var(--library-blue)!important;color:#090e14!important}
+#viewRecordings .drive-description {color:var(--library-muted);font-size:12px}
+#viewRecordings .drive-overview-stage {border-color:var(--library-border)}
+#viewRecordings .overview-placeholder {background:var(--bv-dashboard-canvas);box-shadow:none}
+#viewRecordings :is(button,summary):focus-visible {outline:2px solid var(--library-blue);outline-offset:2px}
+@media(max-width:760px){
+  .library-source-row {padding-inline:20px}
+}
+#viewRecordings .overview-header-row #overviewPlayBtn:not(:disabled) {
+  background:var(--library-blue)!important;color:#090e14;border-radius:5px!important
+}
+
+.mobile-redesign #viewRecordings {
+  --library-border:#303030;
+  background:#171717
+}
+.mobile-redesign #viewRecordings .date-group-header {
+  padding-block:20px 6px;border:0;background:transparent;
+  color:var(--library-muted);font-weight:550;font-size:14px
+}
+.mobile-redesign #viewRecordings .drive-card {padding-block:10px 16px}
+#viewRecordings .drive-departure .btn-view-entire-drive {gap:8px;text-decoration:none}
+#viewRecordings .drive-departure .btn-view-entire-drive:hover {color:var(--library-blue)}
+#viewRecordings .drive-description {margin-top:6px}
+#viewRecordings .drive-card-actions :is(.drive-play,.btn-toggle-recordings) {
+  background:transparent!important;color:var(--library-text)!important
+}
+#viewRecordings .drive-card-actions :is(.drive-play,.btn-toggle-recordings):hover {
+  background:#ffffff0e!important
+}
+#viewRecordings .drive-card-actions .btn-toggle-recordings[aria-expanded="true"] {
+  background:#2b2b2b!important
+}
+#viewRecordings .overview-header-row #overviewPlayBtn:not(:disabled) {
+  background:#333!important;color:#f2f3f5
+}
+
+/* Drive library surfaces match the source dashboard. */
+.mobile-redesign #viewRecordings {
+  --library-border:#353940;
+  background:#191b1d
+}
+.mobile-redesign #viewRecordings .drive-card {
+  margin:0 16px 8px;
+  width:auto;
+  padding:12px 16px;
+  border:1px solid transparent;
+  border-radius:10px;
+  background:#24272b
+}
+.mobile-redesign #viewRecordings .drive-recordings-drawer.open {
+  width:auto;margin:12px -16px -12px
+}
+#viewRecordings .drive-departure .btn-view-entire-drive {font-size:17px!important}
+#viewRecordings .library-source-row {border-bottom:1px solid var(--library-border)}
+
+/* Dashboard library: a source strip, date groups, and two actions per drive. */
+#viewRecordings .library-heading {
+  margin:16px 16px 8px;padding:18px 16px;border-radius:12px;
+  background:var(--bv-dashboard-surface)
+}
+#viewRecordings .library-heading h1 {color:#fff}
+#viewRecordings #librarySummary {color:#d8e0eb}
+#viewRecordings .library-source-row {
+  margin:0 16px 4px;padding:0 12px;min-height:52px;
+  border:0;border-radius:9px;background:var(--bv-dashboard-surface)
+}
+.library-source-label {display:flex;align-items:center;gap:10px;min-width:0}
+.library-source-label svg {flex:none;color:#b4bac3}
+#viewRecordings #libraryChangeSourceBtn {color:#cceaff;white-space:nowrap}
+.mobile-redesign #viewRecordings .date-group-header {padding-inline:17px}
+.mobile-redesign #viewRecordings .drive-card {padding:12px}
+#viewRecordings .drive-card-header {display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+#viewRecordings .drive-departure .btn-view-entire-drive {
+  display:grid;grid-template-columns:32px minmax(0,1fr) 16px;gap:10px;
+  align-items:center;width:100%;text-align:left;white-space:normal
+}
+#viewRecordings .drive-departure .btn-view-entire-drive svg {
+  width:20px;height:20px;margin-inline:auto;color:#b9d9f2
+}
+#viewRecordings .drive-route-summary {margin:2px 0 0 42px;color:var(--library-muted);font-size:13px}
+#viewRecordings .drive-card-meta {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 10px;
+  margin:4px 0 0 42px
+}
+#viewRecordings .drive-description {margin:0}
+#viewRecordings .drive-card-tools {display:flex;align-items:center;gap:8px;min-width:0}
+.mobile-redesign #viewRecordings .drive-card-actions {
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;margin-top:12px!important
+}
+#viewRecordings .drive-card-actions .btn-toggle-recordings {grid-column:auto}
+#viewRecordings .drive-card-actions :is(.drive-play,.btn-toggle-recordings) {
+  justify-content:center;height:auto;min-height:46px;border-radius:8px!important;
+  white-space:normal;background:#ffffff0b!important
+}
+#viewRecordings .drive-card-actions .btn-toggle-recordings[aria-expanded="true"] {background:#29445b!important}
+#viewRecordings .drive-card-actions :is(.drive-play,.btn-toggle-recordings):hover {background:#ffffff1a!important}
+.mobile-redesign #viewRecordings .drive-recordings-drawer.open {
+  margin:12px 0 0;padding:0;border-radius:8px;background:#1b1e22
+}
+.mobile-redesign #viewRecordings .drive-recordings-drawer .recording-clip-row {
+  padding:12px!important;border-bottom:1px solid var(--bv-dashboard-divider);background:transparent
+}
+.mobile-redesign #viewRecordings .recording-clip-row:last-child {border-bottom:0}
+#viewRecordings .clip-row-actions :is(.clip-row-raw,.clip-row-play,.clip-row-backup) {border-radius:7px!important}
+
+.mobile-redesign #viewRecordings {background:var(--bv-dashboard-canvas)}
+.mobile-redesign #viewRecordings .drive-card {
+  background:var(--bv-dashboard-surface);border-color:#303233;border-radius:12px;
+  margin-bottom:12px;padding:14px
+}
+#viewRecordings .drive-departure .btn-view-entire-drive {
+  grid-template-columns:36px minmax(0,1fr) 16px;
+  font-size:18px!important;letter-spacing:0
+}
+#viewRecordings .drive-departure .btn-view-entire-drive svg {
+  width:34px;height:34px;padding:8px;box-sizing:border-box;
+  border-radius:8px;background:#303233;color:#e0e4e7
+}
+#viewRecordings .drive-route-summary,
+#viewRecordings .drive-card-meta {margin-left:46px}
+#viewRecordings .drive-card-actions .drive-play {
+  background:#343638!important;color:#f2f4f6!important
+}
+#viewRecordings .drive-card-actions .btn-toggle-recordings {
+  background:#1f2122!important;color:#dce1e5!important
+}
+#viewRecordings .drive-card-actions .btn-toggle-recordings[aria-expanded="true"] {background:#33383c!important}
+.mobile-redesign #viewRecordings .drive-recordings-drawer.open {background:#1e2021}
+
+/* A compact library toolbar and drive list share the dashboard surfaces. */
+body[data-screen="library"].mobile-redesign .app-header {display:none}
+#viewRecordings .recordings-toolbar {
+  display:grid;grid-template-columns:44px minmax(0,1fr) 44px;
+  align-items:center;padding:4px max(12px,env(safe-area-inset-right)) 4px max(12px,env(safe-area-inset-left));
+  min-height:58px;background:var(--bv-dashboard-tab-bar);border-bottom:1px solid var(--bv-dashboard-tab-border)
+}
+#viewRecordings .recordings-toolbar h1 {margin:0;text-align:center;font-size:18px;font-weight:650}
+#viewRecordings .recordings-toolbar button {
+  display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:6px;
+  background:transparent;color:#f2f4f6;cursor:pointer
+}
+#viewRecordings .recordings-toolbar button:hover {background:#ffffff0c}
+#viewRecordings .library-source-row {
+  margin:18px 16px 0;min-height:64px;padding:8px 10px 8px 14px;gap:6px
+}
+.library-source-label strong,.library-source-label small {display:block}
+.library-source-label small {margin-top:4px;font-size:11px}
+.library-source-actions {display:flex;align-items:center;gap:2px}
+#viewRecordings #libraryChangeSourceBtn {color:#8bcaff;font-size:12px}
+#viewRecordings #sourceAccessNotice {
+  padding:8px 4px;margin:0 16px;border:0;background:none;color:var(--library-muted);
+  font-size:11px;line-height:1.5
+}
+.mobile-redesign #viewRecordings .latest-drive-group .date-group-header,
+#viewRecordings .library-older-title {
+  margin:0;padding:24px 16px 10px;color:#f2f4f6;
+  font-size:16px;font-weight:650;text-transform:uppercase;letter-spacing:.015em
+}
+#viewRecordings .library-older-title {padding-top:26px}
+.mobile-redesign #viewRecordings .older-drive-group .date-group-header {
+  margin:0;padding:10px 16px 4px;font-size:13px
+}
+.mobile-redesign #viewRecordings .older-drive-group .drive-card {
+  margin:0 16px;padding:8px 0 12px;
+  border:0;border-radius:0;border-bottom:1px solid var(--bv-dashboard-divider);background:transparent
+}
+#viewRecordings .older-drive-group .drive-card-actions {
+  display:flex!important;margin:6px 0 0 42px!important
+}
+#viewRecordings .older-drive-group .drive-card-actions :is(.drive-play,.btn-toggle-recordings) {
+  background:transparent!important;min-height:44px
+}
+#viewRecordings .older-drive-group .drive-card-actions :is(.drive-play,.btn-toggle-recordings):hover,
+#viewRecordings .older-drive-group .drive-card-actions .btn-toggle-recordings[aria-expanded="true"] {
+  background:#ffffff0e!important
+}
+@media(max-width:380px) {
+  #viewRecordings .library-source-label {gap:5px}
+  #viewRecordings .library-source-label svg {display:none}
+  #viewRecordings .library-source-row {padding-left:10px}
+}
+
+#viewRecordings .recordings-toolbar h1 {grid-column:2}
+#viewRecordings #librarySettingsBtn {grid-column:3}
+#viewRecordings .recordings-toolbar #backToDrives img {transform:rotate(180deg)}
+#viewRecordings:not(.detail-open) .drive-overview-stage > :not(.overview-placeholder) {display:none!important}
+.mobile-redesign #viewRecordings .drive-overview-stage,
+.mobile-redesign #viewRecordings.detail-open .drive-overview-stage {
+  padding:26px clamp(18px,3vw,36px) 36px;
+  background:var(--bv-dashboard-canvas)
+}
+.mobile-redesign #viewRecordings .overview-header-row {
+  display:grid;gap:14px;margin:0;padding:0 0 26px
+}
+#viewRecordings .overview-title {font-size:clamp(23px,3vw,32px);font-weight:650;line-height:1.17;letter-spacing:-.025em}
+#viewRecordings .overview-subtitle {margin:6px 0 0;font-size:14px;color:var(--library-muted);line-height:1.45}
+#viewRecordings .overview-actions-group {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+#viewRecordings .overview-actions-group .overview-play-btn {border-radius:8px!important}
+#viewRecordings .overview-actions-group #overviewPlayBtn:not(:disabled) {
+  background:#f2f4f6!important;color:#181a1b;padding-inline:18px!important
+}
+#viewRecordings :is(.overview-route h3,.segments-header,.overview-stats summary) {
+  margin:0;font-size:16px;font-weight:650;text-transform:uppercase;letter-spacing:.015em
+}
+#viewRecordings .overview-route h3 {margin-bottom:10px}
+.mobile-redesign #viewRecordings .overview-map-card {border-radius:10px 10px 0 0;overflow:hidden}
+.mobile-redesign #viewRecordings .endpoints-row {
+  border-radius:0 0 10px 10px;overflow:hidden;background:var(--bv-dashboard-divider)
+}
+.mobile-redesign #viewRecordings .endpoint-card {padding:14px;background:var(--bv-dashboard-surface)}
+#viewRecordings .endpoint-address {overflow-wrap:anywhere}
+.mobile-redesign #viewRecordings .drive-segments-box {margin:24px 0 0;padding:0;background:none}
+#viewRecordings .drive-segments-heading {gap:10px;align-items:center}
+#viewRecordings .drive-segments-heading .segments-header {color:#f2f4f6}
+#viewRecordings #overviewBackupBtn {width:auto}
+.mobile-redesign #viewRecordings .segment-item {padding:12px 0!important}
+#viewRecordings .overview-stats {margin-top:24px;border-block:1px solid var(--bv-dashboard-divider)}
+#viewRecordings .overview-stats summary {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;
+  list-style:none;cursor:pointer
+}
+#viewRecordings .overview-stats summary::-webkit-details-marker {display:none}
+#viewRecordings .overview-stats summary img {transform:rotate(90deg)}
+#viewRecordings .overview-stats[open] summary img {transform:rotate(-90deg)}
+.mobile-redesign #viewRecordings .metrics-grid {margin:0 0 12px}
+.mobile-redesign #viewRecordings .metric-card {background:var(--bv-dashboard-surface)}
+
+#viewRecordings .overview-route {
+  overflow:hidden;border-radius:12px;background:var(--bv-dashboard-surface)
+}
+#viewRecordings .overview-route h3 {
+  margin:0;padding:17px 16px;font-size:18px;letter-spacing:0;text-transform:none
+}
+.mobile-redesign #viewRecordings .overview-route .overview-map-card {
+  border-radius:0;min-height:0;height:clamp(170px,26vh,250px)
+}
+#viewRecordings .overview-route #overviewMapCanvas {height:100%}
+.mobile-redesign #viewRecordings .overview-route .endpoints-row {
+  display:grid;grid-template-columns:1fr;gap:0;border-radius:0;
+  padding:5px 16px;background:transparent
+}
+.mobile-redesign #viewRecordings .overview-route .endpoint-card {
+  display:grid;grid-template-columns:50px minmax(0,1fr) auto;
+  align-items:center;gap:8px;padding:13px 0;background:none
+}
+#viewRecordings .overview-route .endpoint-card + .endpoint-card {border-top:1px solid var(--bv-dashboard-divider)}
+#viewRecordings .overview-route .endpoint-header {margin:0;gap:6px}
+#viewRecordings .overview-route .endpoint-label {text-transform:none;letter-spacing:0;font-size:12px}
+#viewRecordings .overview-route .endpoint-address {font-size:14px;font-weight:550;line-height:1.4}
+#viewRecordings .overview-route .endpoint-time {margin:0;font-size:12px;white-space:nowrap;color:var(--library-muted)}
+#viewRecordings .overview-key-stats {
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#202223
+}
+#viewRecordings .overview-key-stats .metric-card {
+  display:flex;flex-direction:column-reverse;gap:5px;
+  padding:16px 8px;text-align:center;background:none
+}
+#viewRecordings .overview-key-stats .metric-card + .metric-card {border-left:1px solid var(--bv-dashboard-divider)}
+#viewRecordings .overview-key-stats .metric-val {font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+#viewRecordings .overview-key-stats .metric-label {color:var(--library-muted);font-size:11px;letter-spacing:0;text-transform:none}
+#viewRecordings .drive-segments-heading .segments-header {font-size:19px;text-transform:none;letter-spacing:0}
+#viewRecordings .drive-segments-heading #overviewBackupBtn {
+  background:transparent;border:0;color:#8bcaff;min-height:44px;padding:0;text-align:left
+}
+#viewRecordings .drive-segments-heading #overviewBackupBtn:hover {text-decoration:underline}
+.mobile-redesign #viewRecordings .drive-segments-box .segment-item {
+  padding:12px!important;border-radius:8px;background:var(--bv-dashboard-surface)
+}
+#viewRecordings .segment-info small {display:block;margin-top:4px;color:var(--library-muted);font-size:12px}
+#viewRecordings .drive-segments-box .clip-row-backup {background:none;border-color:transparent;color:#8bcaff}
+#viewRecordings .drive-segments-box .btn-play-clip {border-radius:7px!important}
+#viewRecordings .overview-manage {border-bottom:1px solid var(--bv-dashboard-divider)}
+#viewRecordings .overview-manage summary {
+  display:flex;align-items:center;justify-content:space-between;min-height:52px;cursor:pointer;list-style:none
+}
+#viewRecordings .overview-manage summary::-webkit-details-marker {display:none}
+#viewRecordings .overview-manage[open] summary img {transform:rotate(90deg)}
+#viewRecordings .overview-manage .overview-actions-group {padding-bottom:12px}
+#viewRecordings .overview-stats summary {font-size:14px;text-transform:none}
+body[data-source-readonly="true"][data-source-can-delete="false"] #viewRecordings .overview-manage {display:none}
+
+#viewRecordings .library-source-row {
+  padding:8px 8px 8px 14px;min-height:66px;margin-bottom:0;border-radius:12px
+}
+#viewRecordings .library-source-label svg {width:21px;height:21px;color:#d3d7db}
+#viewRecordings #libraryRefreshBtn {border-radius:7px!important}
+#viewRecordings .library-access {margin:0 16px}
+#viewRecordings .library-access:not(:has(#sourceAccessNotice:not([hidden]))) {display:none}
+#viewRecordings .library-access summary {
+  min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  list-style:none;cursor:pointer;padding-inline:4px;color:var(--library-muted);font-size:12px
+}
+#viewRecordings .library-access summary::-webkit-details-marker {display:none}
+#viewRecordings .library-access[open] summary img {transform:rotate(90deg)}
+#viewRecordings .library-access #sourceAccessNotice {margin:0;padding:0 4px 8px}
+#viewRecordings .library-access:has(#sourceAccessNotice:not([hidden])) + #driveList .latest-drive-group .date-group-header {
+  padding-top:12px
+}
+/* Give the latest drive a route-led preview and keep older drives easy to scan. */
+.mobile-redesign #viewRecordings .latest-drive-group .drive-card {
+  padding:0;border-radius:14px;border:1px solid #3a444d;background:#25292d;
+}
+#viewRecordings .latest-drive-group .drive-route-preview {
+  background:
+    repeating-linear-gradient(0deg,transparent 0 23px,#95b7df13 23px 24px),
+    repeating-linear-gradient(90deg,transparent 0 23px,#95b7df13 23px 24px),
+    radial-gradient(ellipse at 50% 58%,#25405c,#17212d 82%);
+  border-bottom:1px solid #3a444d;border-radius:13px 13px 0 0;
+}
+#viewRecordings .drive-route-preview svg {display:block;width:100%;height:clamp(118px,17vh,160px)}
+#viewRecordings .drive-route-preview polyline {
+  fill:none;stroke:#88c9ff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;
+  filter:drop-shadow(0 0 4px #69afff8a)
+}
+#viewRecordings .drive-route-preview circle {fill:#e4f3ff;stroke:#3186c5;stroke-width:2}
+#viewRecordings .drive-route-preview circle:first-of-type {fill:#193851;stroke:#88c9ff}
+#viewRecordings .latest-drive-group .drive-card-header {padding:13px 14px 0}
+#viewRecordings .latest-drive-group .drive-departure button {font-size:clamp(15px,2vw,20px)!important}
+#viewRecordings .latest-drive-group .drive-card-meta {margin:12px 14px 0}
+#viewRecordings .latest-drive-group .drive-card-tools {margin-left:auto}
+.mobile-redesign #viewRecordings .latest-drive-group .drive-recordings-drawer.open {margin:0;border-radius:0 0 13px 13px}
+#viewRecordings .featured-drive-stats {
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;margin:0;padding:10px 0;
+  border-block:1px solid #41484f;font-variant-numeric:tabular-nums;
+}
+.featured-drive-stats div {display:flex;flex-direction:column-reverse;align-items:center;gap:2px;min-width:0}
+.featured-drive-stats div + div {border-left:1px solid #41484f}
+.featured-drive-stats dt {color:#b9c4ce;font-size:11px}
+.featured-drive-stats dd {margin:0;color:#f4f7fa;font-size:15px;font-weight:650}
+#viewRecordings .latest-drive-group .drive-card-actions {margin:12px 14px 14px!important}
+#viewRecordings .latest-drive-group .drive-card-actions .drive-play {
+  background:#f3f5f7!important;color:#171b20!important;font-weight:700
+}
+#viewRecordings .latest-drive-group .drive-card-actions .drive-play:hover {background:#dce9f4!important}
+#viewRecordings .latest-drive-group .drive-card-actions .btn-toggle-recordings {background:#31373d!important}
+#viewRecordings .older-drive-group .drive-departure .btn-view-entire-drive svg {background:#2c3540;color:#b8d9f9}
+#viewRecordings .drive-storage {padding-left:4px;color:var(--library-muted);font-size:11px;font-weight:500}
+
+#viewRecordings :is(.overview-stats,.overview-manage) {
+  margin:18px 0 0;padding:0 16px;border:0;border-radius:12px;background:var(--bv-dashboard-surface)
+}
+#viewRecordings :is(.overview-stats,.overview-manage) summary {font-size:16px;font-weight:600;min-height:58px}
+.mobile-redesign #viewRecordings .overview-stats .metrics-grid {
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;padding-bottom:12px;margin:0;background:none
+}
+#viewRecordings .overview-stats .metric-card {
+  padding:13px 6px;text-align:center;background:#1e2021
+}
+#viewRecordings .overview-stats .metric-val {font-size:18px;font-variant-numeric:tabular-nums}
+#viewRecordings .overview-stats .metric-label {font-size:10px;letter-spacing:0;text-transform:none}
+#viewRecordings .overview-manage :is(#overviewLockBtn,#overviewDeleteBtn) {
+  background:#333638!important;color:#fff!important
+}
+#viewRecordings .overview-manage #overviewDeleteBtn svg {color:#ff9295}
+.mobile-redesign #viewRecordings .drive-segments-box .segment-item {
+  grid-template-columns:minmax(0,1fr) auto;align-items:center!important;
+  gap:10px;margin:0 0 10px;padding:12px!important
+}
+#viewRecordings .drive-segments-box .segment-info {display:flex;align-items:center;gap:10px}
+#viewRecordings .drive-segments-box .segment-info > svg {flex:none;color:#b5cadb;background:#303539;border-radius:8px;padding:8px;width:36px;height:36px;box-sizing:border-box}
+#viewRecordings .drive-segments-box .segment-copy {min-width:0}
+#viewRecordings .drive-segments-box .segment-copy strong {font-size:15px;font-weight:650}
+#viewRecordings .drive-segments-box .clip-row-actions {justify-content:flex-end}
+#viewRecordings .drive-segments-box .btn-play-clip {background:#343638!important;color:#fff}
+@media(max-width:560px) {
+  .mobile-redesign #viewRecordings .drive-segments-box .segment-item {grid-template-columns:minmax(0,1fr)}
+  #viewRecordings .drive-segments-box .clip-row-actions {justify-content:flex-start;padding-left:0}
+}
+
+/* Keep short recording lists on the same surface down to the tab bar. */
+body[data-screen="library"].mobile-redesign .app-shell {background:var(--bv-dashboard-canvas)}
+@media(max-width:899px) {
+  .mobile-redesign #viewRecordings.active {flex:1 0 auto}
+}
+@media(min-width:761px) {
+  .mobile-redesign #viewRecordings.detail-open .drive-card.active {background:#292b2c}
+}
+
+#viewRecordings .overview-section-label {display:inline-flex;align-items:center;gap:10px}
+#viewRecordings .overview-section-label svg {flex:none;color:#b5cadb}
+#viewRecordings .overview-stats .metrics-grid .metric-card:first-child {border-radius:8px 0 0 8px}
+#viewRecordings .overview-stats .metrics-grid .metric-card:last-child {border-radius:0 8px 8px 0}
+@media(min-width:1100px) {
+  .mobile-redesign #viewRecordings .overview-header-row {
+    grid-template-columns:minmax(0,1fr) auto;align-items:start
+  }
+}

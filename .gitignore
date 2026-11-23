@@ -6,6 +6,7 @@ coverage/
 # Personal recordings and local exports never belong in the site repository.
 *.bvr
 *.mp4
+!assets/dashcam-demo.mp4
 *.m4v
 Library/
 recordings/

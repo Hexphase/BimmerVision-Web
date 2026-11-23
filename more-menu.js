@@ -5,7 +5,7 @@ class MoreMenu {
  constructor(details){
   this.details=details;this.trigger=details.querySelector('summary');const content=details.querySelector('.app-menu-content');if(!this.trigger||!content)return;
   this.dialog=document.createElement('dialog');this.dialog.id='moreMenuPanel';this.dialog.className='more-menu-panel';this.dialog.setAttribute('aria-labelledby','moreMenuTitle');
-  const header=document.createElement('header'),title=document.createElement('h2'),close=document.createElement('button');title.id='moreMenuTitle';title.textContent='More';close.type='button';close.className='more-menu-close';close.textContent='×';close.setAttribute('aria-label','Close More menu');header.append(title,close);this.dialog.append(header,content);document.body.append(this.dialog);
+  const header=document.createElement('header'),title=document.createElement('h2'),close=document.createElement('button');title.id='moreMenuTitle';title.textContent='More';close.type='button';close.className='more-menu-close';close.innerHTML='<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M6 18 18 6"/></svg>';close.setAttribute('aria-label','Close More menu');header.append(title,close);this.dialog.append(header,content);document.body.append(this.dialog);
   this.trigger.setAttribute('aria-haspopup','dialog');this.trigger.setAttribute('aria-controls',this.dialog.id);this.trigger.setAttribute('aria-expanded','false');
   this.trigger.addEventListener('click',event=>{event.preventDefault();this.dialog.open?this.close():this.open();});
   close.onclick=()=>this.close();this.dialog.addEventListener('cancel',event=>{event.preventDefault();this.close();});

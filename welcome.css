@@ -1,0 +1,252 @@
+#sourceScreen {background:#0c1016;color:#f2f5f8;padding:0 clamp(18px,5vw,84px)}
+#sourceScreen .source-wrap {max-width:1360px;border:0;margin:auto;background:transparent}
+#sourceScreen .home-header {padding:22px 0;border-bottom:1px solid #313a45;background:transparent}
+#sourceScreen .home-header img {width:clamp(126px,16vw,200px)}
+#sourceScreen .home-header nav {gap:clamp(12px,2.3vw,35px)}
+#sourceScreen .home-header nav a {font-size:14px}
+#sourceScreen .source-chooser h1 {font-size:clamp(40px,4.9vw,76px);line-height:1.04;letter-spacing:-.055em;margin:0;font-weight:600}
+.source-chooser>p {font-size:17px;line-height:1.65;color:#b8c2cf;max-width:44ch;margin:22px 0 28px}
+#sourceScreen [hidden] {display:none!important}
+#sourceScreen .home-connect h2 {font-size:28px;margin:0 0 10px;letter-spacing:-.035em}
+#sourceScreen .home-connect-copy,#sourceScreen .home-usb-action,#sourceScreen .home-connect-form {border:0;background:transparent;padding:0}
+#sourceScreen .home-connect-copy {margin-bottom:20px}
+#sourceScreen .home-connect p {max-width:65ch;line-height:1.55}
+#sourceScreen .home-usb-action {align-items:flex-start;text-align:left}
+#sourceScreen .home-usb-action p {margin:0 0 20px}
+#sourceScreen .home-usb-private {display:block;margin-top:12px}
+#sourceScreen .source-footer {padding:18px 0;background:transparent}
+@media(max-width:760px){.source-chooser {padding-top:32px}#sourceScreen .home-header nav a {font-size:12px}.source-chooser nav a {padding:11px 12px}}
+
+#sourceScreen a:focus-visible,#sourceScreen button:focus-visible,.drive-manage summary:focus-visible {outline:2px solid #b5dfff;outline-offset:3px}
+#sourceScreen .source-chooser h1 {font-size:clamp(38px,4vw,58px)}
+#sourceScreen .home-connect .source-primary {background:#a4ceff;color:#111e2c;border-color:#a4ceff;border-radius:5px;font-weight:650}
+.drive-manage {position:relative}
+.drive-manage summary {cursor:pointer;list-style:none;border:1px solid #3e4856;border-radius:5px;padding:8px 12px;font-size:12px;color:#d8e2ed}
+.drive-manage-options {position:absolute;right:0;z-index:4;min-width:145px;padding:5px;background:#1a232e;border:1px solid #46515e;border-radius:6px}
+#viewRecordings .drive-manage-options button {width:100%;justify-content:flex-start;gap:8px}
+body[data-source-readonly="true"][data-source-can-delete="false"] .drive-manage {display:none}
+@media(min-width:761px){.mobile-redesign #viewRecordings .drive-card-actions {grid-template-columns:repeat(3,minmax(0,1fr))}#viewRecordings .btn-toggle-recordings {grid-column:auto}}
+@media(max-width:760px){#sourceScreen .home-header>a {display:inline-flex}}
+
+/* Keep the question and the three possible answers in a single reading column. */
+#sourceScreen .source-chooser {
+  width:min(100%,650px);margin:0 auto;
+  padding:clamp(42px,7vh,80px) 0 clamp(60px,9vh,110px);
+}
+#sourceScreen .library-mast h1 {
+  font-family:system-ui,sans-serif;font-size:clamp(34px,4.2vw,54px);font-weight:540;
+  line-height:1.1;letter-spacing:-.045em;margin:0;
+}
+.source-workspace {min-width:0}
+.source-workspace nav {display:block;overflow:hidden;border:1px solid #333e4b;border-radius:14px;background:#131a22}
+#sourceScreen .source-row {
+  box-sizing:border-box;width:100%;display:grid;grid-template-columns:36px 1fr 22px;align-items:center;
+  gap:20px;padding:21px 24px;min-height:89px;border:0;border-bottom:1px solid #34404b;border-radius:0;
+  background:transparent;color:#ebf0f5;cursor:pointer;text-decoration:none;text-align:left;font:inherit;
+}
+#sourceScreen .source-row:focus-visible {background:#16202b}
+@media(hover:hover){#sourceScreen .source-row:hover {background:#16202b}}
+#sourceScreen .source-row:last-child {border-bottom:0}
+.source-icon {width:30px;height:30px;fill:none;stroke:#a7c9ea;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.source-row-label {display:grid;gap:4px}
+.source-row-label strong {font-size:20px;font-weight:540;letter-spacing:-.035em;line-height:1.2}
+.source-row-label small {color:#aab7c5;font-size:14px;line-height:1.45}
+#sourceScreen .sources-back {display:inline-flex;align-items:center;min-height:44px;color:#b4cde5;text-decoration:none;font-size:14px}
+#sourceScreen .source-workspace .home-connect {display:block;margin:5px 0 0;padding:24px 0 0;border:0;border-top:1px solid #46515c;background:transparent}
+#sourceScreen .source-workspace .home-connect h2 {margin:0 0 10px}
+#sourceScreen .source-workspace .home-connect p {font-size:14px;line-height:1.6}
+#sourceScreen .source-workspace .home-connection-fields {grid-template-columns:1fr}
+#sourceScreen:has(.source-chooser:not([hidden])) .source-footer {border-top:1px solid #303943}
+@media(max-width:760px){
+  #sourceScreen .source-chooser {padding:32px 0 44px}
+  #sourceScreen .library-mast h1 {font-size:clamp(30px,8.5vw,43px);line-height:1.1}
+  #sourceScreen .source-row {grid-template-columns:32px minmax(0,1fr) 12px;gap:12px;padding:18px 12px;min-height:84px}
+  .source-row-label strong {font:600 17px/1.25 system-ui,sans-serif;letter-spacing:-.023em}
+  .source-row-label small {font-size:14px;line-height:1.4}
+  .source-row .source-icon {width:24px;height:24px;justify-self:center}
+  #sourceScreen .source-row:active {background:#223044}
+  #sourceScreen .source-chooser:has(.sources-back:not([hidden])) {padding-top:12px}
+  #sourceScreen .source-workspace .home-connect {padding-top:18px}
+  #sourceScreen .source-workspace .source-primary {width:100%;min-height:48px}
+  #sourceScreen .source-workspace input:not([type="file"]) {font-size:16px}
+}
+@media(prefers-reduced-motion:no-preference){.source-arrow {transition:transform .15s ease}.source-row:hover .source-arrow {transform:translateX(3px)}}
+
+#sourceScreen .pairing-alternative {margin-top:18px;border-block:1px solid #34404b}
+.pairing-alternative summary {padding:15px 0;color:#ccd9e6;cursor:pointer;font-size:14px}
+.pairing-alternative form {padding:5px 0 18px}
+
+/* One navigation landmark moves between a compact tab bar and a desktop sidebar. */
+#sourceScreen {--app-canvas:#171717;--app-panel:#222;--app-divider:#343434;--app-tint:#008efc;--app-focus:#8eb7ff;background:var(--app-canvas);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#sourceScreen .source-wrap {border:0;background:transparent}
+#sourceScreen .workspace-nav svg {width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linejoin:round;stroke-linecap:round;flex:none}
+#sourceScreen .home-header .workspace-nav a {text-decoration:none;display:flex;align-items:center;font-family:inherit}
+#sourceScreen .workspace-nav a[aria-current] {color:var(--app-tint)}
+#sourceScreen .library-mast h1 {font-family:inherit;font-weight:650;letter-spacing:-.045em}
+#sourceList {background:var(--app-panel);border-color:var(--app-divider)}
+#sourceScreen #sourceList .source-row {border-bottom-color:var(--app-divider)}
+#sourceList .source-icon {padding:5px;box-sizing:border-box;width:33px;height:33px;border-radius:8px;stroke:#bee1ff;background:#233b52}
+#sourceList a[href="#carConnection"] .source-icon {stroke:#abe9dc;background:#213e39}
+#sourceList a[href="#googleDriveConnection"] .source-icon {stroke:#d6c7ff;background:#373047}
+#sourceScreen .source-row-label strong {font-family:inherit;font-weight:580}
+#sourceScreen .source-row:focus-visible {outline-offset:-3px}
+@media (min-width:900px) {
+  #sourceScreen {padding:0 clamp(24px,6vw,100px)}
+  #sourceScreen .source-wrap {max-width:1200px;padding:0}
+  #sourceScreen .home-header {display:flex;align-items:center;justify-content:flex-start;gap:48px;height:68px;padding:0;border:0;border-bottom:1px solid #ffffff18}
+  #sourceScreen .home-header img {width:148px}
+  #sourceScreen .home-header .workspace-nav {display:flex;align-self:stretch;align-items:stretch;gap:24px;margin:0}
+  #sourceScreen .home-header .workspace-nav a {position:relative;gap:7px;color:#acb0b6;font-size:14px}
+  #sourceScreen .home-header .workspace-nav a[aria-current] {color:#f4f5f6}
+  #sourceScreen .workspace-nav a[aria-current] svg {color:var(--app-tint)}
+  #sourceScreen .source-chooser {width:min(100%,680px);padding-top:clamp(66px,10vh,108px)}
+}
+@media (max-width:899px) {
+  #sourceScreen {padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+  #sourceScreen .home-header {padding:8px 0;display:flex;justify-content:space-between}
+  #sourceScreen .home-header .workspace-nav {position:fixed;z-index:20;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:0;padding:5px max(16px,env(safe-area-inset-left)) calc(5px + env(safe-area-inset-bottom));border-top:1px solid #37383e;background:#191a1ff5;backdrop-filter:blur(18px)}
+  #sourceScreen .home-header .workspace-nav a {display:flex;flex:1;max-width:230px;min-height:48px;justify-content:center;flex-direction:column;gap:3px;font-size:11px;font-weight:550;color:#aaaeb8}
+  #sourceScreen .home-header .workspace-nav a[aria-current],#sourceScreen:has(#recordingSources:not([hidden])) .home-header .workspace-nav a[aria-current] {color:var(--app-tint)}
+  #sourceScreen .source-work-status {bottom:calc(70px + env(safe-area-inset-bottom))}
+  #sourceScreen .source-footer {padding-bottom:20px}
+}
+
+/* Keep the source picker focused on a single location choice. */
+#sourceScreen:has(#recordingSources:not([hidden])) .source-footer {display:none}
+#sourceScreen .sources-back {gap:6px}
+#sourceList {border:0;background:transparent;border-radius:0}
+#sourceScreen #sourceList .source-row {position:relative;border:0;min-height:76px;padding:14px 4px;grid-template-columns:36px minmax(0,1fr) 18px;gap:16px}
+#sourceList .source-row + .source-row::before {content:"";position:absolute;inset:0 0 auto 56px;height:1px;background:var(--app-divider)}
+#sourceScreen #sourceList .source-icon {background:transparent;stroke:var(--app-tint);width:32px;height:32px;padding:2px}
+#sourceScreen .source-row-label strong {font-size:18px;letter-spacing:-.018em;font-weight:600}
+#sourceScreen .source-row-label small {font-size:14px;color:#a5a8b1}
+#sourceScreen .library-mast h1 {font-size:clamp(34px,4vw,46px)}
+#sourceScreen .workspace-nav a span {letter-spacing:normal}
+
+/* The source question and its answers share one reading axis on phones. */
+#sourceScreen:has(#recordingSources:not([hidden])) {background:#101214}
+#sourceScreen .source-chooser:has(#sourceList:not([hidden])) {width:min(100%,620px);padding-top:clamp(44px,8vh,80px)}
+#sourceScreen .library-mast h1 {max-width:13ch;font-size:clamp(36px,4vw,56px);font-weight:550;line-height:1.04;letter-spacing:-.045em;margin:0 0 26px}
+#sourceScreen #sourceList .source-icon {stroke:var(--app-tint)}
+#sourceScreen #sourceList .source-row {min-height:84px}
+@media(min-width:900px){
+  #sourceScreen .source-chooser:has(#sourceList:not([hidden])) {width:min(100%,1000px);display:grid;grid-template-columns:1fr 1.2fr;align-items:start;gap:clamp(50px,8vw,120px);padding-top:clamp(72px,14vh,140px)}
+  #sourceScreen .library-mast h1 {margin:12px 0 0}
+}
+
+#sourceScreen .workspace-nav a[aria-current]::after {
+  content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:24px;height:2px;background:var(--app-tint);border-radius:2px
+}
+#sourceScreen .home-connect .source-primary {background:var(--app-tint);border-color:var(--app-tint);color:#080d13}
+#sourceScreen :is(a,button):focus-visible {outline-color:var(--app-focus)}
+@media(max-width:899px){
+  #sourceScreen .home-header .workspace-nav a {position:relative}
+  #sourceScreen .workspace-nav a[aria-current]::after {bottom:auto;top:-6px}
+  #sourceScreen .source-chooser:has(#sourceList:not([hidden])) {padding-top:40px}
+}
+
+/* Overview and recording tools share the same type, controls and surfaces. */
+#sourceScreen #sourceList .source-icon {width:28px;height:28px;padding:1px;justify-self:center}
+#sourceScreen .usb-instructions,.mobile-redesign .modal-sheet,.drive-backup-dialog {border:1px solid #383c42;border-radius:12px;background:#191b1e;color:#f1f3f6;box-shadow:0 24px 80px #0007}
+#sourceScreen .usb-instructions {box-sizing:border-box;width:min(440px,calc(100vw - 32px));padding:28px}
+#sourceScreen .usb-instructions::backdrop,.drive-backup-dialog::backdrop {background:#050608b8}
+.dialog-source-icon {color:var(--app-tint);width:30px;height:30px}
+#sourceScreen .usb-instructions h2 {margin:16px 0 8px;font-size:26px;font-weight:550}
+#sourceScreen .usb-instructions>p {margin:0;color:#c1c6cd;font-size:15px;line-height:1.5}
+.usb-help {margin:18px 0;border-block:1px solid #373a3f}
+.usb-help summary {padding:14px 0;cursor:pointer;font-size:14px}
+#sourceScreen .usb-instructions .source-primary {width:100%;background:var(--app-tint);color:#080d13;border:0;border-radius:5px;font-size:15px}
+#sourceScreen .usb-instructions .source-primary svg {width:19px;height:19px}
+#sourceScreen .usb-instructions .usb-instructions-privacy {text-align:left;margin:12px 0 0;font-size:12px;color:#adb4bd}
+.mobile-redesign .modal-close-btn,.drive-backup-close {min-width:44px;min-height:44px;display:grid;place-items:center}
+@media(max-width:760px){
+  #sourceScreen .usb-instructions,.drive-backup-dialog {inset:auto 0 0;margin:0 auto;width:100%;max-height:90dvh;border-radius:16px 16px 0 0;padding:24px 22px calc(22px + env(safe-area-inset-bottom))}
+}
+
+.demo-media {position:relative}
+#sourceScreen .demo-media video {
+  display:block;width:100%;height:auto;aspect-ratio:16/9;border-radius:8px;background:#090a0c
+}
+#playHomeDemo {
+  position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);
+  display:grid;place-items:center;width:48px;height:48px;padding:0;border:1px solid #ffffff47;
+  border-radius:50%;background:#171717ed;color:white;cursor:pointer
+}
+#playHomeDemo:hover {background:#393c41}
+#homeDemo:focus-visible {outline:2px solid var(--app-focus);outline-offset:-3px}
+.source-back-arrow {transform:rotate(180deg)}
+#sourceScreen :is(.usb-help,.pairing-alternative) > summary {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  min-height:44px;box-sizing:border-box;list-style:none
+}
+#sourceScreen :is(.usb-help,.pairing-alternative) > summary::-webkit-details-marker {display:none}
+.source-disclosure-arrow {flex:none}
+details[open] > summary > .source-disclosure-arrow {transform:rotate(90deg)}
+
+#sourceScreen .source-chooser:has(#carConnection:not([hidden])) {
+  width:min(100%,900px);
+}
+.car-connect-layout {
+  display:grid;
+  gap:24px;
+}
+.car-connect-layout h3 {
+  margin:0 0 12px;
+  font-size:16px;
+  font-weight:600;
+}
+.car-network-methods {
+  border-top:1px solid var(--app-divider);
+}
+.car-network-methods details {
+  border-bottom:1px solid var(--app-divider);
+}
+.car-network-methods summary {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:48px;
+  padding:8px 0;
+  list-style:none;
+  font-size:15px;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+.car-network-methods summary::-webkit-details-marker {
+  display:none;
+}
+.car-network-methods ol {
+  margin:0 0 14px;
+  padding-left:22px;
+  color:#bbc3ce;
+  font-size:14px;
+  line-height:1.5;
+}
+.car-network-methods li + li {
+  margin-top:6px;
+}
+#sourceScreen .car-connect-layout .source-detail {
+  font-size:13px;
+}
+#sourceScreen .car-connect-layout .home-connect-form {
+  border-top:1px solid var(--app-divider);
+  padding-top:20px;
+}
+@media (min-width:761px) {
+  .car-connect-layout {
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:32px;
+  }
+  #sourceScreen .car-connect-layout .home-connect-form {
+    border-top:0;
+    border-left:1px solid var(--app-divider);
+    padding:0 0 0 24px;
+  }
+}
+
+#sourceScreen .home-header .workspace-nav {background-color:transparent}
+@media(max-width:899px){
+  #sourceScreen .home-header .workspace-nav {background-color:#191919f5;border-color:var(--app-divider)}
+}
