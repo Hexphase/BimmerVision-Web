@@ -8,38 +8,9 @@
 .driving-message {position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:24px;color:#99a3b3;font-size:12px;line-height:1.7;pointer-events:none;background:#101216e8;}
 .driving-message[hidden] {display:none;}
 .driving-distance {position:absolute;top:12px;left:12px;color:#d5e7ff;font-size:12px;letter-spacing:.02em;pointer-events:none;}
-.driving-detail {padding:9px 12px;min-height:30px;color:#8490a2;font-size:9px;line-height:1.4;}
+
 .live-map-panel {flex:0 0 auto;min-height:190px;}
 .live-map-box {min-height:170px;}
-@media(max-width:900px){.driving-stage{height:320px;}.driving-detail{font-size:10px;}}
+@media(max-width:900px){.driving-stage{height:320px;}}
 
 .driving-stage .driving-signs {position:absolute;top:10px;right:10px;width:auto;height:56px;max-width:calc(100% - 20px);object-fit:contain;pointer-events:none;}
-
-.camera-enhanced-switch {display:flex;gap:.65rem;align-items:center;padding:10px 12px;color:#f4f5f6;font-size:.85rem;cursor:pointer}
-.camera-enhanced-switch input {accent-color:#308de2;width:17px;height:17px}
-.camera-enhanced-output {padding:0 12px 12px}
-.camera-enhanced-status {font-size:.76rem;color:#b6bec8;margin:.4rem 0}
-.camera-enhanced-cameras {display:flex;gap:6px}
-.camera-enhanced-cameras figure,.camera-enhanced-cameras button {flex:1;min-width:0;margin:0;padding:0;background:#202327;border:0;color:white}
-.camera-enhanced-cameras canvas {display:block;width:100%;height:auto}
-.camera-enhanced-cameras figcaption {padding:3px;font-size:.7rem}
-.camera-enhanced-calibrate {margin-top:8px;color:#afd5ff;background:transparent;border:0;cursor:pointer}
-.camera-enhanced-key:not([hidden]) {display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:8px;font-size:.7rem;color:#c8cdd2}
-.camera-enhanced-key span::before {content:"";display:inline-block;width:10px;height:2px;margin:0 4px 3px 0;background:#6de2ff}
-.camera-enhanced-key span:nth-child(2)::before {background:#f7eb80}
-.camera-enhanced-key span:nth-child(3)::before {background:#ff91bd}
-.camera-enhanced-key span:nth-child(4)::before {background:#ffbd68}
-.driving-panel:not([data-state="ready"]) :is(.camera-enhanced-switch,.camera-enhanced-output) {display:none}
-.camera-enhanced-controls {display:flex;align-items:center;justify-content:space-between;gap:4px;min-height:42px;padding-right:8px;flex:none}
-.camera-enhanced-details,.camera-enhanced-dialog button {color:#d4e6fa;background:#30343a;border:0;border-radius:5px;padding:6px 9px;cursor:pointer;font:inherit}
-.camera-enhanced-details {font-size:.72rem}
-.camera-enhanced-dialog {position:fixed;inset:0;margin:auto;box-sizing:border-box;width:min(94vw,560px);max-height:88dvh;overflow:auto;color:#f5f6f8;background:#202225;border:1px solid #3b4046;border-radius:12px;padding:18px}
-.camera-enhanced-dialog::backdrop {background:#000a}
-.camera-enhanced-dialog h2 {margin:0 0 8px;font-size:1.15rem}
-.camera-picker-note {margin:0 0 12px;color:#bcc2ca;font-size:.9rem}
-.camera-picker-grid {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.camera-picker-grid button {padding:0;overflow:hidden}
-.camera-picker-grid canvas {display:block;width:100%;height:auto}
-.driving-panel:not([data-state="ready"]) .camera-enhanced-controls {display:none}
-.camera-enhanced-controls .camera-enhanced-details[hidden] {display:block!important;visibility:hidden}
-.camera-preview-title {font-size:.85rem;margin:14px 0 6px}

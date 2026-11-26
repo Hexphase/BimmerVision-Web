@@ -3,16 +3,74 @@ class BVPlaybackLayout {
   constructor(root,player) {
     const card=root.querySelector('.sedan-panel-card');
     const stage=card.querySelector('.sedan-stage-wrapper'),box=card.querySelector('.sedan-stage-box');
-    const fit=()=>{if(stage.clientWidth&&stage.clientHeight)box.style.transform='scale('+Math.max(.1,Math.min((stage.clientWidth-8)/200,(stage.clientHeight-8)/240,1))+')';};
+    const fit=()=>{
+      if(!stage.clientWidth || !stage.clientHeight)return;
+      const scale=Math.max(.1,Math.min((stage.clientWidth-8)/200,(stage.clientHeight-8)/240,1));
+      box.style.transform='scale('+scale+')';
+      box.style.setProperty('--camera-touch-size',48/scale+'px');
+    };
     if(typeof ResizeObserver!=='undefined'){this.observer=new ResizeObserver(fit);this.observer.observe(stage);}
     fit();
     const canvas=root.querySelector('#videoCanvas'),preview=root.querySelector('#playerStage');
     const feedback=root.ownerDocument.createElement('div');
     feedback.className='playback-action-feedback';feedback.setAttribute('aria-hidden','true');preview.append(feedback);
-    const hover=root.ownerDocument.createElement('div');hover.className='playback-hover-control';hover.setAttribute('aria-hidden','true');preview.append(hover);
     canvas.setAttribute('role','button');canvas.tabIndex=0;
-    const sync=()=>{canvas.setAttribute('aria-label',player.isPlaying?'Pause recording':'Play recording');hover.innerHTML=player.isPlaying?'<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4Z"/></svg>':'<svg viewBox="0 0 24 24"><path d="m8 4 12 8-12 8Z"/></svg>';};
+    const sync=()=>canvas.setAttribute('aria-label',player.isPlaying?'Pause recording':'Play recording');
     const playButton=root.querySelector('#playPauseBtn');
+    const mobile=window.matchMedia('(max-width:999px)');
+    const deck=root.querySelector('.playback-vision-pair');
+    const dots=[...root.querySelectorAll('.preview-picker button')];
+    let visibleIndex=0;
+    const panels=[...deck.children];
+    const showPreview=index=>{
+      const panel=panels[index];
+      const left=deck.scrollLeft+panel.getBoundingClientRect().left-deck.getBoundingClientRect().left;
+      deck.scrollTo({left,behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});
+    };
+    dots.forEach((dot,index)=>dot.addEventListener('click',()=>showPreview(index)));
+    let gesture=null, suppressClick=false;
+    deck.addEventListener('pointerdown',event=>{
+      suppressClick=false;
+      if(event.target.closest('.timeline-viewport'))return;
+      if(mobile.matches && event.pointerType==='touch' && event.isPrimary)
+        gesture={id:event.pointerId,x:event.clientX,y:event.clientY,index:visibleIndex};
+    });
+    deck.addEventListener('pointercancel',()=>{gesture=null;});
+    deck.addEventListener('pointerup',event=>{
+      if(!gesture || gesture.id!==event.pointerId)return;
+      const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y,start=gesture.index;
+      gesture=null;
+      if(Math.abs(dx)<32 || Math.abs(dx)<=Math.abs(dy))return;
+      suppressClick=true;
+      const index=Math.max(0,Math.min(panels.length-1,start-Math.sign(dx)));
+      showPreview(index);
+    });
+    deck.addEventListener('click',event=>{
+      if(suppressClick){event.preventDefault();event.stopImmediatePropagation();suppressClick=false;}
+    },true);
+    deck.addEventListener('scroll',()=>{
+      if(!mobile.matches)return;
+      const left=deck.getBoundingClientRect().left;
+      const distance=panels.map(panel=>Math.abs(panel.getBoundingClientRect().left-left));
+      visibleIndex=distance.indexOf(Math.min(...distance));
+      dots.forEach((dot,i)=>dot.setAttribute('aria-pressed',String(i===visibleIndex)));
+    },{passive:true});
+    const hover=event=>{
+      if(event.pointerType==='mouse')preview.dataset.mouseHover='';
+      else delete preview.dataset.mouseHover;
+    };
+    preview.addEventListener('pointermove',hover);
+    preview.addEventListener('pointerenter',hover);
+    preview.addEventListener('pointerleave',()=>delete preview.dataset.mouseHover);
+    let hideTimer;
+    const reveal=()=>{
+      clearTimeout(hideTimer);
+      preview.dataset.controls='visible';
+      hideTimer=setTimeout(()=>delete preview.dataset.controls,3000);
+    };
+    const overlay=preview.querySelector('.clip-overlay');
+    overlay.addEventListener('pointerdown',()=>{reveal();clearTimeout(hideTimer);});
+    for(const type of ['pointerup','pointercancel','input','click'])overlay.addEventListener(type,reveal);
     if(typeof MutationObserver!=='undefined'){this.playObserver=new MutationObserver(sync);this.playObserver.observe(playButton,{attributes:true,attributeFilter:['aria-label']});}
     let pending=false,tapTimer=null,tapSide=0;
     const ready=()=>player.manifest&&player.streamComplete&&!player.loadError;
@@ -37,8 +95,9 @@ class BVPlaybackLayout {
       } finally {pending=false;}
     };
     const clearTap=()=>{clearTimeout(tapTimer);tapTimer=null;tapSide=0;};
-    canvas.setAttribute('aria-description','Tap to play or pause. Double-tap the left or right edge to seek 10 seconds.');
+    canvas.setAttribute('aria-description','Tap to show controls. Tap the center to play or pause. Double-tap the left or right edge to seek 10 seconds.');
     canvas.addEventListener('click',event=>{
+      reveal();
       if(!ready())return;
       const bounds=canvas.getBoundingClientRect(),fraction=(event.clientX-bounds.left)/bounds.width;
       const side=fraction<=.18?-1:fraction>=.82?1:0;
@@ -46,10 +105,12 @@ class BVPlaybackLayout {
         clearTap();player.seek(Math.max(0,Math.min(player.duration,player.currentTime+side*10)));
         flash(side<0?'backward':'forward',side);return;
       }
-      if(tapTimer){clearTap();toggle();}
-      if(!side){toggle();return;}
+      clearTap();
+      const vertical=(event.clientY-bounds.top)/bounds.height;
+      if(Math.abs(fraction-.5)<.14 && Math.abs(vertical-.5)<.18){toggle();return;}
+      if(!side)return;
       tapSide=side;
-      tapTimer=setTimeout(()=>{clearTap();toggle();},300);
+      tapTimer=setTimeout(clearTap,300);
     });
     // A pending edge tap must not start another recording after navigation.
     const bodyObserver=new MutationObserver(clearTap);

@@ -148,13 +148,13 @@ export function createReplayTrajectory({gps = [], frames = [], events = []}) {
     return {track,origin,forward:norm < 1 ? null : [east/norm,north/norm]};
   }
 
-  function pathAt(time) {
+  function pathAt(time, secondsAhead = 9) {
     const pose = poseAt(time);
     if (!pose) return null;
     const curve = [{x:0,y:0,s:0}];
     if (!pose.forward) return curve;
     const {origin,track:{end,points},forward:[east,north]} = pose;
-    const limit = Math.min(end,time+9);
+    const limit = Math.min(end,time+secondsAhead);
     for (let future = Math.min(limit,time+.25); future > time;) {
       const [e,n] = position(points,future);
       const de = e-origin[0], dn = n-origin[1];
@@ -225,7 +225,7 @@ export function sampleRecordedBoundary(line) {
 }
 
 export function createLaneLookAhead(frames, trajectory) {
-  const slots = new Map(), sampled = new Map();
+  const slots = new Map(), tracks = new Map(), sampled = new Map();
   let lastTime = -Infinity;
   for (const frame of frames) {
     const time = frame.laneT ?? (frame.laneT === undefined ? frame.t : null);
@@ -234,7 +234,10 @@ export function createLaneLookAhead(frames, trajectory) {
     for (const line of frame.b || []) {
       if (!Number.isInteger(line[8]) || line[8] === 255) continue;
       if (!slots.has(line[0])) slots.set(line[0],[]);
-      slots.get(line[0]).push({time,line});
+      const row = {time,line};
+      slots.get(line[0]).push(row);
+      if (!tracks.has(line[8])) tracks.set(line[8], []);
+      tracks.get(line[8]).push(row);
     }
   }
 
@@ -298,23 +301,35 @@ export function createLaneLookAhead(frames, trajectory) {
       const line = measured.find(boundary => boundary[0] === slot);
       let points = [];
       if (line) {
-        const current = samples(line), end = current.at(-1), check = current.find(p => p.x >= end.x-5);
-        if (!check || check.x >= end.x-2 || end.x < 0 || end.x >= 95) continue;
-        // Match a later observation to the measured end before extending it.
-        for (const lead of [1,2,3]) {
-          const future = rows[firstAfter(rows,time+lead)];
-          if (!same(line,future?.line) || future.time > time+lead+.35) continue;
-          const projected = project(future,pose), join = yAt(projected,end.x), overlap = yAt(projected,check.x);
-          if (join === null || overlap === null || Math.abs(join-end.y) > 1 ||
-              Math.abs((join-overlap)-(end.y-check.y)) > .65) continue;
-          const limit = Math.min(105,end.x+32,projected.at(-1).x);
+        // Grow the observed line through overlapping measurements in the current
+        // vehicle's coordinates. At road speed the last observation may be far
+        // beyond the original line, so validate each intermediate join.
+        const rowsForTrack = tracks.get(line[8]);
+        if (!rowsForTrack) continue;
+        let tail = samples(line);
+        let i = firstAfter(rowsForTrack, time);
+        while (i < rowsForTrack.length) {
+          const future = rowsForTrack[i];
+          if (future.time > time + 5 || tail.at(-1).x >= 145) break;
+          i = firstAfter(rowsForTrack, future.time + .25);
+          if (!same(line, future.line)) continue;
+          const projected = project(future,pose);
+          const end = tail.at(-1), checkX = end.x - 3;
+          const join = yAt(projected,end.x), overlap = yAt(projected,checkX);
+          const prior = yAt(tail,checkX);
+          if (join === null || overlap === null || prior === null ||
+              Math.abs(join-end.y) > 1 || Math.abs((join-overlap)-(end.y-prior)) > .5) continue;
           const shift = end.y-join;
-          points = pathBetween(end.x,limit,x => yAt(projected,x)+shift*Math.max(0,1-(x-end.x)/10));
-          if (points.length) break;
+          const extension = pathBetween(end.x, Math.min(145,projected.at(-1).x),
+            x => yAt(projected,x)+shift*Math.max(0,1-(x-end.x)/10));
+          if (!extension.length) continue;
+          if (points.length) points.pop();
+          points.push(...extension);
+          tail = points.length >= 5 ? points : [...tail.slice(0,-1), ...extension];
         }
       } else {
         const i = firstAfter(rows,time), before = rows[i-1], after = rows[i];
-        if (!same(before?.line,after?.line) || after.time-before.time > 1.4) continue;
+        if (!same(before?.line,after?.line) || after.time-before.time > 5) continue;
         const a = project(before,pose), b = project(after,pose);
         if (a.length < 2 || b.length < 2) continue;
         const start = Math.max(0,a[0].x,b[0].x), end = Math.min(85,a.at(-1).x,b.at(-1).x);
@@ -322,7 +337,10 @@ export function createLaneLookAhead(frames, trajectory) {
         const blend = (time-before.time)/(after.time-before.time);
         points = pathBetween(start,end,x => yAt(a,x)*(1-blend)+yAt(b,x)*blend);
       }
-      if (points.length) inferred.push(points);
+      if (points.length) {
+        const observation = line ?? rows[firstAfter(rows,time)].line;
+        inferred.push({points, type: observation[7], color: observation[9]});
+      }
     }
     return inferred;
   }

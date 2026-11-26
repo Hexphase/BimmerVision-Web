@@ -16,36 +16,11 @@ class SedanCameraSelector {
   _render() {
     this.container.innerHTML = `
       <div class="sedan-panel-header">
-        <div class="sedan-header-meta">
-          <span class="sedan-panel-title">Cameras</span>
-          <span class="sedan-hint-text">Tap a camera view to see</span>
-        </div>
-        <div class="sedan-view-switchers">
-          <button id="sedanAllBtn" class="sedan-view-pill ${this.activeLayout === "quad" ? "active" : ""}" data-view="quad" title="All 4 cameras (2x2 quad grid composite)">
-            <svg viewBox="0 0 12 12" width="10" height="10" fill="currentColor">
-              <rect x="1" y="1" width="4" height="4" rx="0.5"></rect>
-              <rect x="7" y="1" width="4" height="4" rx="0.5"></rect>
-              <rect x="1" y="7" width="4" height="4" rx="0.5"></rect>
-              <rect x="7" y="7" width="4" height="4" rx="0.5"></rect>
-            </svg>
-            All
-          </button>
-          <button id="sedanSourceBtn" class="sedan-view-pill ${this.activeLayout === "source" ? "active" : ""}" data-view="source" title="Raw unprocessed side-by-side camera streams">
-            <svg viewBox="0 0 14 12" width="11" height="10" fill="currentColor">
-              <rect x="1" y="1" width="5.5" height="10" rx="0.5"></rect>
-              <rect x="7.5" y="1" width="5.5" height="10" rx="0.5"></rect>
-            </svg>
-            Source
-          </button>
-          <button id="sedanIdentifyBtn" class="sedan-view-pill" title="Calibrate camera assignments">
-            <svg viewBox="0 0 14 12" width="11" height="10" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="7" cy="6" r="3.5"></circle>
-              <line x1="7" y1="1" x2="7" y2="2.5"></line>
-              <line x1="7" y1="9.5" x2="7" y2="11"></line>
-            </svg>
-            Calibrate
-          </button>
-        </div>
+        <span class="sedan-panel-title">Cameras</span>
+        <button id="cameraViewMode" type="button" aria-haspopup="dialog" aria-controls="cameraModeSheet">
+          <span>All Cameras</span>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m3 10 5-5 5 5"/></svg>
+        </button>
       </div>
 
       <div class="sedan-stage-wrapper">
@@ -111,39 +86,31 @@ class SedanCameraSelector {
       });
     });
 
-    // View switcher buttons (All and Source)
-    const allBtn = this.container.querySelector("#sedanAllBtn");
-    if (allBtn) {
-      allBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.setLayout("quad");
-        this.onSelect("quad");
-      });
-    }
-
-    const sourceBtn = this.container.querySelector("#sedanSourceBtn");
-    if (sourceBtn) {
-      sourceBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.setLayout("source");
-        this.onSelect("source");
-      });
-    }
-
-    const identifyBtn = this.container.querySelector("#sedanIdentifyBtn");
-    if (identifyBtn) {
-      identifyBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (this.onIdentify) this.onIdentify();
-      });
-    }
+    const trigger = this.container.querySelector('#cameraViewMode');
+    const sheet = this.container.ownerDocument.getElementById('cameraModeSheet');
+    this.modeLabel = trigger.querySelector('span');
+    this.modeOptions = sheet.querySelectorAll('[aria-pressed]');
+    trigger.addEventListener('click', () => sheet.showModal());
+    sheet.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if (!button && event.target !== sheet) return;
+      sheet.close();
+      const mode = button?.dataset.mode;
+      if (mode === 'calibrate') this.onIdentify();
+      else if (mode) {
+        this.setLayout(mode);
+        this.onSelect(mode);
+      }
+    });
 
     this._updateActiveClasses();
   }
 
   _updateActiveClasses() {
     const isQuad = this.activeLayout === "quad";
-    const isSource = this.activeLayout === "source";
+    const names = {quad:'All Cameras',source:'Source',front:'Front',rear:'Rear',left:'Left',right:'Right'};
+    this.modeLabel.textContent = names[this.activeLayout];
+    for (const option of this.modeOptions) option.setAttribute('aria-pressed', String(option.dataset.mode === this.activeLayout));
 
     // Cones
     const cFront = this.container.querySelector("#coneFront");
@@ -167,18 +134,7 @@ class SedanCameraSelector {
       }
     });
 
-    // Pills
-    const allBtn = this.container.querySelector("#sedanAllBtn");
-    if (allBtn) {
-      if (isQuad) allBtn.classList.add("active");
-      else allBtn.classList.remove("active");
-    }
 
-    const sourceBtn = this.container.querySelector("#sedanSourceBtn");
-    if (sourceBtn) {
-      if (isSource) sourceBtn.classList.add("active");
-      else sourceBtn.classList.remove("active");
-    }
   }
 }
 

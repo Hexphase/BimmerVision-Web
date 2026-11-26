@@ -255,8 +255,7 @@
   window.addEventListener('keydown', event => {
     if (event.key !== 'Escape' || event.defaultPrevented || !screen.hidden ||
         document.body.dataset.screen !== 'library' ||
-        document.querySelector('.modal-backdrop.open, dialog[open]') ||
-        !get('backToDrives').hidden) return;
+        document.querySelector('.modal-backdrop.open, dialog[open]')) return;
     event.preventDefault();
     showDashboard();
   });
@@ -314,6 +313,8 @@
       if (!sheet.open) return false;
       if (backupConnection === source.kind) {
         openBackup();
+      } else if (source.kind === 'usb') {
+        openLibrary();
       } else {
         routeTo('recordings');
         library.focus({preventScroll:true});

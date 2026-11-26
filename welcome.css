@@ -24,7 +24,7 @@
 .drive-manage summary {cursor:pointer;list-style:none;border:1px solid #3e4856;border-radius:5px;padding:8px 12px;font-size:12px;color:#d8e2ed}
 .drive-manage-options {position:absolute;right:0;z-index:4;min-width:145px;padding:5px;background:#1a232e;border:1px solid #46515e;border-radius:6px}
 #viewRecordings .drive-manage-options button {width:100%;justify-content:flex-start;gap:8px}
-body[data-source-readonly="true"][data-source-can-delete="false"] .drive-manage {display:none}
+body[data-source-readonly="true"]:not([data-usb-source="true"])[data-source-can-delete="false"] .drive-manage {display:none}
 @media(min-width:761px){.mobile-redesign #viewRecordings .drive-card-actions {grid-template-columns:repeat(3,minmax(0,1fr))}#viewRecordings .btn-toggle-recordings {grid-column:auto}}
 @media(max-width:760px){#sourceScreen .home-header>a {display:inline-flex}}
 

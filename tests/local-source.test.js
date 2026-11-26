@@ -76,3 +76,13 @@ test('USB lock fails closed on external manifest changes, removal and closed sou
 test('USB source closure during a pending write aborts temp data without committing',async()=>{const f=writableFixture(),s=await sourceAPI.fromDirectoryHandle(f.handle);let release;f.state.delayWrite=new Promise(r=>release=r);const pending=lock(s);for(let n=0;n<50&&!f.state.writes;n++)await new Promise(r=>setImmediate(r));assert.equal(f.state.writes,1,'Lock must create a temporary writable manifest');s.close();release();await assert.rejects(pending,{name:'AbortError'});assert.equal(f.state.aborts,1);assert.notEqual(JSON.parse(await f.current.text()).locked,true);await s.indexing;});
 test('USB concurrent lock changes serialize and each confirmed state reaches the manifest',async()=>{const f=writableFixture(),s=await sourceAPI.fromDirectoryHandle(f.handle);const first=lock(s,true),second=lock(s,false);assert.equal((await first).status,200);assert.equal((await second).status,200);assert.equal(f.state.writes,2);assert.equal((await list(s))[0].locked,false);assert.equal(JSON.parse(await f.current.text()).locked,false);s.close();await s.indexing;});
 test('USB lock rechecks metadata before committing and leaves external changes intact',async()=>{const f=writableFixture(),s=await sourceAPI.fromDirectoryHandle(f.handle);let release;f.state.delayWrite=new Promise(r=>release=r);const pending=lock(s);for(let n=0;n<50&&!f.state.writes;n++)await new Promise(r=>setImmediate(r));assert.equal(f.state.writes,1);f.manifest.getFile=async()=>file(`Library/${ID}/manifest.json`,JSON.stringify({...JSON.parse(await f.current.text()),external:true}));release();assert.equal((await pending).status,409);assert.equal(f.state.aborts,1);assert.notEqual(JSON.parse(await f.current.text()).locked,true);s.close();await s.indexing;});
+
+test('imports folders named by the recording ZIP exporter and rejects mismatched manifest IDs',async()=>{
+  for(const id of [ID,'22345678-1234-1234-1234-123456789abc']){
+    const files=fixture('Library',{id}).map(blob=>file(blob.webkitRelativePath.replace('/'+ID+'/','/BimmerVision-'+ID+'/'),blob));
+    const source=await sourceAPI.fromFiles(files);
+    assert.equal(source.recordingCount,id===ID?1:0);
+    assert.equal((await list(source)).length,source.recordingCount);
+    source.close();await source.indexing;
+  }
+});

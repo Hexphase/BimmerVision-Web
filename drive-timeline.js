@@ -23,21 +23,40 @@ class DriveTimeline {
   constructor(root, onSeek) {
     this.root=root;this.onSeek=onSeek;this.drive=null;this.time=0;this.clipId=null;
     root.innerHTML='<div class="timeline-heading"><span>DRIVE TIMELINE</span><span class="timeline-position">Choose a drive</span></div><div class="timeline-viewport" tabindex="0" role="slider" aria-label="Drag timeline to scrub recordings" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><div class="timeline-ruler"></div><div class="drive-timeline-track"></div><div class="timeline-playhead" aria-hidden="true"></div></div><p class="timeline-feedback" aria-live="polite"></p>';
+    this.telemetry = new Map();
+    this.speedUnit = 'mph';
     this.viewport=root.querySelector('.timeline-viewport');
+    const labels = ['Speed', 'Accelerator', 'Brake'];
+    this.plots = labels.map((label, i) => {
+      const row = document.createElement('div');
+      row.className = 'telemetry-lane';
+      row.innerHTML = '<div><span></span><strong></strong></div><svg viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke"/></svg>';
+      row.querySelector('span').textContent = label;
+      this.root.append(row);
+      return {value:row.querySelector('strong'), path:row.querySelector('path')};
+    });
     this.viewport.addEventListener('pointerdown',e=>{
-      if(e.button!==0||!this.drive)return;
-      this.scrubbing=true;this.drag={x:e.clientX,time:this.time,last:this.time,direction:1};
-      this.viewport.setPointerCapture(e.pointerId);this.viewport.focus();this.onDragStart?.();
+      if(e.button!==0||!this.drive||this.drag)return;
+      this.drag={pointer:e.pointerId,x:e.clientX,y:e.clientY,time:this.time,last:this.time,direction:1};
+      this.viewport.setPointerCapture(e.pointerId);this.viewport.focus({preventScroll:true});
     });
     this.viewport.addEventListener('pointermove',e=>{
-      if(!this.scrubbing)return;
+      if(this.drag?.pointer!==e.pointerId)return;
+      if(!this.scrubbing){
+        const dx=Math.abs(e.clientX-this.drag.x),dy=Math.abs(e.clientY-this.drag.y);
+        if(dx<5 || dx<=dy)return;
+        this.drag.time=this.time;
+        this.scrubbing=true;
+        this.onDragStart?.();
+      }
       const t=Math.max(0,Math.min(DriveTimeline.duration(this.drive),DriveTimeline.timeAfterDrag(this.drag.time,e.clientX-this.drag.x)));
       this.drag.direction=t>=this.drag.last?1:-1;this.drag.last=t;this.time=t;this.draw();
       const target=DriveTimeline.targetAt(this.drive,t,this.drag.direction);
       if(target&&!target.gap)this.onSeek(target.segment,target.offset,{preview:true});
     });
     const finish=e=>{
-      if(!this.scrubbing)return;
+      if(this.drag?.pointer!==e.pointerId)return;
+      if(!this.scrubbing){this.drag=null;return;}
       const target=DriveTimeline.targetAt(this.drive,this.time,this.drag.direction);
       this.scrubbing=false;this.drag=null;
       if(this.viewport.hasPointerCapture(e.pointerId))this.viewport.releasePointerCapture(e.pointerId);
@@ -59,11 +78,65 @@ class DriveTimeline {
     if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>this.draw()).observe(this.viewport);
   }
   feedback(text){this.root.querySelector('.timeline-feedback').textContent=text;}
-  setDrive(drive){if(this.drive===drive)return;this.drive=drive;this.time=0;this.feedback('');this.draw();}
+  setDrive(drive){if(this.drive===drive)return;if(this.drive?.id!==drive?.id)this.telemetry.clear();this.drive=drive;this.time=0;this.feedback('');this.draw();}
   update(clipId,seconds){this.clipId=clipId;if(this.scrubbing)return;const s=this.drive?.segments.find(s=>s.clip.id===clipId);this.time=s?s.offset+seconds:0;this.draw();}
+  setTelemetry(id, records, startUs, unit) {
+    this.speedUnit = unit;
+    if (records?.length && Number.isFinite(startUs)) this.telemetry.set(id, {records, startUs});
+  }
+  drawTelemetry(start, end) {
+    const paths = ['', '', ''], current = ['—', '—', '—'];
+    const previous = [null, null, null];
+    for (const segment of this.drive?.segments || []) {
+      previous.fill(null);
+      const source = this.telemetry.get(segment.clip.id);
+      const finish = segment.offset + segment.clip.durationSeconds;
+      if (!source || end < segment.offset || start >= finish) continue;
+      const {records, startUs} = source;
+      const timeOf = rec => segment.offset + (rec.atUs - startUs) / 1e6;
+      let low = 0, high = records.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (timeOf(records[mid]) < start) low = mid + 1;
+        else high = mid;
+      }
+      for (let i = Math.max(0, low - 1); i < records.length; i++) {
+        const t = timeOf(records[i]);
+        if (t > end || t >= finish) break;
+        // Break the trace when samples stop arriving.
+        const until = Math.min(t + 2, finish, records[i+1] ? timeOf(records[i+1]) : Infinity);
+        const a = Math.max(start, segment.offset, t), b = Math.min(end, until);
+        if (b <= a) continue;
+        const fields = records[i].fields || {};
+        const speed = fields.speed?.value, pedal = (fields.accelerator ?? fields.gas)?.value;
+        const brake = fields.brake?.value;
+        const pressed = typeof brake === 'boolean' ? brake : Number.isFinite(brake) ? brake > .05 : null;
+        const levels = [Number.isFinite(speed) ? speed / 160 : null,
+          typeof pedal === 'boolean' ? Number(pedal) : Number.isFinite(pedal) ? pedal / 100 : null,
+          pressed === null ? null : Number(pressed)];
+        const x = time => (100 * (time-start)/(end-start)).toFixed(2);
+        levels.forEach((level, lane) => {
+          if (level === null) return;
+          const y = (21 - Math.max(0,Math.min(1,level))*18).toFixed(1);
+          paths[lane] += (previous[lane] === a ? 'V'+y : 'M'+x(a)+' '+y)+'H'+x(b);
+          previous[lane] = b;
+        });
+        if (this.time >= a && this.time < until) {
+          current[0] = levels[0] === null ? '—' : Math.round(speed / (this.speedUnit === 'mph' ? 1.609344 : 1))+' '+this.speedUnit;
+          current[1] = levels[1] === null ? '—' : typeof pedal === 'boolean' ? (pedal ? 'Pressed' : 'Released') : Math.round(100*Math.min(1,Math.max(0,levels[1])))+'%';
+          current[2] = pressed === null ? '—' : pressed ? 'Pressed' : 'Released';
+        }
+      }
+    }
+    this.plots.forEach((plot, i) => {
+      plot.path.setAttribute('d', paths[i]);
+      plot.value.textContent = current[i];
+    });
+  }
   draw(){
     const duration=DriveTimeline.duration(this.drive),width=this.viewport.clientWidth||300,center=width/2;
     const start=this.time-center/5,end=this.time+center/5;
+    this.drawTelemetry(start,end);
     const track=this.root.querySelector('.drive-timeline-track');track.replaceChildren();
     (this.drive?.segments||[]).forEach((s,i)=>{
       if(s.offset+s.clip.durationSeconds<start||s.offset>end)return;

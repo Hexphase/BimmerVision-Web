@@ -23,7 +23,6 @@
 .mobile-redesign #viewPlayback #drivingViewPanel {grid-area:driving;height:100%;min-height:0;width:100%;display:flex;flex-direction:column;border-radius:14px;}
 #viewPlayback .driving-panel .section-header {padding:8px 10px;flex:0 0 auto;}
 #viewPlayback .driving-stage {height:auto;min-height:0;flex:1;}
-#viewPlayback .driving-detail {min-height:0;padding:5px 10px;font-size:8px;}
 .mobile-redesign #viewPlayback .live-map-panel {grid-area:map;height:100%;min-height:0;width:100%;display:flex;flex-direction:column;border-radius:14px;}
 #viewPlayback .live-map-panel .section-header {padding:8px 10px;flex:0 0 auto;}
 #viewPlayback .live-map-box {flex:1;height:auto;min-height:0;}
@@ -98,7 +97,6 @@
  #viewPlayback .sedan-stage-wrapper {height:auto;width:100%;min-height:0;flex:1;}
  .mobile-redesign #viewPlayback #drivingViewPanel {position:static;grid-area:driving;height:420px;min-height:0;}
  #viewPlayback .driving-stage {height:auto;min-height:0;flex:1;}
- #viewPlayback .driving-detail {padding:8px 12px;font-size:9px;}
  .mobile-redesign #viewPlayback .live-map-panel {grid-area:map;height:280px;min-height:0;}
  #viewPlayback .live-map-box {height:auto;min-height:0;flex:1;}
 }
@@ -172,7 +170,7 @@
 #viewPlayback .driving-angle {margin-left:auto;white-space:nowrap;}
 #viewPlayback .driving-status:empty {display:none;}
 @media(min-width:1000px) {
- .mobile-redesign #viewPlayback .playback-grid {grid-template-rows:minmax(250px,1fr) auto minmax(100px,.35fr) 52px auto;grid-template-areas:"cameras selector driving" "cameras actions actions" "cameras map map" "instruments map map" "transport map map";}
+ .mobile-redesign #viewPlayback .playback-grid {grid-template-rows:minmax(250px,1fr) minmax(100px,.35fr) 52px auto;grid-template-areas:"cameras selector driving" "cameras map map" "instruments map map" "transport map map";}
 }
 
 /* Approved Option A pedal outlines. */
@@ -317,3 +315,253 @@ body[data-screen="playback"] .playback-context p {color:var(--playback-muted);fo
 
 /* Source capabilities are shown in the library before playback starts. */
 body[data-screen="playback"] #sourceAccessNotice {display:none}
+
+#viewPlayback .hud-speed-reading {display:inline-flex;align-items:baseline;gap:4px}
+#viewPlayback #speedToggle {align-items:center;justify-content:center;font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer}
+@media (max-width:999px), (pointer:coarse) {
+  #viewPlayback button,#playbackBackBtn {touch-action:manipulation}
+  body[data-screen="playback"] #playbackBackBtn,
+  #viewPlayback :is(.sedan-view-pill,.driving-angle,#speedToggle) {min-width:48px;min-height:48px}
+  #viewPlayback .camera-target {width:62px;height:62px}
+  .mobile-redesign #viewPlayback .timeline-viewport {height:50px}
+  .mobile-redesign #viewPlayback .timeline-viewport .drive-timeline-track {height:22px;top:22px}
+  .mobile-redesign #viewPlayback .transport-action-row {display:flex!important;justify-content:center;margin:4px 0 0}
+  .mobile-redesign #viewPlayback .playback-controls {display:flex;width:100%;justify-content:center;gap:12px}
+  #viewPlayback .playback-controls .control-btn {
+    display:inline-flex;align-items:center;justify-content:center;width:54px;height:48px;
+    min-width:48px;min-height:48px;border:0;border-radius:10px;color:white;background:#333638
+  }
+  #viewPlayback .playback-controls .play-btn {width:74px;color:#17191a;background:#f5f6f8}
+  #viewPlayback .playback-controls button::after {display:none}
+  #viewPlayback .sedan-view-pill {font-size:12px}
+  #viewPlayback .camera-target .cam-dot {width:12px;height:12px}
+  #viewPlayback :is(button,.timeline-viewport):focus-visible {outline:2px solid #84c5ff;outline-offset:-2px}
+}
+
+@media(max-width:999px) {
+  body[data-screen="playback"] {
+    --pinned-video-height:min(75vw,34dvh);
+    --hud-bottom:calc(var(--playback-header-height) + var(--pinned-video-height) + 48px);
+  }
+  .mobile-redesign[data-screen="playback"] #viewPlayback .transport-action-row {display:none!important}
+  #playerStage > :is(#skipBackBtn,#skipFwdBtn) {
+    position:absolute;bottom:8px;z-index:3;display:grid;place-items:center;width:48px;height:48px;
+    border:0;border-radius:50%;background:#16181cc9;color:white;
+  }
+  #playerStage > #skipBackBtn {left:10px}
+  #playerStage > #skipFwdBtn {right:10px}
+  #playerStage > :is(#skipBackBtn,#skipFwdBtn):disabled,
+  #playerStage[data-playing="true"] > :is(#skipBackBtn,#skipFwdBtn) {visibility:hidden}
+  #playerStage[data-playing="false"] .playback-hover-control {opacity:1}
+  #playerStage[data-playing="true"] .playback-hover-control {opacity:0}
+  .mobile-redesign[data-screen="playback"] #viewPlayback .transport-panel {
+    position:sticky;top:var(--hud-bottom);z-index:65;margin:0;border-radius:0;
+    padding:4px 10px;background:var(--playback-surface)
+  }
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid,
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid:has(#cameraViewUnavailable:not([hidden])) {
+    --panel-room:calc(100dvh - var(--hud-bottom) - var(--transport-height,76px) - 16px - env(safe-area-inset-bottom,0px));
+    grid-template-rows:auto min(312px,var(--panel-room)) auto min(420px,var(--panel-room)) min(280px,var(--panel-room));
+    padding-bottom:max(10px,env(safe-area-inset-bottom,0px))
+  }
+  .mobile-redesign[data-screen="playback"] #viewPlayback :is(.sedan-panel-card,#drivingViewPanel,.live-map-panel) {
+    margin:0;height:100%;box-sizing:border-box
+  }
+  html:has(body[data-screen="playback"]) {scroll-padding-top:calc(58px + env(safe-area-inset-top) + min(75vw,34dvh) + 130px)}
+}
+@media(max-width:999px) and (max-height:490px) {
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid,
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid:has(#cameraViewUnavailable:not([hidden])) {
+    --panel-room:calc(100dvh - var(--playback-header-height) - 20px - env(safe-area-inset-bottom));
+    padding-top:0;grid-template-areas:"cameras" "instruments" "transport" "selector" "actions" "driving" "map";
+    grid-template-rows:min(75vw,60dvh) 48px auto min(312px,var(--panel-room)) auto min(420px,var(--panel-room)) min(280px,var(--panel-room))
+  }
+  .mobile-redesign[data-screen="playback"] #viewPlayback :is(#playerStage,.cockpit-hud,.transport-panel) {position:relative;inset:auto;height:100%}
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid {row-gap:0}
+  html:has(body[data-screen="playback"]) {scroll-padding-top:calc(60px + env(safe-area-inset-top))}
+}
+
+.preview-picker {display:none}
+@media(max-width:999px) {
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid,
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid:has(#cameraViewUnavailable:not([hidden])) {
+    grid-template-areas:"transport" "picker" "previews" "actions";grid-template-rows:auto auto auto auto;
+    row-gap:12px;padding-inline:0
+  }
+  .mobile-redesign[data-screen="playback"] #viewPlayback .transport-panel {
+    border:0;border-radius:0;box-shadow:none;background:var(--playback-toolbar);padding:3px 12px 5px
+  }
+  .mobile-redesign #viewPlayback .timeline-viewport {background:transparent}
+  #viewPlayback .preview-picker {
+    grid-area:picker;display:flex;align-items:center;justify-content:center
+  }
+  .preview-picker button {
+    display:grid;place-items:center;width:34px;height:32px;padding:0;
+    border:0;background:none;color:#b5bbc1;cursor:pointer
+  }
+  .preview-picker button::before {
+    content:"";width:8px;height:8px;border:1.5px solid currentColor;
+    box-sizing:border-box;border-radius:50%
+  }
+  .preview-picker button[aria-pressed="true"]::before {color:#fff;background:currentColor}
+  #viewPlayback .playback-vision-pair {
+    grid-area:previews;display:flex;gap:12px;min-width:0;margin:0 12px;
+    overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
+    touch-action:pan-y pinch-zoom;overscroll-behavior-x:contain;scrollbar-width:none;border-radius:11px;
+    height:clamp(320px,46dvh,440px)
+  }
+  #viewPlayback .playback-vision-pair::-webkit-scrollbar {display:none}
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-vision-pair > section {
+    flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;height:100%;margin:0
+  }
+  #viewPlayback .playback-actions {margin:0 12px 12px}
+}
+/* Budget the two visual areas from the space left by the controls. */
+@media(max-width:999px) {
+  body[data-screen="playback"] .app-shell {
+    box-sizing:border-box;height:100dvh;min-height:0;padding-bottom:env(safe-area-inset-bottom,0px)
+  }
+  body[data-screen="playback"] .app-header {flex:none;position:relative}
+  .mobile-redesign[data-screen="playback"] #viewPlayback.active {
+    display:flex;flex:1 1 0;min-height:0
+  }
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid,
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid:has(#cameraViewUnavailable:not([hidden])) {
+    flex:1 1 0;height:100%;min-height:0;padding:0;gap:0;
+    grid-template-areas:"cameras" "instruments" "transport" "picker" "previews";
+    /* Fit the full 4:3 recording while reserving space for the swipeable preview. */
+    grid-template-rows:minmax(0,75vw) 48px auto auto minmax(min(150px,28dvh),1fr)
+  }
+  .mobile-redesign[data-screen="playback"] #viewPlayback :is(#playerStage,.cockpit-hud,.transport-panel) {
+    position:relative;inset:auto;height:100%;min-height:0
+  }
+  #viewPlayback .playback-vision-pair {min-height:0;height:calc(100% - 5px);align-self:start}
+  #viewPlayback .playback-actions {margin:6px 12px}
+  html:has(body[data-screen="playback"]) {scroll-padding-top:0}
+}
+@media(max-width:999px) and (orientation:landscape) {
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid,
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid:has(#cameraViewUnavailable:not([hidden])) {
+    grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+    grid-template-rows:auto minmax(0,1fr) 48px auto;
+    grid-template-areas:"cameras picker" "cameras previews" "instruments previews" "transport previews";
+    padding-inline:env(safe-area-inset-left,0px) env(safe-area-inset-right,0px)
+  }
+}
+@media(max-width:999px) and (max-height:720px) {
+  #viewPlayback .playback-action small {display:none}
+  #viewPlayback .playback-actions .playback-action {min-height:48px}
+}
+@media(max-width:999px) {
+  #viewPlayback .camera-target {width:var(--camera-touch-size,62px);height:var(--camera-touch-size,62px)}
+}
+
+body[data-screen="playback"] .app-header {grid-template-columns:56px minmax(0,1fr) 56px}
+#playbackSaveBtn {
+  grid-area:1/3;min-height:48px;width:100%;border:0;border-radius:8px;
+  background:none;color:#c1e2ff;font:inherit;font-size:15px;font-weight:650;cursor:pointer
+}
+#playbackSaveSheet {--app-canvas:var(--bv-dashboard-canvas);--dashboard-divider:var(--bv-dashboard-divider)}
+#closePlaybackSave {grid-column:3}
+#playbackSaveSheet .save-options {display:grid;gap:8px}
+#playbackSaveSheet .playback-action {
+  display:grid;grid-template-columns:24px minmax(0,1fr) 16px;align-items:center;gap:12px;
+  padding:14px;min-height:64px;text-align:left;border:0;border-radius:10px;
+  background:var(--bv-dashboard-surface);color:#f5f6f8;font:inherit;cursor:pointer
+}
+#playbackSaveSheet .dashboard-action-copy {grid-column:2;gap:3px}
+#playbackSaveSheet .dashboard-action-copy strong {font-size:15px}
+#playbackSaveSheet .dashboard-action-copy small {font-size:12px;color:#bbc0c6}
+#playbackSaveSheet .dashboard-chevron {grid-area:1/3;align-self:center}
+#playbackSaveSheet .playback-action:disabled {opacity:.55;cursor:default}
+
+#viewPlayback .sedan-panel-header,
+#viewPlayback #drivingViewPanel .section-header {
+  min-height:44px;box-sizing:border-box;flex-direction:row;align-items:center;justify-content:space-between;gap:6px;padding:0 10px
+}
+#viewPlayback #cameraViewMode,
+#viewPlayback #drivingViewPanel .driving-angle {
+  min-height:44px;min-width:0;max-width:100%;padding:0 4px;border:0;
+  background:transparent;color:#d8e5ef;color-scheme:dark;font:inherit;font-size:14px;cursor:pointer
+}
+#cameraViewMode {display:inline-flex;align-items:center;justify-content:center;gap:6px}
+#cameraModeSheet {
+  --app-canvas:var(--bv-dashboard-canvas);--dashboard-divider:var(--bv-dashboard-divider);
+  max-width:min(100%,440px)
+}
+#cameraModeSheet .dashboard-sheet-control {grid-column:3}
+.camera-mode-options {display:grid;padding:6px 16px max(14px,env(safe-area-inset-bottom))}
+.camera-mode-options button {
+  display:flex;justify-content:space-between;align-items:center;min-height:50px;padding:0 10px;
+  color:#f5f6f8;background:transparent;border:0;text-align:left;font:inherit;cursor:pointer
+}
+.camera-mode-options button + button {border-top:1px solid var(--bv-dashboard-divider)}
+.camera-mode-options [aria-pressed="true"]::after {
+  content:"";width:6px;height:12px;border:solid #84c5ff;border-width:0 2px 2px 0;
+  transform:rotate(45deg);margin-right:5px
+}
+@media(min-width:1000px) {
+  #viewPlayback .sedan-panel-header {flex-wrap:nowrap;gap:4px;padding-inline:8px}
+  #viewPlayback #cameraViewMode {font-size:13px;white-space:nowrap}
+}
+
+#viewPlayback #drivingViewPanel .driving-angle[aria-pressed="true"] {color:#84c5ff;background:#263545}
+
+#viewPlayback #timelinePreview {
+  grid-area:timeline;min-width:0;min-height:0;overflow:auto;
+  background:var(--playback-toolbar,#242627)
+}
+#timelinePreview #driveTimeline {
+  display:grid;grid-template-rows:auto 44px repeat(3,minmax(23px,1fr));
+  box-sizing:border-box;height:100%;min-height:140px;padding:6px 12px;
+  margin:0;border:0;gap:0
+}
+#timelinePreview .timeline-heading {margin:0 0 4px;font-size:12px;color:#f4f5f6}
+#timelinePreview .timeline-viewport {height:44px}
+#timelinePreview .timeline-feedback:not(:empty) {grid-column:1;grid-row:2;align-self:end;z-index:1;background:#222}
+#timelinePreview .telemetry-lane {
+  --trace:#83bfff;display:grid;grid-template-rows:auto minmax(10px,1fr);min-height:0;
+  border-top:1px solid #ffffff14;padding-top:2px
+}
+#timelinePreview .telemetry-lane:nth-last-child(2) {--trace:#86c6a1}
+#timelinePreview .telemetry-lane:last-child {--trace:#ef9698}
+#timelinePreview .telemetry-lane div {display:flex;justify-content:space-between;font-size:11px;color:#cbd0d5}
+#timelinePreview .telemetry-lane strong {color:#f5f6f7;font-variant-numeric:tabular-nums}
+#timelinePreview .telemetry-lane svg {
+  width:100%;height:100%;min-height:0;
+  background:linear-gradient(90deg,transparent calc(50% - .5px),#ffffff54 50%,transparent calc(50% + .5px))
+}
+#timelinePreview .telemetry-lane path {stroke:var(--trace);stroke-width:2;fill:none}
+@media(min-width:1000px) {
+  .mobile-redesign[data-screen="playback"] #viewPlayback .playback-grid {
+    grid-template-areas:"cameras selector driving" "cameras map timeline" "instruments map timeline" "transport map timeline"
+  }
+}
+
+#viewPlayback #playerStage {position:relative}
+#playerStage .clip-overlay {
+  position:absolute;inset:0;z-index:3;opacity:0;pointer-events:none;
+  background:linear-gradient(transparent 60%,#000a);transition:opacity .14s ease
+}
+#playerStage .clip-overlay :is(button,input) {pointer-events:none}
+#playerStage:is([data-controls="visible"],:has(:focus-visible),:has(input:active)) .clip-overlay {opacity:1}
+#playerStage:is([data-controls="visible"],:has(:focus-visible),:has(input:active)) .clip-overlay :is(button,input) {pointer-events:auto}
+#playerStage[data-mouse-hover] .clip-overlay {opacity:1}
+#playerStage[data-mouse-hover] .clip-overlay :is(button,input) {pointer-events:auto}
+#playerStage .clip-buttons-row {
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)
+}
+#viewPlayback #playerStage .playback-controls {
+  display:flex;align-items:center;justify-content:center;gap:clamp(12px,3vw,28px);margin:0;width:auto
+}
+#viewPlayback #playerStage .playback-controls .control-btn {
+  display:grid;place-items:center;min-width:44px;width:44px;height:44px;min-height:44px;
+  margin:0;padding:0;border:0;border-radius:50%;color:white;background:#101216cc
+}
+#viewPlayback #playerStage .playback-controls .control-btn:disabled {opacity:.45}
+#playerStage .scrubber-bar-row {
+  display:flex;align-items:center;position:absolute;inset:auto 12px 0;gap:8px;color:white
+}
+#playerStage #scrubBar {height:44px;margin:0;min-width:0;flex:1}
+#viewPlayback #playerStage #timecode {display:inline;font-size:11px;font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce) {#playerStage .clip-overlay {transition:none}}

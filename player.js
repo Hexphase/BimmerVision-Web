@@ -182,7 +182,7 @@ class BimmerVisionPlayer {
     this.decoder = null;
     if (this._nativeVideo) { this._nativeVideo.pause(); this._nativeVideo.removeAttribute('src'); this._nativeVideo.load(); this._nativeVideo.remove(); this._nativeVideo = null; }
     this._clearFrameCache(); this.lastFrFrame = null; this.lastLrFrame = null;
-    if (this._nativeMediaUrl) { URL.revokeObjectURL(this._nativeMediaUrl); this._nativeMediaUrl=null; }
+    if (this._nativeMediaUrl) { URL.revokeObjectURL(this._nativeMediaUrl); this._nativeMediaUrl=null;this._nativeBlob=null; }
     this.streamPromise=null; this.streamComplete=false;
     this.manifest = null; this.parser = null; this.nativeInfo = null;
     this._updateRecordedView(null);
@@ -337,7 +337,8 @@ class BimmerVisionPlayer {
     this.streamPromise=this._downloadRecording(info.mediaUrl,signal,chunk=>parts.push(chunk));
     await this.streamPromise;
     if(signal.aborted || epoch!==this._clipEpoch) throw new DOMException('Cancelled','AbortError');
-    this._nativeMediaUrl=URL.createObjectURL(new Blob(parts,{type:'video/mp4'}));
+    this._nativeBlob=new Blob(parts,{type:'video/mp4'});
+    this._nativeMediaUrl=URL.createObjectURL(this._nativeBlob);
     this._setState('loading','Preparing camera frames…');
     this.parser = new StreamingBvrParser({}); this.parser.telemetryRecords = info.telemetry || [];
     this.assembler = null; this.accessUnits = [];
@@ -449,7 +450,6 @@ class BimmerVisionPlayer {
   }
   togglePlay() { if(this.isPlaying) this.pause(); else this.play(); }
   seek(seconds) {
-    if(!this.drivingView?.cameraEnhancement?.setup)this.drivingView?.cameraEnhancement?.invalidate();
     this.currentTime=Math.max(0,Math.min(this.duration,Number(seconds)||0)); this.lastFrameWallTime=performance.now();
     if(this._nativeVideo) {this._nativeVideo.currentTime=this.currentTime; this._setState('buffering','Seeking…');}
     else if(this.accessUnits.length) {
@@ -495,70 +495,8 @@ class BimmerVisionPlayer {
   setDrivingView(view) {
     this.drivingView=view;
     view.speedUnit=()=>this.speedUnit;
-    view.cameraSource=()=>this.getEnhancementFrames();
-    view.cameraSegmentAt=t=>(this._nativeVideo?view.cameraLayout:this.parser)
-      ?.getCameraViewAtTime?.(t,this.manifest?.startMonotonicUs)?.atUs??'legacy';
-    view.calibrateCameraLayouts=(options)=>this.calibrateCameraLayouts(options);
   }
 
-  async calibrateCameraLayouts({signal,mappings,choose,force}) {
-    const epoch=this._clipEpoch,original=this.currentTime,playing=this.isPlaying;
-    const layout=this._nativeVideo?this.drivingView.cameraLayout:this.parser;
-    const start=this.manifest.startMonotonicUs,events=layout?.cameraViewEvents||[];
-    const times=[...new Set([0,...events.map(e=>Math.max(0,(e.atUs-start)/1e6))])]
-      .filter(t=>t<this.duration).sort((a,b)=>a-b);
-    const segments=times.map((t,i)=>{
-      const end=times[i+1]??this.duration;
-      const time=t+Math.min(.35,(end-t)/2);
-      const view=layout?.getCameraViewAtTime?.(time,start);
-      return {time,end,segment:view?.atUs??'legacy',single:view?.single};
-    }).filter(s=>!s.single && (force || !mappings.has(s.segment)));
-    if(!segments.length)return;
-    this.pause();
-    try{
-      for(const [index,s] of segments.entries()){
-        signal.throwIfAborted();
-        await this.seekAndWait(s.time);
-        let source=this.getEnhancementFrames();
-        if(!source && s.end-s.time>.2){
-          await this.seekAndWait((s.time+s.end)/2);
-          source=this.getEnhancementFrames();
-        }
-        signal.throwIfAborted();
-        if(!source || source.segment!==s.segment)continue;
-        const mapping=source.tagged&&!force?{phase:source.phase,half:source.half}:
-          await choose(source,index+1,segments.length,s.time);
-        mappings.set(s.segment,mapping);
-      }
-    }finally{
-      if(epoch===this._clipEpoch){
-        await this.seekAndWait(original);
-        if(playing && epoch===this._clipEpoch)this.play();
-      }
-    }
-  }
-
-  getEnhancementFrames() {
-    const t=this.currentTime;
-    if(this._nativeVideo && (this._nativeVideo.seeking || this._nativeVideo.readyState<2 ||
-      Math.abs(this._nativeVideo.currentTime-t)>.25))return null;
-    const layout=this._nativeVideo?this.drivingView.cameraLayout:this.parser;
-    const view=layout?.getCameraViewAtTime?.(t,this.manifest?.startMonotonicUs);
-    if(view?.single){
-      if(!['Front wide view','Front camera'].includes(view.label))return null;
-      const frame=[this.getCurrentRawFrame(0),this.getCurrentRawFrame(1)]
-        .filter(p=>p?.bitmap && Math.abs(p.time-t)<=.25).sort((a,b)=>b.time-a.time)[0];
-      if(!frame)return null;
-      return {front:frame.bitmap,segment:view.atUs,tagged:true};
-    }
-    const pairs=[this.getCurrentRawFrame(0),this.getCurrentRawFrame(1)];
-    if(pairs.some(p=>!p?.bitmap || Math.abs(p.time-t)>.25))return null;
-    const units=pairs.map(p=>this._nativeVideo?null:this.accessUnits[p.auIndex]);
-    const tagged=this.manifest?.cameraMapping!=='unverified' && units.every(u=>u?.recordedPair) && units[0].pair!==units[1].pair;
-    return {pairs:pairs.map(p=>p.bitmap),segment:view?.atUs??'legacy',tagged,
-      phase:tagged?units.findIndex(u=>u.pair==='frontRear'):Number(this.cameraMapping.phase0==='leftRight'),
-      half:Number(!!this.cameraMapping.flipHalves)};
-  }
   _tick() {
     if(!this.isPlaying) return;
     const now=performance.now(),dt=Math.min(0.15,Math.max(0,(now-this.lastFrameWallTime)/1000)); this.lastFrameWallTime=now;
@@ -716,7 +654,7 @@ class BimmerVisionPlayer {
   /**
    * Helper for Camera Identity dialog: returns current raw source frame
    */
-  getCurrentRawFrame(phase = 0) {
+  getCurrentRawFrame(phase = 0,time=this.currentTime) {
     if (this._nativeVideo) {
       const idx = phase === 1 ? 1 : 0;
       const bitmap = (this._nativePairs && this._nativePairs[idx]) || this.lastFrFrame || this.lastLrFrame;
@@ -730,8 +668,8 @@ class BimmerVisionPlayer {
       };
     }
     if (!this.accessUnits || this.accessUnits.length === 0) return null;
-    const targetPhase=phase===1?1:0,index=this._indexAt(this.currentTime);
-    const view=this.parser?.getCameraViewAtTime(this.currentTime,this.manifest?.startMonotonicUs);
+    const targetPhase=phase===1?1:0,index=this._indexAt(time);
+    const view=this.parser?.getCameraViewAtTime(time,this.manifest?.startMonotonicUs);
     let au=null,bitmap=null;
     for(let i=index;i>=Math.max(0,index-12);i--){
       const candidate=this.accessUnits[i];

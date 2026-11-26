@@ -315,7 +315,7 @@ body[data-screen="library"].mobile-redesign .app-header {display:none}
 #viewRecordings .recordings-toolbar h1 {grid-column:2}
 #viewRecordings #librarySettingsBtn {grid-column:3}
 #viewRecordings .recordings-toolbar #backToDrives img {transform:rotate(180deg)}
-#viewRecordings:not(.detail-open) .drive-overview-stage > :not(.overview-placeholder) {display:none!important}
+
 .mobile-redesign #viewRecordings .drive-overview-stage,
 .mobile-redesign #viewRecordings.detail-open .drive-overview-stage {
   padding:26px clamp(18px,3vw,36px) 36px;
@@ -409,7 +409,7 @@ body[data-screen="library"].mobile-redesign .app-header {display:none}
 #viewRecordings .overview-manage[open] summary img {transform:rotate(90deg)}
 #viewRecordings .overview-manage .overview-actions-group {padding-bottom:12px}
 #viewRecordings .overview-stats summary {font-size:14px;text-transform:none}
-body[data-source-readonly="true"][data-source-can-delete="false"] #viewRecordings .overview-manage {display:none}
+body[data-source-readonly="true"]:not([data-usb-source="true"])[data-source-can-delete="false"] #viewRecordings .overview-manage {display:none}
 
 #viewRecordings .library-source-row {
   padding:8px 8px 8px 14px;min-height:66px;margin-bottom:0;border-radius:12px
@@ -516,4 +516,182 @@ body[data-screen="library"].mobile-redesign .app-shell {background:var(--bv-dash
   .mobile-redesign #viewRecordings .overview-header-row {
     grid-template-columns:minmax(0,1fr) auto;align-items:start
   }
+}
+
+/* Library index uses the same reading width, surfaces and gutters as Home. */
+.mobile-redesign #viewRecordings:not(.detail-open) .recordings-grid {
+  display:block;box-sizing:border-box;max-width:720px;margin:auto;padding:0 20px 40px;
+}
+
+#viewRecordings:not(.detail-open) .library-source-row {
+  margin:16px 0 0;padding:8px 0;background:transparent;border:0;border-radius:0;
+}
+#viewRecordings:not(.detail-open) .library-access {margin:0}
+#viewRecordings:not(.detail-open) .drive-cards-list {display:grid;gap:12px;padding:0}
+.mobile-redesign #viewRecordings:not(.detail-open) .date-group {display:grid;gap:10px;min-width:0}
+.mobile-redesign #viewRecordings:not(.detail-open) .date-group-header,
+#viewRecordings:not(.detail-open) .library-older-title {
+  grid-column:1/-1;margin:0;padding:12px 0 0;border:0;background:none;text-transform:none;
+  letter-spacing:-.025em;color:#f5f6f8;font-size:23px;font-weight:690;
+}
+.mobile-redesign #viewRecordings:not(.detail-open) .older-drive-group .date-group-header {
+  padding-top:0;font-size:13px;font-weight:540;letter-spacing:0;color:var(--dashboard-muted);
+}
+.mobile-redesign #viewRecordings:not(.detail-open) .drive-card {
+  display:block;min-width:0;margin:0;padding:16px;border:0;border-radius:10px;
+  background:var(--bv-dashboard-surface);box-shadow:none;
+}
+#viewRecordings:not(.detail-open) .drive-card .drive-card-header {padding:0}
+#viewRecordings:not(.detail-open) .drive-departure .btn-view-entire-drive {
+  grid-template-columns:22px minmax(0,1fr) 16px;gap:10px;color:#f5f6f8;
+  font-weight:660;text-decoration:none;line-height:1.25;height:auto;
+}
+#viewRecordings:not(.detail-open) .drive-departure .btn-view-entire-drive svg {
+  width:22px;height:22px;padding:0;color:#f5f6f8;background:transparent;
+}
+#viewRecordings:not(.detail-open) .drive-route-summary {margin:0 0 8px 32px;color:var(--dashboard-muted)}
+#viewRecordings:not(.detail-open) .drive-route-preview {
+  background:none;border:0;border-radius:0;margin:8px 0;
+}
+#viewRecordings:not(.detail-open) .drive-route-preview svg {height:84px}
+#viewRecordings:not(.detail-open) .drive-route-preview polyline {filter:none;stroke:#79bfff}
+#viewRecordings:not(.detail-open) .drive-card-meta {margin:0;gap:8px}
+#viewRecordings:not(.detail-open) .featured-drive-stats {
+  border:0;border-bottom:1px solid var(--bv-dashboard-divider);padding:12px 0 16px;
+}
+#viewRecordings:not(.detail-open) .featured-drive-stats div {align-items:flex-start;border:0}
+#viewRecordings:not(.detail-open) .featured-drive-stats dd {font-size:20px;letter-spacing:-.035em}
+#viewRecordings:not(.detail-open) .featured-drive-stats dt {font-size:12px;color:var(--dashboard-muted)}
+#viewRecordings:not(.detail-open) .drive-card .drive-card-actions {
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));margin:10px 0 0!important;
+}
+#viewRecordings:not(.detail-open) .drive-card-actions :is(.drive-play,.btn-toggle-recordings) {
+  background:#323435!important;color:#f5f6f8!important;border-radius:7px!important;
+}
+#viewRecordings:not(.detail-open) .latest-drive-group .drive-play {
+  background:#f5f6f8!important;color:#17191a!important;
+}
+#viewRecordings:not(.detail-open) .drive-card .drive-recordings-drawer.open {
+  margin:12px 0 0;width:auto;border-radius:7px;
+}
+@media(min-width:600px) {
+  #viewRecordings:not(.detail-open) .older-drive-group {grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+}
+#viewRecordings:not(.detail-open) .latest-drive-group .drive-card-meta {
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+  padding-bottom:12px;border-bottom:1px solid var(--bv-dashboard-divider);
+}
+#viewRecordings:not(.detail-open) .featured-drive-stats {border:0;padding:8px 0}
+#viewRecordings:not(.detail-open) .drive-manage summary {
+  padding:8px 4px;border:0;background:none;color:var(--dashboard-muted);font-size:12px
+}
+
+#driveOverviewSheet {
+  height:95vh;height:95dvh;max-height:calc(100dvh - env(safe-area-inset-top));
+  overflow:hidden;padding:0;
+}
+#driveOverviewSheet[open] {display:flex;flex-direction:column}
+#driveOverviewSheet .recordings-toolbar {flex:none;position:relative;padding-top:11px}
+#driveOverviewSheet .recordings-toolbar::before {
+  content:"";position:absolute;top:6px;left:50%;transform:translateX(-50%);
+  width:32px;height:4px;border-radius:2px;background:#686a6c;
+}
+#driveOverviewSheetTitle {margin:0;grid-column:2;text-align:center;font-size:18px;font-weight:650}
+.mobile-redesign #viewRecordings #driveOverviewSheet .drive-overview-stage {
+  display:block;flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;border:0;border-radius:0;
+  padding:22px clamp(16px,4vw,28px) max(24px,env(safe-area-inset-bottom));
+}
+
+#driveOverviewSheet .overview-trip-summary {margin:0 0 10px}
+#driveOverviewSheet .overview-trip-summary dd strong {font-size:clamp(26px,6vw,38px)}
+#driveOverviewSheet .overview-tiles {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:10px;margin-bottom:20px
+}
+#driveOverviewSheet .overview-tile,
+#driveOverviewSheet .overview-tiles details {
+  box-sizing:border-box;margin:0;padding:0;border:0;border-radius:10px;
+  color:#f5f6f8;background:var(--dashboard-surface);font:inherit
+}
+#driveOverviewSheet .overview-tile,
+#driveOverviewSheet .overview-tiles summary {
+  display:grid;align-content:space-between;justify-items:start;min-height:84px;
+  padding:13px 14px;text-align:left;cursor:pointer
+}
+#driveOverviewSheet .overview-tile strong,
+#driveOverviewSheet .overview-tiles summary {font-size:16px;line-height:1.2;font-weight:660}
+#driveOverviewSheet #overviewPlayBtn.overview-primary {background:#f5f6f8;color:#17191a}
+#driveOverviewSheet .overview-tile > svg {
+  width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;
+  stroke-linejoin:round;stroke-linecap:round
+}
+#driveOverviewSheet .overview-tiles summary {position:relative}
+#driveOverviewSheet .overview-tiles summary img {position:absolute;right:12px;top:14px;width:14px}
+#driveOverviewSheet .overview-tiles summary .overview-section-label {
+  display:grid;gap:14px;justify-items:start
+}
+#driveOverviewSheet .overview-tiles summary svg {color:inherit}
+#driveOverviewSheet .overview-tiles details[open] {grid-column:1/-1}
+#driveOverviewSheet .overview-tiles details[open] :is(.metrics-grid,.overview-actions-group) {margin:0;padding:0 14px 14px}
+#driveOverviewSheet .overview-route,#driveOverviewSheet .drive-segments-box {border-radius:10px}
+#driveOverviewSheet .drive-segments-box {margin-top:16px}
+#driveOverviewSheet .segments-header {scroll-margin-top:12px}
+
+#driveOverviewSheet .overview-clip {
+  margin-block:10px;background:var(--bv-dashboard-surface);border-radius:12px;
+}
+:is(#driveOverviewSheet,#driveList) .overview-clip-play {
+  display:grid;grid-template-columns:42px minmax(0,1fr) 16px;align-items:center;
+  gap:12px;width:100%;min-height:78px;padding:14px;border:0;border-radius:12px;
+  background:none;color:#f5f6f8;text-align:left;font:inherit;cursor:pointer
+}
+.overview-clip-play-icon {
+  display:grid;place-items:center;width:42px;height:42px;
+  color:#1a1c1d;background:#f5f6f8;border-radius:50%
+}
+.overview-clip-copy {display:grid;gap:4px}
+.overview-clip-copy strong {font-size:17px;line-height:1.25;font-weight:660}
+.overview-clip-copy small {color:var(--dashboard-muted,#b4bac3);font-size:13px;line-height:1.4}
+.overview-clip-play img {opacity:.6}
+.overview-clip-actions {display:flex;flex-wrap:wrap;gap:8px;padding-inline:12px}
+#driveOverviewSheet .overview-clip-actions :is(button,a) {
+  text-decoration:none;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:1 1 76px;
+  min-width:0;width:auto;height:auto;min-height:48px;margin-bottom:12px;
+  padding:8px!important;border:0;border-radius:8px!important;background:#323536!important;
+  color:#f5f6f8;font:inherit;font-size:14px;font-weight:600;cursor:pointer
+}
+#driveOverviewSheet .overview-clip-actions .btn-delete-clip {color:#ffadae}
+#driveOverviewSheet .overview-clip button:active {filter:brightness(.86)}
+#driveOverviewSheet .overview-clip-play:focus-visible {outline-offset:-3px}
+
+#viewRecordings > .recordings-toolbar {grid-template-columns:48px minmax(0,1fr) 48px}
+#viewRecordings > .recordings-toolbar button,
+#viewRecordings .drives-sidebar :is(button,a,summary) {
+  box-sizing:border-box;min-height:48px;min-width:48px;touch-action:manipulation
+}
+#viewRecordings .library-source-actions {gap:8px}
+#viewRecordings:not(.detail-open) .drive-manage summary {
+  display:grid;place-items:center;padding:8px 12px;background:#323536;border-radius:8px;color:#f5f6f8
+}
+#driveList .drive-manage-options {display:grid;gap:6px;padding:6px}
+#viewRecordings #driveList .library-clip-actions {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px
+}
+#viewRecordings #driveList .library-clip-actions :is(a,button) {
+  display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:auto;
+  background:#323536!important;color:#f5f6f8;border:0;border-radius:8px!important;
+  text-decoration:none;font:inherit;font-size:14px;font-weight:600;cursor:pointer
+}
+#viewRecordings #driveList .library-clip-actions .btn-delete-clip {color:#ffadae}
+#viewRecordings #driveList .overview-clip-play {padding:6px 0;min-height:62px;background:none;color:#f5f6f8}
+#viewRecordings #driveList .drive-card-actions :is(.btn-toggle-recordings,.drive-play) {min-height:48px}
+
+#viewRecordings #driveList .drive-card-actions :is(.drive-overview-action,.drive-play) {
+  display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:52px;
+  padding:8px!important;border:0;border-radius:8px;color:#f5f6f8;background:#323536;
+  font:inherit;font-size:14px;font-weight:620;line-height:1.25;text-align:center;cursor:pointer;
+}
+#driveList .drive-card-actions svg {width:18px;height:18px;flex:none}
+@media(max-width:350px) {
+  #viewRecordings #driveList .drive-card-actions svg {width:16px;height:16px}
 }

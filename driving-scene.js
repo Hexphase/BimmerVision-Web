@@ -1,10 +1,8 @@
-import {createSignalHistory} from './signal-history.mjs';
-import {createDrivingHistory} from './driving-history.mjs';
-import {createRoadUserFusion} from './road-user-fusion.mjs';
 import * as THREE from './vendor/three/three.module.min.js';
+import {createDrivingHistory} from './driving-history.mjs';
 import {RoomEnvironment} from './vendor/three/RoomEnvironment.js';
 import {loadStandardFleet} from './standard-fleet.js';
-import {anchorDrivePath,createReplayTrajectory,createLaneLookAhead,createRoadEstimator,laneChangeBend,sampleRecordedBoundary} from './road-estimation.js?v=lane-look-ahead-1';
+import {createReplayTrajectory, createLaneLookAhead, sampleRecordedBoundary} from './road-estimation.js?v=lane-reconstruction-2';
 
 // Geometry is public site content; recording coordinates never leave the browser.
 let modelBytes;
@@ -28,18 +26,16 @@ export async function createDrivingScene(stage,data,onFailure) {
   try {
   renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio||1,1.75));
   renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
-  const canvas=renderer.domElement;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','Recorded traffic, blue driver vehicle and estimated road');stage.prepend(canvas);
+  const canvas=renderer.domElement;canvas.setAttribute('role','img');canvas.setAttribute('aria-label','Recorded traffic, blue driver vehicle with a four-second blue route preview and recorded lane boundaries');stage.prepend(canvas);
   const scene=new THREE.Scene();cleanupScene=scene;scene.background=new THREE.Color('#101216');scene.fog=new THREE.Fog('#101216',35,130);
-  const camera=new THREE.PerspectiveCamera(39,1,.1,220);camera.position.set(0,12.5,22);camera.lookAt(0,0,-10);
+  const camera=new THREE.PerspectiveCamera(39,1,.1,220);camera.position.set(0,15,25);camera.lookAt(0,0,-14);
   scene.add(new THREE.HemisphereLight(0xffffff,0x70747b,1.2));
   const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-18,30,10);scene.add(sun);
   const environment=new RoomEnvironment(),pmrem=new THREE.PMREMGenerator(renderer),envTarget=pmrem.fromScene(environment,.04);cleanupEnvironment=envTarget;scene.environment=envTarget.texture;environment.dispose();pmrem.dispose();
   const colors={sceneLight:new THREE.Color('#f6f7fa'),sceneDark:new THREE.Color('#101216'),blue:new THREE.Color('#278cff'),red:new THREE.Color('#df3349'),orange:new THREE.Color('#ffb23e')};
   const ego=fleet.make(colors,{own:true});scene.add(ego);
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshBasicMaterial({color:'#101216',toneMapped:false}));ground.rotation.x=-Math.PI/2;ground.position.y=-.025;scene.add(ground);
-  const estimator=createRoadEstimator(data),motion=globalThis.createVehicleMotion(data),actors=new Map(),roadCache=new Map(),signActors=new Map();
-  const replayTrajectory = createReplayTrajectory(data);
-  const laneLookAhead = createLaneLookAhead(data.frames,replayTrajectory);
+  const motion=globalThis.createVehicleMotion(data),actors=new Map(),signActors=new Map();
   let disposed=false,time=0,view='perspective',lastFrame=null,lastSigns={camera:[],display:[]};
   function mesh(max,color,opacity) {
     const positions=new Float32Array(max*18),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));geometry.setDrawRange(0,0);
@@ -47,12 +43,57 @@ export async function createDrivingScene(stage,data,onFailure) {
     const m=new THREE.Mesh(geometry,material);m.frustumCulled=false;scene.add(m);return {m,positions,count:0};
   }
   const white=mesh(1500,'#d5dbe4',.77),yellow=mesh(1500,'#d5b864',.85);
-  const edges=mesh(750,'#85919f',.48),ribbon=mesh(200,'#539bdb',.42),arrow=mesh(80,'#409eff',.8);
-  const inferredEdges=mesh(450,'#93a8bc',.47);
-  const cameraCurb=mesh(1024,'#ff91bd',.92),cameraPaint=mesh(1536,'#f7eb80',.9);
-  const stopBarLayer=mesh(64,'#ffffff',1);
-  stopBarLayer.m.renderOrder=2;
-  const roadMeshes=[stopBarLayer,cameraCurb,cameraPaint,white,yellow,edges,inferredEdges,ribbon,arrow];
+  const edges=mesh(750,'#85919f',.48),roadMeshes=[white,yellow,edges];
+  const history = createDrivingHistory(data.frames);
+  const pastWhite = mesh(256, '#b7c2d0', .65);
+  const pastYellow = mesh(256, '#d5b864', .70);
+  roadMeshes.push(pastWhite, pastYellow);
+  let historyIndex = -1, pastSegments = [];
+  function drawPastLanes(index) {
+    if (index !== historyIndex) {
+      pastSegments = history.at(index).segments;
+      historyIndex = index;
+    }
+    for (const {a, b, yellow, double} of pastSegments) {
+      const layer = yellow ? pastYellow : pastWhite;
+      if (double) {
+        for (const offset of [-.10, .10]) {
+          quad(layer, {x:a.x, y:a.y+offset}, {x:b.x, y:b.y+offset}, .10);
+        }
+      } else quad(layer, a, b, .11);
+    }
+  }
+  const trajectory = createReplayTrajectory(data);
+  const upcomingLanes = createLaneLookAhead(data.frames, trajectory);
+  const route = mesh(180, '#218eff', .64);
+  const lanePreview = mesh(1600, '#b7c2d0', .60);
+  const yellowPreview = mesh(600, '#d5b864', .60);
+  let previewFrame, previewLines;
+  roadMeshes.push(route, lanePreview, yellowPreview);
+
+  function drawLookAhead(time, frame) {
+    const path = trajectory.pathAt(time, 4);
+    for (let i = 1; i < (path?.length ?? 0); i++) {
+      quad(route, path[i - 1], path[i], .95, .006);
+    }
+    if (frame !== previewFrame) {
+      previewLines = upcomingLanes.at(frame.t, frame.b);
+      previewFrame = frame;
+    }
+    for (const {points, type, color} of previewLines) {
+      for (let i = 1; i < points.length; i++) {
+        if ([1,5,7].includes(type) && i % 9 >= 4 || type === 3 && i % 2) continue;
+        const layer = color === 2 ? yellowPreview : lanePreview;
+        if (type === 5 || type === 6) {
+          for (const offset of [-.10,.10]) {
+            const a = points[i-1], b = points[i];
+            quad(layer, {x:a.x,y:a.y+offset}, {x:b.x,y:b.y+offset}, .10);
+          }
+        } else quad(layer, points[i-1], points[i], .10);
+      }
+    }
+  }
+
   let boundaryRows, boundarySamples;
   function drawRecordedBoundaries(lines) {
     if (lines !== boundaryRows) {
@@ -87,66 +128,6 @@ export async function createDrivingScene(stage,data,onFailure) {
     target.count++;
   }
   const at=t=>globalThis.frameAt(data.frames,t);
-  function road(f){const key=f.t+':'+(f.b.length?'lanes':'no-lanes');if(!roadCache.has(key)){roadCache.set(key,estimator.estimate(f));if(roadCache.size>12)roadCache.delete(roadCache.keys().next().value);}return roadCache.get(key);}
-  function curveAt(curve,s) {
-    let lo=0,hi=curve.length-2;
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      if (curve[mid].s <= s) lo = mid;
-      else hi = mid - 1;
-    }
-    const a=curve[lo],b=curve[lo+1],u=clamp((s-a.s)/(b.s-a.s||1),0,1);
-    return {x:lerp(a.x,b.x,u),y:lerp(a.y,b.y,u)};
-  }
-  function drawDrivePath(f,change) {
-    const replayCurve = replayTrajectory.pathAt(time);
-    if (!replayCurve && (!f || (!f.b.length && !change))) return;
-    const curve = replayCurve ?? road(f).curve;
-    if (curve.length < 2) return;
-    const next = replayCurve ? null : data.frames[globalThis.perceptionFrameIndex(data.frames,f.t)+1];
-    const u = next && next.t-f.t < .35 ? clamp((time-f.t)/(next.t-f.t),0,1) : 0;
-    const nextCurve = u ? road(next).curve : null;
-    function estimatedPoint(s) {
-      const p=curveAt(curve,s);
-      if(nextCurve?.length>1){const q=curveAt(nextCurve,s);p.x=lerp(p.x,q.x,u);p.y=lerp(p.y,q.y,u);}
-      return p;
-    }
-    const end=Math.min(110,curve.at(-1).s),width=f?.w||3.5;
-    const anchoredPoint = s => anchorDrivePath(s,estimatedPoint(s),replayCurve ? 5 : 16);
-    let lateralBend;
-    if (!replayCurve && change && end > 0) {
-      const boundary = f.b.find(b => b[0] === (change.side === 'left' ? 0 : 1));
-      const mergeDistance = Math.min(end,clamp((f.v || 25) * .44704 * (change.end - time),10,34));
-      lateralBend = laneChangeBend(change,time,width,boundary,mergeDistance,anchoredPoint(mergeDistance).y);
-    }
-    const drivePoint = s => {
-      const p = anchoredPoint(s);
-      if (lateralBend) p.y += lateralBend(s);
-      return p;
-    };
-    function point(s,offset=0,center=estimatedPoint) {
-      const p=center(s);
-      if (!offset) return p;
-      const a=center(Math.max(0,s-1)),b=center(s+1),dx=b.x-a.x,dy=b.y-a.y,n=Math.hypot(dx,dy)||1;
-      return {x:p.x-dy/n*offset,y:p.y+dx/n*offset};
-    }
-    const pathEnd = Math.min(end, 70);
-    const pathHalfWidth = .39;
-    let left = point(0,pathHalfWidth,drivePoint), right = point(0,-pathHalfWidth,drivePoint);
-    for (let at = 0; at < pathEnd;) {
-      const nextDistance = Math.min(at + 1.5, pathEnd);
-      const taper = Math.min((pathEnd - nextDistance) / 13, 1);
-      const halfWidth = pathHalfWidth * taper * taper * (3 - 2 * taper);
-      const nextLeft = point(nextDistance, halfWidth,drivePoint);
-      const nextRight = point(nextDistance, -halfWidth,drivePoint);
-      stripSegment(ribbon,left,right,nextLeft,nextRight,.012);
-      left = nextLeft;
-      right = nextRight;
-      at = nextDistance;
-    }
-    const turn=!replayCurve && !change && data.events?.find(e=>e.kind==='turn'&&time>=e.planStart&&time<=e.end);
-    if(turn){for(let s=3;s<Math.min(end,35);s+=1.5)quad(arrow,point(s),point(s+1.5),.14,.035);}
-  }
   function generic(classCode,o) {
     const group=new THREE.Group(),body=new THREE.MeshStandardMaterial({color:'#545b66',roughness:.62});
     const bike=[1,2].includes(classCode),ped=classCode===0,w=ped?.45:bike?.65:o[9]||2.1,h=ped?1.7:bike?1.3:o[10]||2.8,l=ped?.45:bike?2:o[8]||6;
@@ -177,213 +158,16 @@ export async function createDrivingScene(stage,data,onFailure) {
   function resize() {if(disposed)return;const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.render(scene,camera);}
   const observer=new ResizeObserver(resize);cleanupObserver=observer;observer.observe(stage);
   const lost=e=>{e.preventDefault();onFailure?.('The 3D view is unavailable on this device. Video playback is still available.');};canvas.addEventListener('webglcontextlost',lost);
-  // Approximate ground contact in the ego frame. Bound the side projections
-  // to the immediate surroundings where fisheye distortion is less severe.
-  function cameraPoint(view,u,v,maxDepth=view==='front'?28:8){
-    const depth=328.5/(v-232),left=(320-u)*depth/365;
-    if(v<=244 || depth>maxDepth)return null;
-    if(view==='left')return {x:.7-left,y:.9+depth};
-    if(view==='right')return {x:.7+left,y:-.9-depth};
-    return {x:depth,y:left};
-  }
-  // Stationary boundaries can be carried forward using recorded movement.
-  // Moving vehicle positions expire separately because ego motion cannot predict them.
-  function cameraTransform(from,to) {
-    const age=to-from;
-    if(age<0 || age>4)return null;
-    if(age<.08)return p=>p;
-    const a=replayTrajectory.poseAt(from), b=replayTrajectory.poseAt(to);
-    if(!a?.forward || !b?.forward || a.track!==b.track)return null;
-    const [ax,ay]=a.forward,[bx,by]=b.forward;
-    const cos=ax*bx+ay*by,sin=ay*bx-ax*by;
-    if(cos<.9)return null;
-    const east=a.origin[0]-b.origin[0],north=a.origin[1]-b.origin[1];
-    return p=>({x:east*bx+north*by+p.x*cos-p.y*sin,y:north*bx-east*by+p.x*sin+p.y*cos});
-  }
-  function drawCameraResults(sample,frame,t){
-    const transform=cameraTransform(sample.time,t);
-    const boundaries=new Map();
-    for(const {view,traces,markings} of transform?sample.results:[]){
-      const project=([u,v])=>{
-        const p=cameraPoint(view,u,v);
-        return p && transform(p);
-      };
-      // KAFAS supplies the road markings. Use the longest coherent camera
-      // boundary on either side; raw segmentation stays in Camera details.
-      const paint=frame?.b?.length?traces.paint:[...traces.paint,...markings];
-      for(const [kind,chains] of [['curb',traces.curb],['paint',paint]]){
-        for(const chain of chains){
-          const points=chain.map(project).filter(p=>p && p.x>=-3 && p.x<=30);
-          if(points.length<4)continue;
-          const first=points[0],last=points.at(-1),span=Math.abs(first.x-last.x);
-          const side=Math.sign(first.y);
-          if(span<2 || points.some(p=>p.y*side<.9 || Math.abs(p.y)>7))continue;
-          const lateralRange=Math.max(...points.map(p=>p.y))-Math.min(...points.map(p=>p.y));
-          if(lateralRange>Math.max(.75,span*.28))continue;
-          if(!boundaries.has(side)||boundaries.get(side).span<span)boundaries.set(side,{kind,points,span});
-        }
-      }
-    }
-    for(const {kind,points} of boundaries.values()){
-      for(let i=1;i<points.length;i++)quad(kind==='curb'?cameraCurb:cameraPaint,points[i-1],points[i],.12,.065);
-    }
-  }
-  const cameraActors=new Map();
-  const history=createDrivingHistory(data.frames);
-  const fuseRoadUsers=createRoadUserFusion();
-  function drawRoadUsers(sample,frame,t){
-    const active=new Set(),detections=sample?.roadUsers;
-    const objects=fuseRoadUsers(detections, detections?at(detections.time)?.o??[]:[],cameraPoint);
-    if(detections && t>=detections.time && t-detections.time<=1.4){
-      for(const p of objects){
-          if(!p.confirmed)continue;
-          const person=p.kind==='person',bike=p.kind==='bike';
-          // A newly acquired KAFAS track takes over immediately between camera samples.
-          if(frame?.o.some(o=>(o[6]==null||o[6]>=30) &&
-            (o[3]===0?'person':[1,2].includes(o[3])?'bike':'vehicle')===p.kind &&
-            Math.hypot((o[1]-p.x)/(person?1:3),(o[2]-p.y)/(person?.65:1.25))<=1))continue;
-          const key=p.kind+':'+p.id;
-          let actor=cameraActors.get(key);
-          if(!actor){
-            actor=p.kind==='vehicle'?fleet.make(colors,{}):generic(person?0:1,[]);
-            if(person){
-              const head=new THREE.Mesh(new THREE.SphereGeometry(.17,8,6),new THREE.MeshStandardMaterial({color:'#d3a46f'}));
-              head.position.y=1.43;actor.add(head);
-            }
-            cameraActors.set(key,actor);scene.add(actor);
-          }
-          active.add(key);actor.position.set(-p.y,0,-p.x);
-      }
-    }
-    for(const [key,actor] of cameraActors)if(!active.has(key)){scene.remove(actor);release(actor);cameraActors.delete(key);}
-  }
-  // Stop bars belong to the recorded track. Store their endpoints in local
-  // east/north metres once so camera layout changes cannot move the paint.
-  const bars=[];
-  let lastPaint,barDepth=null;
-  function orientedPose(t){
-    const points=data.gps;
-    if(!points?.length || t<points[0][0] || t>points.at(-1)[0])return null;
-    let lo=0,hi=points.length;
-    while(lo<hi){const mid=(lo+hi)>>>1;if(points[mid][0]<=t)lo=mid+1;else hi=mid;}
-    const a=points[lo-1],b=points[lo]??a,dt=b[0]-a[0];
-    const movement=Math.hypot(b[1]-a[1],b[2]-a[2]);
-    // The recorder can omit GPS reports while stopped at a light. Bridge
-    // nearby fixes only; do not place a landmark during an unobserved trip.
-    if(dt>1.25 && (dt>15 || movement>4))return null;
-    const f=dt?(t-a[0])/dt:0;
-    const origin=[lerp(a[1],b[1],f),lerp(a[2],b[2],f)];
-    const heading=replayTrajectory.poseAt(t)?.forward;
-    if(heading)return {origin,forward:heading};
-    for(let i=lo-1;i>=0 && t-points[i][0]<60;i--){
-      const dx=origin[0]-points[i][1],dy=origin[1]-points[i][2],distance=Math.hypot(dx,dy);
-      if(distance>=2)return {origin,forward:[dx/distance,dy/distance]};
-    }
-    return null;
-  }
-  function drawStopBars(t,paint){
-    barDepth=null;
-    const local=paint?.ends.map(([u,v])=>cameraPoint('front',u,v));
-    if(paint && paint!==lastPaint && paint.time<=t && local.every(Boolean)){
-      lastPaint=paint;
-      const pose=orientedPose(paint.time);
-      if(pose?.forward){
-        const [e,n]=pose.forward;
-        const ends=local.map(p=>[pose.origin[0]+e*p.x-n*p.y,pose.origin[1]+n*p.x+e*p.y]);
-        const center=ends[0].map((v,i)=>(v+ends[1][i])/2);
-        const existing=bars.find(b=>Math.hypot(b.center[0]-center[0],b.center[1]-center[1])<2);
-        if(existing)existing.time=Math.min(existing.time,paint.time);
-        else bars.push({ends,center,time:paint.time});
-      }
-    }
-    const current=orientedPose(t);
-    if(current?.forward){
-      const [e,n]=current.forward;
-      for(const bar of bars){
-        if(bar.time>t)continue;
-        const [a,b]=bar.ends.map(([east,north])=>{
-          const dx=east-current.origin[0],dy=north-current.origin[1];
-          return {x:dx*e+dy*n,y:-dx*n+dy*e};
-        });
-        const depth=(a.x+b.x)/2;
-        if(depth< -30 || depth>65 || Math.abs(a.y+b.y)>60)continue;
-        quad(stopBarLayer,a,b,.32,.059);
-        if(barDepth===null || Math.abs(depth)<Math.abs(barDepth))barDepth=depth;
-      }
-    }
-    if(barDepth===null && local?.every(Boolean) && t>=paint.time && t-paint.time<.12){
-      quad(stopBarLayer,...local,.32,.059);barDepth=local[0].x;
-    }
-  }
-
-  // Camera detections provide bearing, but no measured signal distance.
-  // Use camera-facing neutral markers within the scene for both replay angles.
-  const signalMarkers=[];
-  const signalImage=stage.ownerDocument.createElement('canvas');
-  signalImage.width=120;signalImage.height=52;
-  const ink=signalImage.getContext('2d');
-  ink.fillStyle='#182026';ink.strokeStyle='#e3ebf3';ink.lineWidth=4;
-  ink.beginPath();ink.roundRect(3,4,114,44,11);ink.fill();ink.stroke();
-  ink.fillStyle='#9aa8b4';
-  for(const x of [25,60,95]){ink.beginPath();ink.arc(x,26,11,0,Math.PI*2);ink.fill();}
-  const signalTexture=new THREE.CanvasTexture(signalImage);
-  signalTexture.colorSpace=THREE.SRGBColorSpace;signTextures.add(signalTexture);
-  const signalHistory=createSignalHistory(data.speeds);
-  let signalCount=0;
-  function drawSignalMarkers(t,detection,enabled){
-    const lights=signalHistory(t,detection,enabled);
-    signalCount=lights.length;
-    camera.updateMatrixWorld();
-    const sorted=[...lights].sort((a,b)=>a.bbox[0]-b.bbox[0]);
-    let previousX=-Infinity;
-    sorted.forEach(({bbox:[x,y,w,h]},i)=>{
-      let marker=signalMarkers[i];
-      if(!marker){
-        marker=new THREE.Sprite(new THREE.SpriteMaterial({map:signalTexture,transparent:true,depthTest:false,depthWrite:false,toneMapped:false,fog:false}));
-        marker.userData.sharedGeometry=true;marker.renderOrder=5;scene.add(marker);signalMarkers.push(marker);
-      }
-      // Relative image coordinates keep heads on the correct side without
-      // inventing a surveyed location, including the wider single-camera view.
-      const u=(x+w/2)/640,v=(y+h/2)/480;
-      const widthFraction=Math.min(.16/camera.aspect,.12);
-      const markerX=Math.min(.82-(sorted.length-i-1)*widthFraction*2.15,
-        Math.max(previousX+widthFraction*2.15,(u-.5)*1.45));
-      previousX=markerX;
-      marker.position.set(markerX,.46-v*.70,0).unproject(camera);
-      const extent=2*marker.position.clone().sub(camera.position).dot(camera.getWorldDirection(new THREE.Vector3()))*Math.tan(camera.fov*Math.PI/360);
-      const size=extent*Math.min(.16,camera.aspect*.12);
-      marker.scale.set(size,size*52/120,1);marker.visible=true;
-    });
-    for(let i=lights.length;i<signalMarkers.length;i++)signalMarkers[i].visible=false;
-  }
-  let cameraResults, cameraEnabled=false;
-  function setTime(t,enhancements,enabled=!!enhancements) {
-    cameraEnabled=enabled;
-    cameraResults=enhancements;
-    if(disposed)return;time=t;const f=at(t);lastFrame=f;
-    const change=data.events?.find(event=>event.kind==='change'&&t>=event.start&&t<=event.end);
+  function setTime(t){
+    if(disposed)return;
+    time=t;
+    const f=at(t);lastFrame=f;
     for(const target of roadMeshes)target.count=0;
-    const past=history.at(globalThis.perceptionFrameIndex(data.frames,t));
-    for(const {a,b,yellow:isYellow,double} of past.segments){
-      const layer=isYellow?yellow:white;
-      if(double){
-        for(const offset of [-.1,.1])quad(layer,{x:a.x,y:a.y+offset},{x:b.x,y:b.y+offset},.10);
-      }else quad(layer,a,b,.11);
-    }
-    drawDrivePath(f,change);
-    barDepth=null;
-    if(enabled)drawStopBars(t,enhancements?.stopBar);
-    drawSignalMarkers(t,enhancements?.signalSample??enhancements?.roadUsers,enabled);
-    drawRoadUsers(enhancements,f,t);
-    if(enhancements)drawCameraResults(enhancements,f,t);
     const active=new Set();
     if(f) {
+      drawPastLanes(globalThis.perceptionFrameIndex(data.frames, f.t));
+      drawLookAhead(t, f);
       drawRecordedBoundaries(f.b);
-      for (const points of laneLookAhead.at(t,f.b)) {
-        for (let i = 1; i < points.length; i++) {
-          if (i % 4 < 2) quad(inferredEdges,points[i-1],points[i],.09,.015);
-        }
-      }
       const objectTime = f.objectT ?? f.t;
       let next;
       if (f.o.length) {
@@ -417,9 +201,9 @@ export async function createDrivingScene(stage,data,onFailure) {
       }
     }
     updateSigns(t);renderer.render(scene,camera);
-    return f && {...f,leadSpeedMph:past.leadSpeed,laneChange:change?.side,inferredLanes:inferredEdges.count>0};
+    return f;
   }
   resize();
-  return {canvas,setSize(w,h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();},setTime,setView(value){view=value;if(view==='overhead'){camera.position.set(0,55,8);camera.lookAt(0,0,-22);}else{camera.position.set(0,12.5,22);camera.lookAt(0,0,-10);}setTime(time,cameraResults,cameraEnabled);},get signalCount(){return signalCount;},get stopBarDepth(){return barDepth;},get stopBarVisible(){return stopBarLayer.count>0;},inspect(){return {time,barDepth,trafficLights:signalMarkers.filter(m=>m.visible).length,stopBar:stopBarLayer.count>0,objects:actors.size,cameraObjects:[...cameraActors.keys()],lanes:lastFrame?.b.length||0,markingSegments:white.count+yellow.count,edgeSegments:edges.count,inferredLaneSegments:inferredEdges.count,routePoints:data.gps.length,signs:[...signActors.values()].map(a=>({kind:a.userData.kind,x:a.position.x,z:a.position.z})),recognizedSigns:lastSigns.display.map(s=>({kind:s.kind,value:s.value,unit:s.unit})),model:fleet.meta.identity,actors:[...actors.values()].map(a=>({direction:a.userData.motion,heading:a.rotation.y}))};},dispose(){if(disposed)return;disposed=true;observer.disconnect();canvas.removeEventListener('webglcontextlost',lost);release(scene);for(const texture of signTextures)texture.dispose();signTextures.clear();fleet.dispose();envTarget.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();}};
+  return {canvas,get hasRoutePreview(){return route.count>0;},setSize(w,h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();},setTime,setView(value){view=value;if(view==='overhead'){camera.position.set(0,55,8);camera.lookAt(0,0,-12);}else{camera.position.set(0,15,25);camera.lookAt(0,0,-14);}setTime(time);},inspect(){return {time,historySegments:pastWhite.count+pastYellow.count,routeSegments:route.count,previewSegments:lanePreview.count+yellowPreview.count,objects:actors.size,lanes:lastFrame?.b.length||0,markingSegments:white.count+yellow.count,edgeSegments:edges.count,signs:[...signActors.values()].map(a=>({kind:a.userData.kind,x:a.position.x,z:a.position.z})),recognizedSigns:lastSigns.display.map(s=>({kind:s.kind,value:s.value,unit:s.unit})),model:fleet.meta.identity,actors:[...actors.values()].map(a=>({direction:a.userData.motion,heading:a.rotation.y}))};},dispose(){if(disposed)return;disposed=true;observer.disconnect();canvas.removeEventListener('webglcontextlost',lost);release(scene);for(const texture of signTextures)texture.dispose();signTextures.clear();fleet.dispose();envTarget.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();}};
   } catch(error) {cleanupObserver?.disconnect();if(cleanupScene)release(cleanupScene);for(const texture of signTextures)texture.dispose();signTextures.clear();cleanupEnvironment?.dispose();fleet.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();throw error;}
 }

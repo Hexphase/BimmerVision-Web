@@ -18,6 +18,10 @@
     const parts = path.split('/');
     return parts.length && parts.every(p => p && p !== '.' && p !== '..' && !p.endsWith('.partial') && p !== '.partials') ? parts : null;
   }
+  function recordingId(directory) {
+    const id=directory.replace(/^BimmerVision-/i, '');
+    return UUID.test(id) ? id.toLowerCase() : null;
+  }
   function json(value, status = 200) { return new Response(JSON.stringify(value), {status, headers: {'Content-Type': 'application/json'}}); }
   function validMapping(m) {
     return m && m.schemaVersion === 1 && m.confirmed === true && ['frontRear', 'leftRight'].includes(m.phase0) && ['frontRear', 'leftRight'].includes(m.phase1) && m.phase0 !== m.phase1 && typeof m.flipHalves === 'boolean';
@@ -45,10 +49,12 @@
     for (const {path, file, handle} of entries) {
       if(++discoveryCount%200===0){await yieldUI();check(signal);}
       const parts = safeParts(path);
-      if (!parts || parts.length < 2 || !UUID.test(parts[parts.length - 2])) continue;
+      if (!parts || parts.length < 2) continue;
+      const id=recordingId(parts[parts.length-2]);
+      if (!id) continue;
       const dir = parts.slice(0, -1).join('/'), filename = parts[parts.length - 1];
       if (!['manifest.json', 'capture.bvr', 'mapping.json'].includes(filename)) continue;
-      if (!groups.has(dir)) groups.set(dir, {id: parts[parts.length - 2], files: new Map(), handles: new Map(), ambiguous: false});
+      if (!groups.has(dir)) groups.set(dir, {id, directory:parts.slice(1,-1), files: new Map(), handles: new Map(), ambiguous: false});
       const group = groups.get(dir);
       if (group.files.has(filename)) group.ambiguous = true;
       group.files.set(filename, file);
@@ -64,17 +70,18 @@
         if (ids.get(group.id.toLowerCase()) !== 1 || group.ambiguous) throw Error('Duplicate recording ID or ambiguous files');
         if (!mf || !capture || mf.size > MAX_JSON || mf.size === 0) throw Error('Missing archive or invalid manifest size');
         const manifest = JSON.parse(await mf.text());
-        if (!manifest || manifest.id !== group.id || !UUID.test(manifest.id) || manifest.complete !== true || manifest.schemaVersion !== 1 || manifest.format !== 'bvr1') throw Error('Invalid or incomplete recording manifest');
+        if (!manifest || !UUID.test(manifest.id) || manifest.id.toLowerCase() !== group.id || manifest.complete !== true || manifest.schemaVersion !== 1 || manifest.format !== 'bvr1') throw Error('Invalid or incomplete recording manifest');
         if (!Number.isSafeInteger(manifest.bytes) || manifest.bytes !== capture.size || capture.size < 16) throw Error('Archive size does not match manifest');
         const header = new Uint8Array(await capture.slice(0, 16).arrayBuffer());
         if (!validHeader(header)) throw Error('Invalid archive header');
-        recordings.set(manifest.id.toLowerCase(), {manifest, manifestFile:mf, manifestHandle:group.handles.get('manifest.json'), captureHandle:group.handles.get('capture.bvr'), capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
+        recordings.set(manifest.id.toLowerCase(), {directory:group.directory, manifest, manifestFile:mf, manifestHandle:group.handles.get('manifest.json'), captureHandle:group.handles.get('capture.bvr'), capture, mappingFile: group.files.get('mapping.json'), overview: {route: [], endpoints: null, routeStatus: 'indexing'}});
       } catch (error) { warnings.push(`${group.id}: ${error.message}`); }
       onProgress({phase: 'catalog', completed: ++count, total: groups.size});
       if(count%20===0){await yieldUI();check(signal);}
     }
     let closed = false, lockQueue=Promise.resolve(), revision=0;
-    const listeners=new Set(),canLock=recordings.size>0&&[...recordings.values()].every(r=>typeof r.manifestHandle?.createWritable==='function'&&typeof r.manifestHandle?.requestPermission==='function'&&typeof r.captureHandle?.getFile==='function');
+    const listeners=new Set();
+    let permissionHandle=options.permissionHandle,canLock=recordings.size>0&&[...recordings.values()].every(r=>typeof r.manifestHandle?.createWritable==='function'&&typeof r.manifestHandle?.requestPermission==='function'&&typeof r.captureHandle?.getFile==='function');
     function live(requestSignal){check(signal);check(requestSignal);if(closed)throw abort();}
     async function saveLock(record,locked,permission,requestSignal){
       let writable,committed=false;
@@ -106,7 +113,26 @@
       }finally{if(writable&&!committed)await writable.abort().catch(()=>{});}
     }
     const source = {
-      kind: 'usb', name, readOnly: !canLock, canLock, canDelete:false, label: canLock?'USB locking available; video stays unchanged':LABEL, warnings,
+      kind: 'usb', name, recordingCount: recordings.size, get readOnly(){return !canLock;}, get canLock(){return canLock;}, canDelete:false, label: canLock?'USB locking available; video stays unchanged':LABEL, warnings,
+      async enableLocks(root, requestSignal){
+        live(requestSignal);
+        if(root.name!==name)throw Error('Choose the same folder you opened for viewing.');
+        const handles=[];
+        for(const record of recordings.values()){
+          live(requestSignal);
+          let dir=root;
+          for(const part of record.directory)dir=await dir.getDirectoryHandle(part);
+          const manifest=await dir.getFileHandle('manifest.json'),capture=await dir.getFileHandle('capture.bvr');
+          const file=await manifest.getFile(),video=await capture.getFile();
+          if(file.size!==record.manifestFile.size || await file.text()!==await record.manifestFile.text() ||
+             video.size!==record.capture.size || video.lastModified!==record.capture.lastModified)
+            throw Error('This folder does not match the open recordings.');
+          handles.push({record,manifest,capture});
+        }
+        live(requestSignal);
+        for(const {record,manifest,capture} of handles){record.manifestHandle=manifest;record.captureHandle=capture;}
+        permissionHandle=root;canLock=handles.length>0;
+      },
       get revision(){return revision;},
       subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
       getOriginalFiles(id) { check(signal);if(closed)throw abort();if(typeof id!=='string'||!UUID.test(id))throw Error('Invalid recording.');const record=recordings.get(id.toLowerCase());if(!record)throw Error('Recording unavailable.');const files=[{name:'capture.bvr',blob:record.capture}];if(record.mappingFile)files.push({name:'mapping.json',blob:record.mappingFile});files.push({name:'manifest.json',blob:record.manifestFile});return files; },
@@ -124,7 +150,7 @@
           let body;try{body=JSON.parse(init.body);}catch{return json({error:'Invalid lock request'},400);}
           if(typeof body?.locked!=='boolean')return json({error:'Lock must be true or false'},400);
           // Ask while still in the user's click gesture, before serialized I/O awaits.
-          const permission=Promise.resolve().then(()=>(options.permissionHandle||record.manifestHandle).requestPermission({mode:'readwrite'}));
+          const permission=Promise.resolve().then(()=>(permissionHandle||record.manifestHandle).requestPermission({mode:'readwrite'}));
           permission.catch(()=>{});
           const result=lockQueue.then(()=>saveLock(record,body.locked,permission,init.signal));lockQueue=result.catch(()=>{});return result;
         }
@@ -189,7 +215,7 @@
         if(++visited%100===0){options.onProgress?.({phase:'discovery',message:'Finding your recordings…'});await yieldUI();check(options.signal);}
         if (!safeParts(name)) continue;
         if (child.kind === 'directory') {
-          if (depth === 0 || name === 'BimmerVision' || name === 'Library' || UUID.test(name)) await walk(child, prefix + name + '/', depth + 1);
+          if (depth === 0 || name === 'BimmerVision' || name === 'Library' || recordingId(name)) await walk(child, prefix + name + '/', depth + 1);
         } else if (['manifest.json', 'capture.bvr', 'mapping.json'].includes(name)) entries.push({path: prefix + name, file: await child.getFile(), handle: child});
       }
     }

@@ -157,10 +157,10 @@ test('lane look-ahead extends a boundary from an aligned later measurement and f
  const frames=[{t:1,laneT:1,b:[current]},{t:1.5,laneT:1.5,b:[]},{t:2.05,laneT:2.05,b:[future]}];
  const replay=createReplayTrajectory({gps});
  const lookAhead=createLaneLookAhead(frames,replay);
- const [extension]=lookAhead.at(1,[current]);
+ const [{points:extension}]=lookAhead.at(1,[current]);
  assert.deepEqual(extension[0],{x:20,y:2});
  assert.ok(extension.at(-1).x>40);
- const [gap]=lookAhead.at(1.5,[]);
+ const [{points:gap}]=lookAhead.at(1.5,[]);
  assert.ok(gap[0].x>5&&gap.at(-1).x<=15);
  assert.ok(gap.every(point=>Math.abs(point.y-2)<1e-6));
  assert.deepEqual(current,[0,0,2,0,0,0,20,2,7,0]);
@@ -184,4 +184,16 @@ test('turn reconstruction requires matching GPS course, speed, steering and indi
  const turns=inferReplayTurns(frames,gps,[]);assert.equal(turns.length,1);assert.equal(turns[0].side,'right');
  assert.equal(inferReplayTurns(frames.map(f=>({...f,steering:0})),gps,[]).length,0);
  assert.equal(inferReplayTurns(frames,gps.map(p=>[p[0],0,p[0]*10]),[]).length,0);
+});
+test('five seconds of overlapping observations reconstruct one partial lane across a slot change',async()=>{
+ const {createReplayTrajectory,createLaneLookAhead}=await import('../road-estimation.js');
+ const gps=Array.from({length:25},(_,i)=>[i/2,5*i,0]);
+ const frames=Array.from({length:7},(_,t)=>({t,b:[[t<3?0:2,0,1.8,0,0,0,20,2,7,1]]}));
+ const trajectory=createReplayTrajectory({gps});
+ const lanes=createLaneLookAhead(frames,trajectory);
+ const [line]=lanes.at(0,frames[0].b);
+ assert.equal(line.points[0].x,20);
+ assert.equal(line.points.at(-1).x,70);
+ assert.ok(line.points.every((p,i,points)=>p.y===1.8&&(!i||p.x>points[i-1].x)));
+ assert.deepEqual(lanes.at(0,frames[0].b),[line]);
 });

@@ -21,17 +21,12 @@ test('a cancelled first camera request cannot abort the next camera scan',async(
  assert.equal(pending[1].signal.aborted,false);assert.equal(s.node('qrCameraPanel').hidden,false);pending[1].resolve(()=>{});await second;
 });
 test('BFCache navigation keeps the selected source usable while a real unload closes it',()=>{const s=setup();s.manager.source=s.source;s.windowListeners.pagehide({persisted:true});assert.equal(s.counts().closed,0);s.windowListeners.pagehide({persisted:false});assert.equal(s.counts().closed,1);});
-test('supported native folder picker is read-only and bypasses recursive file-input selection',async()=>{
- let request;const s=setup({directoryPicker:async options=>{request=options;return {name:'BimmerVision'};}});s.node('openUsbBtn').listeners.click();await s.node('selectUsbDriveBtn').listeners.click();assert.equal(request.mode,'read');assert.equal(s.node('usbFolderInput').clicked||0,0);assert.equal(s.manager.source,s.source);assert.equal(s.options().signal.aborted,false);assert.equal(s.node('usbInstructions').open,false);
-});
-test('native picker cancellation restores controls without an error or recording access',async()=>{
- const s=setup({directoryPicker:async()=>{throw new DOMException('Cancelled','AbortError');}});s.node('openUsbBtn').listeners.click();await s.node('selectUsbDriveBtn').listeners.click();assert.equal(s.manager.source,null);assert.equal(s.node('selectUsbDriveBtn').disabled,false);assert.equal(s.node('sourceError').hidden,true);assert.equal(s.node('usbInstructions').open,true);
-});
-test('an embedded-browser restriction offers compatibility selection on the next explicit click',async()=>{
- let calls=0;const s=setup({directoryPicker:async()=>{calls++;throw new DOMException('Unsupported frame','SecurityError');}});s.node('openUsbBtn').listeners.click();await s.node('selectUsbDriveBtn').listeners.click();assert.match(s.node('usbPickerStatus').textContent,/compatibility/);assert.equal(s.node('usbFolderInput').clicked||0,0);await s.node('selectUsbDriveBtn').listeners.click();assert.equal(s.node('usbFolderInput').clicked,1);assert.equal(calls,1);
-});
-test('a native picker result arriving after cancellation cannot replace the selected source',async()=>{
- let finish;const s=setup({directoryPicker:()=>new Promise(resolve=>finish=resolve)});const pending=s.node('selectUsbDriveBtn').listeners.click();s.node('cancelSourceWork').listeners.click();finish({name:'BimmerVision'});await pending;assert.equal(s.manager.source,null);assert.equal(s.options(),undefined);
+test('opening USB recordings uses only the read-only input',async()=>{
+ let calls=0;const s=setup({directoryPicker:()=>{calls++;}});
+ s.node('openUsbBtn').listeners.click();
+ assert.equal(s.node('usbInstructions').open,true);
+ s.node('usbFolderInput').files=[{}];await s.node('usbFolderInput').listeners.change();
+ assert.equal(calls,0);assert.equal(s.manager.source,s.source);
 });
 test('One Google sign-in click connects Drive and disconnecting closes the source',async()=>{let connected=0,closed=0;const drive={kind:'drive',readOnly:true,account:{emailAddress:'driver@example.com'},close(){closed++;}};const s=setup({driveClient:{connect:async()=>{connected++;return {close(){}};}} ,driveSource:{fromClient:async()=>drive}});assert.equal(connected,0);await s.node('connectGoogleDriveBtn').listeners.click();assert.equal(connected,1);assert.equal(s.manager.source,drive);assert.match(s.node('googleDriveStatus').textContent,/driver@example.com/);s.node('disconnectGoogleDriveBtn').listeners.click();assert.equal(closed,1);assert.equal(s.node('sourceScreen').hidden,false);assert.equal(s.node('returnToRecordingsBtn').hidden,true);});
 test('fragment phone handoff pairs by POST without constructing query credentials',async()=>{let input,options;const source={kind:'car',readOnly:false,close(){}};const s=setup({handoffHash:'#car='+encodeURIComponent('http://192.168.1.10:8765')+'&code=12345678&backup=1',remoteConnect:async(value,o)=>{input=value;options=o;return source;}});await new Promise(resolve=>setImmediate(resolve));assert.equal(input,'http://192.168.1.10:8765');assert.equal(options.code,'12345678');assert.equal(s.node('carFallbackLink').href,'http://192.168.1.10:8765/');assert.equal(s.node('carCode').value,'');assert.equal(s.manager.source,source);assert.equal(s.node('phoneBackupInstructions').hidden,false);});
