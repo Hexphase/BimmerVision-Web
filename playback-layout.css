@@ -407,7 +407,7 @@ body[data-screen="playback"] #sourceAccessNotice {display:none}
   #viewPlayback .playback-vision-pair {
     grid-area:previews;display:flex;gap:12px;min-width:0;margin:0 12px;
     overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
-    touch-action:pan-y pinch-zoom;overscroll-behavior-x:contain;scrollbar-width:none;border-radius:11px;
+    touch-action:auto;overscroll-behavior-x:contain;scrollbar-width:none;border-radius:11px;
     height:clamp(320px,46dvh,440px)
   }
   #viewPlayback .playback-vision-pair::-webkit-scrollbar {display:none}
@@ -544,8 +544,8 @@ body[data-screen="playback"] .app-header {grid-template-columns:56px minmax(0,1f
   background:linear-gradient(transparent 60%,#000a);transition:opacity .14s ease
 }
 #playerStage .clip-overlay :is(button,input) {pointer-events:none}
-#playerStage:is([data-controls="visible"],:has(:focus-visible),:has(input:active)) .clip-overlay {opacity:1}
-#playerStage:is([data-controls="visible"],:has(:focus-visible),:has(input:active)) .clip-overlay :is(button,input) {pointer-events:auto}
+#playerStage:is([data-controls="visible"],:not([data-dismissed]):has(:focus-visible),:has(input:active)) .clip-overlay {opacity:1}
+#playerStage:is([data-controls="visible"],:not([data-dismissed]):has(:focus-visible),:has(input:active)) .clip-overlay :is(button,input) {pointer-events:auto}
 #playerStage[data-mouse-hover] .clip-overlay {opacity:1}
 #playerStage[data-mouse-hover] .clip-overlay :is(button,input) {pointer-events:auto}
 #playerStage .clip-buttons-row {
@@ -565,3 +565,8 @@ body[data-screen="playback"] .app-header {grid-template-columns:56px minmax(0,1f
 #playerStage #scrubBar {height:44px;margin:0;min-width:0;flex:1}
 #viewPlayback #playerStage #timecode {display:inline;font-size:11px;font-variant-numeric:tabular-nums}
 @media(prefers-reduced-motion:reduce) {#playerStage .clip-overlay {transition:none}}
+
+#viewPlayback #playerStage .playback-controls #playPauseBtn {
+  width:64px;height:64px;border-radius:50%;padding:0
+}
+#playerStage #playPauseBtn svg {width:28px;height:28px}

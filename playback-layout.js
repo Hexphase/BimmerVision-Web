@@ -20,7 +20,6 @@ class BVPlaybackLayout {
     const mobile=window.matchMedia('(max-width:999px)');
     const deck=root.querySelector('.playback-vision-pair');
     const dots=[...root.querySelectorAll('.preview-picker button')];
-    let visibleIndex=0;
     const panels=[...deck.children];
     const showPreview=index=>{
       const panel=panels[index];
@@ -28,43 +27,47 @@ class BVPlaybackLayout {
       deck.scrollTo({left,behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});
     };
     dots.forEach((dot,index)=>dot.addEventListener('click',()=>showPreview(index)));
-    let gesture=null, suppressClick=false;
-    deck.addEventListener('pointerdown',event=>{
-      suppressClick=false;
-      if(event.target.closest('.timeline-viewport'))return;
-      if(mobile.matches && event.pointerType==='touch' && event.isPrimary)
-        gesture={id:event.pointerId,x:event.clientX,y:event.clientY,index:visibleIndex};
-    });
-    deck.addEventListener('pointercancel',()=>{gesture=null;});
-    deck.addEventListener('pointerup',event=>{
-      if(!gesture || gesture.id!==event.pointerId)return;
-      const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y,start=gesture.index;
-      gesture=null;
+    // Some mobile browsers hand the gesture to a clipped element inside the card.
+    // Complete the swipe if native scrolling never moved the deck.
+    let swipeStart;
+    deck.addEventListener('touchstart',event=>{
+      swipeStart=null;
+      if(!mobile.matches || event.touches.length!==1 || event.target.closest('.timeline-viewport'))return;
+      const touch=event.touches[0];
+      swipeStart={x:touch.clientX,y:touch.clientY,left:deck.scrollLeft,
+        index:dots.findIndex(dot=>dot.getAttribute('aria-pressed')==='true')};
+    },{passive:true});
+    deck.addEventListener('touchcancel',()=>{swipeStart=null;});
+    deck.addEventListener('touchend',event=>{
+      const start=swipeStart;
+      swipeStart=null;
+      if(!start || event.touches.length || Math.abs(deck.scrollLeft-start.left)>4)return;
+      const touch=event.changedTouches[0],dx=touch.clientX-start.x,dy=touch.clientY-start.y;
       if(Math.abs(dx)<32 || Math.abs(dx)<=Math.abs(dy))return;
-      suppressClick=true;
-      const index=Math.max(0,Math.min(panels.length-1,start-Math.sign(dx)));
-      showPreview(index);
-    });
-    deck.addEventListener('click',event=>{
-      if(suppressClick){event.preventDefault();event.stopImmediatePropagation();suppressClick=false;}
-    },true);
+      if(event.cancelable)event.preventDefault();
+      showPreview(Math.max(0,Math.min(panels.length-1,start.index-Math.sign(dx))));
+    },{passive:false});
     deck.addEventListener('scroll',()=>{
       if(!mobile.matches)return;
       const left=deck.getBoundingClientRect().left;
       const distance=panels.map(panel=>Math.abs(panel.getBoundingClientRect().left-left));
-      visibleIndex=distance.indexOf(Math.min(...distance));
+      const visibleIndex=distance.indexOf(Math.min(...distance));
       dots.forEach((dot,i)=>dot.setAttribute('aria-pressed',String(i===visibleIndex)));
     },{passive:true});
     const hover=event=>{
-      if(event.pointerType==='mouse')preview.dataset.mouseHover='';
+      if(event.pointerType==='mouse' && !preview.hasAttribute('data-dismissed'))preview.dataset.mouseHover='';
       else delete preview.dataset.mouseHover;
     };
     preview.addEventListener('pointermove',hover);
     preview.addEventListener('pointerenter',hover);
-    preview.addEventListener('pointerleave',()=>delete preview.dataset.mouseHover);
+    preview.addEventListener('pointerleave',()=>{delete preview.dataset.mouseHover;delete preview.dataset.dismissed;});
+    preview.addEventListener('focusin',event=>{
+      if(event.target.matches(':focus-visible'))delete preview.dataset.dismissed;
+    });
     let hideTimer;
     const reveal=()=>{
       clearTimeout(hideTimer);
+      delete preview.dataset.dismissed;
       preview.dataset.controls='visible';
       hideTimer=setTimeout(()=>delete preview.dataset.controls,3000);
     };
@@ -97,7 +100,13 @@ class BVPlaybackLayout {
     const clearTap=()=>{clearTimeout(tapTimer);tapTimer=null;tapSide=0;};
     canvas.setAttribute('aria-description','Tap to show controls. Tap the center to play or pause. Double-tap the left or right edge to seek 10 seconds.');
     canvas.addEventListener('click',event=>{
-      reveal();
+      const wasVisible=preview.matches('[data-controls="visible"],[data-mouse-hover],:has(:focus-visible)');
+      if(wasVisible){
+        clearTimeout(hideTimer);
+        delete preview.dataset.controls;
+        delete preview.dataset.mouseHover;
+        preview.dataset.dismissed='';
+      }else reveal();
       if(!ready())return;
       const bounds=canvas.getBoundingClientRect(),fraction=(event.clientX-bounds.left)/bounds.width;
       const side=fraction<=.18?-1:fraction>=.82?1:0;
