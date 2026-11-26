@@ -4,6 +4,23 @@
  * Triggers native iOS Share Sheet ("Save Video" to Camera Roll) with zero car server CPU load.
  */
 class ClipExporter {
+  static recordedTime(manifest, seconds) {
+    const targetUs = manifest?.startMonotonicUs + seconds * 1e6;
+    const anchors = manifest?.clock?.displayAnchors;
+    if (Number.isFinite(targetUs) && Array.isArray(anchors) && anchors.length) {
+      let anchor = anchors[0];
+      for (const item of anchors) {
+        if (item.sampleUs > targetUs) break;
+        anchor = item;
+      }
+      if (Number.isSafeInteger(anchor.sampleUs) && Number.isSafeInteger(anchor.wallMs))
+        return {ms:anchor.wallMs + (targetUs-anchor.sampleUs)/1000, utc:false};
+    }
+    const offset = manifest?.clock?.utcOffsetMinutes;
+    return {ms:Date.parse(manifest?.startedAt) + seconds*1000 + (Number.isFinite(offset)?offset*60000:0),
+      utc:!Number.isFinite(offset) || offset===0};
+  }
+
   constructor(player) {
     this.player = player;
   }
@@ -209,10 +226,26 @@ class ClipExporter {
     canvas.width = exportW;
     canvas.height = exportH;
 
+    // The muxer appends media blocks and patches the MP4 header at finalization.
+    // Keep immutable Blob parts so saving never allocates a clip-sized JS buffer.
+    const parts = [];
+    let outputSize = 0;
+    const target = new Mp4Muxer.StreamTarget({onData(bytes, position) {
+      if (position > outputSize) throw new Error('Unexpected gap in MP4 output.');
+      const block = new Blob([bytes]);
+      if (position === outputSize) {
+        parts.push(block);
+      } else {
+        const previous = new Blob(parts);
+        parts.length = 0;
+        parts.push(previous.slice(0, position), block, previous.slice(position + block.size));
+      }
+      outputSize = Math.max(outputSize, position + block.size);
+    }});
     const muxer = new Mp4Muxer.Muxer({
-      target: new Mp4Muxer.ArrayBufferTarget(),
+      target,
       video: { codec: 'avc', width: exportW, height: exportH },
-      fastStart: 'in-memory'
+      fastStart: false
     });
 
     let encodeError = null;
@@ -257,7 +290,7 @@ class ClipExporter {
         codec: 'avc1.420028',
         width: exportW,
         height: exportH,
-        bitrate: exportW > 1280 ? 6000000 : 4500000,
+        bitrate: exportW > 1280 ? 18000000 : 12000000,
         framerate: fps,
         avc: { format: 'avc' }
       });
@@ -405,8 +438,8 @@ class ClipExporter {
       muxer.finalize();
       progress(1, 'Ready to save');
       return {
-        buffer: muxer.target.buffer,
-        fileName: `BimmerVision-${manifest.id.slice(0, 8)}-${Array.isArray(view) ? view.join("-") : view}${requested > 0 ? '-' + requested + 's' : ''}.m4v`,
+        blob: new Blob(parts, {type:"video/mp4"}),
+        fileName: `BimmerVision-${manifest.id.slice(0, 8)}-${Array.isArray(view) ? view.join("-") : view}${requested > 0 ? '-' + requested + 's' : ''}.mp4`,
         totalFrames,
         duration
       };
@@ -519,7 +552,7 @@ class ClipExporter {
     }
 
     const chunks = [];
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: exportW > 1280 ? 6000000 : 4500000 });
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: exportW > 1280 ? 18000000 : 12000000 });
     recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
     recorder.onerror=e=>{operation.error=e.error || new Error('The video recorder failed. Please retry.');};
 
@@ -664,12 +697,12 @@ class ClipExporter {
       await this._awaitCompletion(stopPromise,operation,'finalizing the video recorder');
 
       const blob = new Blob(chunks, { type: mimeType });
-      const arrayBuffer = await this._awaitCompletion(blob.arrayBuffer(),operation,'saving the recorded video');
+      if (!blob.size) throw new Error('The video recorder produced an empty file.');
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
 
       progress(1, 'Ready to save');
       return {
-        buffer: arrayBuffer,
+        blob,
         fileName: `BimmerVision-${manifest.id.slice(0, 8)}-${Array.isArray(view) ? view.join("-") : view}${requested > 0 ? '-' + requested + 's' : ''}.${ext}`,
         totalFrames,
         duration
@@ -1136,10 +1169,10 @@ class ClipExporter {
       if(ov.gas)pedal('gas',Boolean(telem.gasPressed||(telem.acceleratorPercent??0)>5));
     };
 
-    const startMs = new Date(manifest?.startedAt || this.player?.manifest?.startedAt || '').getTime();
-    const date = Number.isFinite(startMs) ? new Date(startMs + timeSec * 1000) : null;
-    const dateStr = date ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
-    const clockStr = date ? date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' })
+    const stamp = ClipExporter.recordedTime(manifest || this.player?.manifest, timeSec);
+    const date = Number.isFinite(stamp.ms) ? new Date(stamp.ms) : null;
+    const dateStr = date ? date.toLocaleDateString(undefined, {timeZone:'UTC', month:'short', day:'numeric', year:'numeric'}) + (stamp.utc?' UTC':'') : null;
+    const clockStr = date ? date.toLocaleTimeString(undefined, {timeZone:'UTC', hour:'numeric', minute:'2-digit', second:'2-digit'})
       : `${String(Math.floor(timeSec / 60)).padStart(2, '0')}:${(timeSec % 60).toFixed(2).padStart(5, '0')}`;
     const timeWidth = Math.max(dateStr ? measure(dateStr, 13) : 0, measure(clockStr, date ? 16 : 17, 'monospace'));
     const drawTime = (x, centerY) => {
@@ -1213,7 +1246,7 @@ class ClipExporter {
     ctx.stroke();
 
     const centerY = barY + Math.round(barH / 2);
-    const gap = 16;
+    const gap = w <= 720 ? 10 : 16;
     const paddingX = w > 1280 ? 56 : 24;
     const clusterWidth = modules => modules.reduce((sum, mod) => sum + mod.width, 0) + Math.max(0, modules.length - 1) * gap;
     const leftW = clusterWidth(leftModules), centerW = clusterWidth(centerModules), rightW = clusterWidth(rightModules);

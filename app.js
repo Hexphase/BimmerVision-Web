@@ -1202,6 +1202,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  const saveExportLink = document.getElementById("downloadExportLink");
+  let completedExportClip = null;
+  function releaseCompletedExport() {
+    if (window.lastExportUrl) URL.revokeObjectURL(window.lastExportUrl);
+    window.lastExportUrl = null;
+    completedExportClip = null;
+    saveExportLink.onclick = null;
+    saveExportLink.removeAttribute("href");
+    saveExportLink.style.display = "none";
+  }
   openExportBtn.addEventListener("click", () => {
     saveSheet.close();
     player.pause();
@@ -1224,8 +1234,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     exportProgress.style.display = "none";
     startExportBtn.disabled = false;
     startExportBtn.style.display = "flex";
-    const manualBtn = document.getElementById("downloadExportLink");
-    if (manualBtn) manualBtn.style.display = "none";
+    if (completedExportClip !== player.manifest) releaseCompletedExport();
+    if (exportInProgress || window.lastExportUrl) exportProgress.style.display = "flex";
 
     const drivingToggle=document.getElementById('exportToggleDriving');
     drivingToggle.disabled=!player.drivingView?.data?.frames?.some(f=>f.o.length||f.b.length);
@@ -1244,6 +1254,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   startExportBtn.addEventListener("click", async (e) => {
     const cameraAngle = selectedExportView();
     if(exportInProgress || (Array.isArray(cameraAngle) && cameraAngle.length === 0))return;
+    releaseCompletedExport();
+    const exportingClip = player.manifest;
     exportInProgress=true;
     if (e) {
       e.preventDefault();
@@ -1270,48 +1282,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
 
-      if (window.lastExportUrl) URL.revokeObjectURL(window.lastExportUrl);
-      const blob = new Blob([result.buffer], { type: "video/mp4" });
-      const blobUrl = URL.createObjectURL(blob);
-      window.lastExportUrl = blobUrl;
-      const sizeMb = (result.buffer.byteLength / (1024 * 1024)).toFixed(1);
-
-      progressBarFill.style.width = "100%";
-      progressText.textContent = `Export complete! (${sizeMb} MB) Download started.`;
-
-      // Trigger standard browser download via temporary anchor
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = result.fileName;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        if (a.parentNode) document.body.removeChild(a);
-      }, 500);
-
-      // Reveal permanent download button in modal as reliable fallback
-      const manualBtn = document.getElementById("downloadExportLink");
-      if (manualBtn) {
-        manualBtn.href = blobUrl;
-        manualBtn.download = result.fileName;
-        manualBtn.textContent = `⬇ Download ${result.fileName} (${sizeMb} MB)`;
-        manualBtn.style.display = "block";
-      }
-
-      startExportBtn.style.display = "none";
-
-      // On mobile devices supporting Web Share, also trigger share sheet
-      const file = new File([result.buffer], result.fileName, { type: "video/mp4" });
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (!result.blob?.size) throw new Error("The encoder produced an empty video.");
+      const file = new File([result.blob], result.fileName, {type:result.blob.type});
+      const save = saveExportLink;
+      completedExportClip = exportingClip;
+      window.lastExportUrl = URL.createObjectURL(file);
+      save.href = window.lastExportUrl;
+      save.download = file.name;
+      save.textContent = "Save video";
+      save.style.display = "block";
+      save.onclick = async event => {
+        if (!navigator.canShare?.({files:[file]})) return;
+        event.preventDefault();
         try {
-          await navigator.share({
-            title: "BimmerVision Recording",
-            text: `BimmerVision drive clip (${result.duration.toFixed(1)}s)`,
-            files: [file]
-          });
-        } catch (_) {}
-      }
+          await navigator.share({files:[file]});
+        } catch (error) {
+          if (error.name === "AbortError") return;
+          save.onclick = null;
+          save.textContent = "Download video";
+          progressText.textContent = "Sharing is unavailable. Tap Download video to save your export.";
+        }
+      };
+      progressBarFill.style.width = "100%";
+      progressText.textContent = `Ready to save · ${(file.size / 1048576).toFixed(1)} MB`;
+      startExportBtn.style.display = "none";
+      save.focus();
     } catch (err) {
       console.error("Export failed:", err);
       progressText.textContent = "Export error: " + (err.message || String(err));

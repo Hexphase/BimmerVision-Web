@@ -60,7 +60,8 @@ function createMockEnvironment() {
     },
     VideoEncoder: Encoder,
     VideoFrame: class { constructor(_, o) { Object.assign(this, o); } close() {} },
-    Mp4Muxer: { Muxer, ArrayBufferTarget: class {} },
+    Blob,
+    Mp4Muxer: { Muxer, StreamTarget: class {} },
     VideoDecoder: undefined
   };
 
@@ -74,7 +75,7 @@ test('export supplies sample durations when a browser encoder omits them', async
   const result = await new s.Exporter(player).export({ includeHud: false });
   assert.equal(calls.length, 3);
   assert.ok(calls.every(c => c[3] === 33333));
-  assert.match(result.fileName, /\.m4v$/);
+  assert.match(result.fileName, /\.mp4$/);
 });
 test('short exports near recording end decode from the preceding keyframe instead of the entire drive',async()=>{
  const {s}=createMockEnvironment(),submitted=[];
@@ -477,7 +478,7 @@ test('MediaRecorder fallback exports video when VideoEncoder is not available', 
   }
   s.MediaRecorder = MockMediaRecorder;
   s.Blob = class {
-    constructor(chunks, opts) { this.chunks = chunks; this.type = opts?.type; }
+    constructor(chunks, opts) { this.chunks = chunks; this.type = opts?.type; this.size = 10; }
     async arrayBuffer() { return new ArrayBuffer(10); }
   };
 
@@ -502,7 +503,7 @@ test('MediaRecorder fallback exports video when VideoEncoder is not available', 
 
   const exporter = new s.Exporter(player);
   const result = await exporter.export({ duration: 0.05, overlays: { map: false } });
-  assert.ok(result.buffer, 'Result must contain video buffer');
+  assert.ok(result.blob.size, 'Result must contain a non-empty video blob');
   assert.match(result.fileName, /BimmerVision-test-mr-/);
 });
 
@@ -552,7 +553,7 @@ for(const stalled of ['flush','bitmap'])test(`a never-settling source ${stalled}
 function recorderEnvironment(){
  const env=createMockEnvironment(),{s}=env;delete s.VideoEncoder;let stopped=0;
  const make=s.document.createElement;s.document.createElement=tag=>{const c=make(tag);c.captureStream=()=>({getVideoTracks:()=>[{requestFrame(){},stop(){stopped++;}}]});return c;};
- s.Blob=class{async arrayBuffer(){return new ArrayBuffer(5);}};
+ s.Blob=class{get size(){return 5;} async arrayBuffer(){return new ArrayBuffer(5);}};
  s.MediaRecorder=class{constructor(){this.state='inactive';}start(){this.state='recording';}stop(){this.state='inactive';}};
  return {...env,stopped:()=>stopped};
 }
